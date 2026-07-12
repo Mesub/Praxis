@@ -10,6 +10,7 @@
     <Project Path="src/Modules/Praxis.Modules.Identity/Praxis.Modules.Identity.csproj" />
     <Project Path="src/Modules/Praxis.Modules.Kernel/Praxis.Modules.Kernel.csproj" />
     <Project Path="src/Modules/Praxis.Modules.Memory/Praxis.Modules.Memory.csproj" />
+    <Project Path="src/Modules/Praxis.Modules.Reality/Praxis.Modules.Reality.csproj" />
     <Project Path="src/Modules/Praxis.Modules.Scheduler/Praxis.Modules.Scheduler.csproj" />
     <Project Path="src/Modules/Praxis.Modules.Tutor/Praxis.Modules.Tutor.csproj" />
     <Project Path="src/Modules/Praxis.Modules.Assessment/Praxis.Modules.Assessment.csproj" />
@@ -22,6 +23,7 @@
     <Project Path="tests/Praxis.Modules.Identity.Tests/Praxis.Modules.Identity.Tests.csproj" />
     <Project Path="tests/Praxis.Modules.Kernel.Tests/Praxis.Modules.Kernel.Tests.csproj" />
     <Project Path="tests/Praxis.Modules.Memory.Tests/Praxis.Modules.Memory.Tests.csproj" />
+    <Project Path="tests/Praxis.Modules.Reality.Tests/Praxis.Modules.Reality.Tests.csproj" />
     <Project Path="tests/Praxis.Modules.Scheduler.Tests/Praxis.Modules.Scheduler.Tests.csproj" />
     <Project Path="tests/Praxis.Infrastructure.Tests/Praxis.Infrastructure.Tests.csproj" />
     <Project Path="tests/Praxis.Modules.Tutor.Tests/Praxis.Modules.Tutor.Tests.csproj" />

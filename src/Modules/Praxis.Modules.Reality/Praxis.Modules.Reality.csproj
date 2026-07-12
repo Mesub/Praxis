@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The sandbox's command-line composition is internal, so the escape suite can assert every
+         wall is present without Docker — the specification is verified even where the daemon is not. -->
+    <InternalsVisibleTo Include="Praxis.Modules.Reality.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Praxis.Shared\Praxis.Shared.csproj" />
+    <ProjectReference Include="..\Praxis.Modules.Kernel\Praxis.Modules.Kernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+  </ItemGroup>
+
+</Project>
