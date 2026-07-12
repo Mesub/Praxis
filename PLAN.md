@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M1 — the event kernel
-**Last completed task:** M1.1 — the append-only event table. History cannot be edited, and a real Postgres proves it.
+**Last completed task:** M1.2 — the event store: atomic batches, optimistic append, keyset replay (19 tests)
 
 ---
 
@@ -94,7 +94,8 @@ flowchart TB
 
 - [x] **M1.1** `LearningEvent` entity + `EventsDbContext`: append-only table (`id`, `learner_id`, `type`, `concept_id?`, `payload jsonb`, `occurred_at`, `sequence`). No update path. No delete path.
       → `kernel.learning_events`, with append-only enforced **twice**: the DbContext refuses a modify/delete, and a **Postgres trigger** refuses UPDATE, DELETE *and* TRUNCATE. The first is a courtesy to whoever writes the bug; the second is the guarantee. Tested against a real Postgres container (an in-memory fake has no triggers and would pass while the real thing was wide open) — 8 tests, including tamper attempts made *around* the ORM with raw SQL. `LearningEvent` deliberately does not inherit `BaseEntity`: no `UpdatedAt`, no `IsDeleted`, because neither exists for it.
-- [ ] **M1.2** `IEventStore` + `AppendAsync` / `ReadStreamAsync` / `ReadAllFromAsync`. Optimistic append by sequence.
+- [x] **M1.2** `IEventStore` + `AppendAsync` / `ReadStreamAsync` / `ReadAllFromAsync`. Optimistic append by sequence.
+      → The only door in and out of the log. Batch appends are atomic and single-learner. Optimistic concurrency: append with the last sequence you saw, and a writer working from a stale view of the stream gets `Conflict` instead of silently committing a conclusion drawn from history that has since moved. `ReadAllFromAsync` walks by keyset, not `OFFSET` — a rebuild reads the entire log, and `OFFSET` would make that quadratic. 19 tests green.
 - [ ] **M1.3** The event catalogue as a closed discriminated set: `ConceptTaught`, `AnswerGiven`, `ExplanationRecorded`, `HintTaken`, `RepDue`, `RepAnswered`, `PredictionMade`, `PredictionResolved`, `ArtifactSubmitted`, `SessionStarted`, `SessionAbandoned`, `SessionCompleted`, `EvidenceAccepted`, `EvidenceRejected`. **There is no `ConceptCompleted`. There never will be.**
 - [ ] **M1.4** Projection framework: `IProjection`, a checkpointed replay runner, and a `rebuild-projections` CLI command that drops every projection and replays the log from zero.
 - [ ] **M1.5** Identity module: `Learner`, register/login, JWT, `IUserContext` wired from the token. Deliberately minimal — this is not the interesting part.
