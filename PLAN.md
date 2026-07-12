@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M2 — the Graph (E2)
-**Last completed task:** M1.6 — rebuild-from-zero is byte-identical, and erases beliefs history does not support. **M1 complete.**
+**Last completed task:** M2.1 — Concept, ConceptEdge (4 kinds, only REQUIRES orders), GraphVersion (20 tests)
 
 ---
 
@@ -110,7 +110,8 @@ flowchart TB
 
 ## M2 — E2 Graph
 
-- [ ] **M2.1** Domain: `Concept` (id, slug, title, summary, difficulty prior, domain), `ConceptEdge` (`REQUIRES` | `RELATES` | `CONTRASTS` | `APPLIES_TO`), `GraphVersion`.
+- [x] **M2.1** Domain: `Concept` (id, slug, title, summary, difficulty prior, domain), `ConceptEdge` (`REQUIRES` | `RELATES` | `CONTRASTS` | `APPLIES_TO`), `GraphVersion`.
+      → All three, in `graph.*`. **Only `REQUIRES` orders anything** — it is the sole edge the Compiler treats as a dependency, so it is the only one that can cycle and the only one that can waste a learner's month if wrong. Edges carry **provenance** (`Authored` / `Inferred` / `Discovered`): a claim a human made and a claim a model guessed are not the same claim (R-2). Difficulty and duration are explicitly *priors*, replaceable by measurement — an estimate reality never corrects is an opinion with a decimal point. `GraphVersion` exists because Evidence says "demonstrated concept X" and a stranger must later be able to ask what X *meant then*; without it, improving the graph silently rewrites every credential ever issued against it. 20 tests.
 - [ ] **M2.2** `PoMContract` per concept: which of the six evidence types are accepted, thresholds, and the MC weight of each. Enforces I-2.
 - [ ] **M2.3** Domain-pack format (`packs/{name}/pack.yaml`) + loader + validator: rejects cycles in `REQUIRES`, rejects a concept with no PoM contract, rejects an orphan.
 - [ ] **M2.4** Graph queries via recursive CTE: prerequisites-of, dependents-of, topological order, **the learner's frontier** (concepts whose prereqs are all HELD but which are not).

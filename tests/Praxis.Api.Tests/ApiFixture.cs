@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Praxis.Infrastructure;
+using Praxis.Modules.Graph.Persistence;
 using Praxis.Modules.Identity.Persistence;
 using Praxis.Modules.Kernel.Persistence;
 using Testcontainers.PostgreSql;
@@ -36,6 +37,7 @@ public sealed class ApiFixture : IAsyncLifetime
         await using var scope = Factory.Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<KernelDbContext>().Database.MigrateAsync();
         await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
+        await scope.ServiceProvider.GetRequiredService<GraphDbContext>().Database.MigrateAsync();
     }
 
     public async Task DisposeAsync()

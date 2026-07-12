@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Praxis.Infrastructure;
 using Praxis.Infrastructure.Web;
+using Praxis.Modules.Graph;
+using Praxis.Modules.Graph.Persistence;
 using Praxis.Modules.Identity;
 using Praxis.Modules.Identity.Auth;
 using Praxis.Modules.Identity.Persistence;
@@ -26,6 +28,7 @@ builder.Services.AddPraxisInfrastructure(
     typeof(IdentityModule).Assembly);
 
 builder.Services.AddKernel(connectionString);
+builder.Services.AddGraph(connectionString);
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 builder.Services.AddIdentityModule(connectionString, jwt);
@@ -55,6 +58,7 @@ if (args.Contains("--migrate", StringComparer.Ordinal))
 
     await scope.ServiceProvider.GetRequiredService<KernelDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<GraphDbContext>().Database.MigrateAsync();
 
     Log.Information("Migrations applied.");
     return;
