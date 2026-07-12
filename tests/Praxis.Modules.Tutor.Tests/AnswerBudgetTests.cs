@@ -39,10 +39,10 @@ public sealed class AnswerBudgetTests
     {
         var budget = Budget();
 
-        Assert.True(budget.Spend(HintRung.Partial).IsSuccess);
+        Assert.True(budget.Spend(HintRung.WorkedExample).IsSuccess);
 
-        Assert.Equal(2, budget.Spent);
-        Assert.Equal(3, budget.Remaining);
+        Assert.Equal(28, budget.Spent);
+        Assert.Equal(92, budget.Remaining);
         Assert.Equal(1, budget.HintsTaken);
     }
 
@@ -72,16 +72,14 @@ public sealed class AnswerBudgetTests
     [Fact]
     public void The_deepest_rung_costs_the_most()
     {
-        HintRung[] ladder = [HintRung.Orient, HintRung.Probe, HintRung.Analogy, HintRung.Partial, HintRung.Full];
-
-        var costs = ladder.Select(HintCost.Of).ToList();
+        var costs = Enum.GetValues<HintRung>().Select(HintCost.Of).ToList();
 
         Assert.Equal(costs.OrderBy(c => c), costs);
 
         Assert.True(
-            HintCost.Of(HintRung.Full) > HintCost.Of(HintRung.Probe),
-            "The full scaffold costs no more than a probe. A learner who notices will never probe "
-            + "again, and the ladder is now a button.");
+            HintCost.Of(HintRung.PartialScaffold) > HintCost.Of(HintRung.Probe),
+            "The strongest scaffold costs no more than a probe. A learner who notices will never "
+            + "probe again, and the ladder is now a button.");
     }
 
     // ── It runs out, and that is the point ───────────────────────────────────
@@ -89,10 +87,9 @@ public sealed class AnswerBudgetTests
     [Fact]
     public void When_the_budget_is_gone_PRAXIS_says_so_and_helps_no_further()
     {
-        var budget = Budget();
+        var budget = Budget(allowance: 45);
 
-        Assert.True(budget.Spend(HintRung.Full).IsSuccess);      // 3
-        Assert.True(budget.Spend(HintRung.Partial).IsSuccess);   // 2 → 5 of 5
+        Assert.True(budget.Spend(HintRung.PartialScaffold).IsSuccess);   // 45 of 45
 
         Assert.True(budget.IsExhausted);
         Assert.Equal(0, budget.Remaining);
@@ -113,9 +110,9 @@ public sealed class AnswerBudgetTests
     [Fact]
     public void A_hint_they_cannot_afford_is_refused_rather_than_clamped()
     {
-        var budget = Budget(allowance: 2);
+        var budget = Budget(allowance: 20);
 
-        var refused = budget.Spend(HintRung.Full);   // costs 3
+        var refused = budget.Spend(HintRung.PartialScaffold);   // costs 45
 
         Assert.False(refused.IsSuccess);
 
@@ -123,7 +120,7 @@ public sealed class AnswerBudgetTests
         Assert.Equal(0, budget.Spent);
         Assert.Equal(0, budget.HintsTaken);
         Assert.Null(budget.DeepestRung);
-        Assert.Equal(2, budget.Remaining);
+        Assert.Equal(20, budget.Remaining);
     }
 
     /// The invariant, hammered: whatever sequence of rungs is demanded, in whatever order, the
@@ -150,17 +147,17 @@ public sealed class AnswerBudgetTests
         }
 
         // And it did genuinely run out — this is not passing because nothing was spent.
-        Assert.True(budget.IsExhausted || !budget.CanAfford(HintRung.Full));
+        Assert.True(budget.IsExhausted || !budget.CanAfford(HintRung.PartialScaffold));
     }
 
     [Fact]
     public void CanAfford_answers_before_the_tutor_commits_to_helping()
     {
-        var budget = Budget(allowance: 2);
+        var budget = Budget(allowance: 14);
 
-        Assert.True(budget.CanAfford(HintRung.Probe));    // 1
-        Assert.True(budget.CanAfford(HintRung.Partial));  // 2
-        Assert.False(budget.CanAfford(HintRung.Full));    // 3
+        Assert.True(budget.CanAfford(HintRung.Probe));            // 6
+        Assert.True(budget.CanAfford(HintRung.Analogy));          // 14
+        Assert.False(budget.CanAfford(HintRung.WorkedExample));   // 28
 
         // And the free rung is always affordable, even at zero.
         var empty = Budget(allowance: 0);
@@ -177,10 +174,10 @@ public sealed class AnswerBudgetTests
         var budget = Budget();
 
         budget.Spend(HintRung.Probe);
-        budget.Spend(HintRung.Partial);
+        budget.Spend(HintRung.WorkedExample);
         budget.Spend(HintRung.Probe);
 
-        Assert.Equal(HintRung.Partial, budget.DeepestRung);
+        Assert.Equal(HintRung.WorkedExample, budget.DeepestRung);
         Assert.Equal(3, budget.HintsTaken);
     }
 
@@ -188,14 +185,28 @@ public sealed class AnswerBudgetTests
 
     /// **The test that stops this becoming a hint shop.**
     ///
-    /// Every commercial instinct points at a refill: *out of hints? Watch an ad. Buy a pack. Come
-    /// back tomorrow for three free ones.* Each would work, and each would open the second lock — the
-    /// one stopping a patient learner from grinding the oracle until it gives up the answer.
+    /// ## And the correction it needed
     ///
-    /// So the type has exactly one mutator and it only ever subtracts. If a `Grant`, a `Refill`, an
-    /// `AddHints` or a `Reset(int)` ever appears, this fails.
+    /// The first version of this test forbade *any* way to add to a budget, and it was wrong.
+    ///
+    /// CANON §1.1 is one line: **"Hints cost. Production earns."** Budget is meant to come back —
+    /// you *earn* it by producing (M6.2b), and PRAXIS even pays you for a genuine wrong attempt,
+    /// because productive failure is not free and it deserves funding. A learner who produces at the
+    /// expected rate can climb the ladder indefinitely; a learner who only consumes is broke in four
+    /// rungs. **That asymmetry is I-5**, and my absolutist version had banned half of it.
+    ///
+    /// The real line is not *added* vs *not added*. It is **bought** vs **earned**:
+    ///
+    /// * **Bought** — an ad, a purchase, a support ticket, an admin override. This is what opens the
+    ///   second lock on the oracle-grinding attack, because it lets a learner acquire budget
+    ///   *without producing anything*. Forbidden, and asserted below.
+    /// * **Earned** — evidence that passed a rubric, a correct answer reached unaided, a wrong
+    ///   answer that was genuinely reasoned. Safe *precisely because* it requires production, which
+    ///   is the one thing a grinder cannot fake (the Evidence Ceiling, C-4).
+    ///
+    /// So the ban is on the *purchase* verbs, not on arithmetic.
     [Fact]
-    public void There_is_no_way_to_add_to_a_budget()
+    public void A_budget_can_never_be_bought_granted_or_topped_up()
     {
         var mutators = typeof(AnswerBudget)
             .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
@@ -203,23 +214,22 @@ public sealed class AnswerBudgetTests
             .Select(m => m.Name)
             .ToHashSet(StringComparer.Ordinal);
 
+        // Every one of these is a way to get budget **without producing anything**, and that is the
+        // whole of the objection. `Earn` is deliberately not on this list (M6.2b).
         string[] forbidden =
         [
-            "Grant", "Refill", "Add", "AddHints", "Increase", "TopUp", "Purchase", "Award", "Extend",
+            "Grant", "Refill", "TopUp", "Purchase", "Buy", "Award", "Gift", "Comp", "Override",
         ];
 
         foreach (var name in forbidden)
         {
             Assert.False(
                 mutators.Contains(name),
-                $"AnswerBudget.{name} exists. The budget can now be refilled — and a budget that "
-                + "can be refilled is not a budget, it is a price. The learner can buy their way "
-                + "past the friction that was the entire point, and grind the oracle while they "
-                + "are at it.");
+                $"AnswerBudget.{name} exists. A learner can now acquire budget without producing "
+                + "anything — which is not merely a pricing decision. It is the second lock on the "
+                + "oracle-grinding attack, and it is now open.");
         }
 
-        // Spend (which subtracts) and Reset (which a projection rebuild needs, and which sets it
-        // back to *zero spent*, not to a full purse) are the only two.
         Assert.Equal(
             new HashSet<string>(StringComparer.Ordinal) { nameof(AnswerBudget.CanAfford), "Spend", "Reset" },
             mutators);
@@ -232,7 +242,7 @@ public sealed class AnswerBudgetTests
         // to "full allowance and go again".
         var budget = Budget();
 
-        budget.Spend(HintRung.Full);
+        budget.Spend(HintRung.PartialScaffold);
         budget.Reset();
 
         Assert.Equal(0, budget.Spent);

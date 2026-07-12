@@ -27,14 +27,14 @@ public sealed class AnswerBudgetProjectionTests
     {
         var (learner, concept) = (Guid.CreateVersion7(), Guid.CreateVersion7());
 
-        await HintAsync(learner, concept, HintRung.Probe);     // 1
-        await HintAsync(learner, concept, HintRung.Partial);   // 2
+        await HintAsync(learner, concept, HintRung.Probe);          // 6
+        await HintAsync(learner, concept, HintRung.WorkedExample);  // 28
 
         var budget = await BudgetAsync(learner, concept);
 
-        Assert.Equal(3, budget.Spent);
-        Assert.Equal(2, budget.Remaining);
-        Assert.Equal(HintRung.Partial, budget.DeepestRung);
+        Assert.Equal(34, budget.Spent);
+        Assert.Equal(86, budget.Remaining);
+        Assert.Equal(HintRung.WorkedExample, budget.DeepestRung);
         Assert.Equal(2, budget.HintsTaken);
     }
 
@@ -52,7 +52,7 @@ public sealed class AnswerBudgetProjectionTests
         // Five events, each claiming — falsely — that the learner still has a full purse.
         for (var i = 0; i < 5; i++)
         {
-            await HintAsync(learner, concept, HintRung.Full, claimsRemaining: 99);
+            await HintAsync(learner, concept, HintRung.PartialScaffold, claimsRemaining: 99);
         }
 
         var budget = await BudgetAsync(learner, concept);
@@ -62,8 +62,9 @@ public sealed class AnswerBudgetProjectionTests
             $"An event claimed 99 hints remained and the projection believed it (remaining: "
             + $"{budget.Remaining}). The budget is now whatever the most broken writer last said.");
 
-        // One Full (3) fits; the next does not, and is refused rather than clamped.
-        Assert.Equal(3, budget.Spent);
+        // Two scaffolds (45 each) fit inside 120; the third does not, and is refused rather than
+        // clamped.
+        Assert.Equal(90, budget.Spent);
         Assert.True(budget.Spent <= budget.Allowance);
     }
 
@@ -77,7 +78,7 @@ public sealed class AnswerBudgetProjectionTests
         var (learner, concept) = (Guid.CreateVersion7(), Guid.CreateVersion7());
 
         await HintAsync(learner, concept, HintRung.Probe);
-        await HintAsync(learner, concept, HintRung.Partial);
+        await HintAsync(learner, concept, HintRung.WorkedExample);
 
         var before = await BudgetAsync(learner, concept);
 
@@ -102,7 +103,7 @@ public sealed class AnswerBudgetProjectionTests
         var learner = Guid.CreateVersion7();
         var (bm25, hnsw) = (Guid.CreateVersion7(), Guid.CreateVersion7());
 
-        await HintAsync(learner, bm25, HintRung.Full);
+        await HintAsync(learner, bm25, HintRung.PartialScaffold);
 
         var spentOne = await BudgetAsync(learner, bm25);
         var untouched = await _api.Factory.Services.CreateAsyncScope().ServiceProvider
@@ -110,7 +111,7 @@ public sealed class AnswerBudgetProjectionTests
             .Budgets.AsNoTracking()
             .FirstOrDefaultAsync(b => b.LearnerId == learner && b.ConceptId == hnsw);
 
-        Assert.Equal(3, spentOne.Spent);
+        Assert.Equal(45, spentOne.Spent);
 
         // No budget exists for the concept they never asked about — and when one does, it is full.
         Assert.Null(untouched);
@@ -122,11 +123,11 @@ public sealed class AnswerBudgetProjectionTests
         var concept = Guid.CreateVersion7();
         var (alice, bob) = (Guid.CreateVersion7(), Guid.CreateVersion7());
 
-        await HintAsync(alice, concept, HintRung.Full);
+        await HintAsync(alice, concept, HintRung.PartialScaffold);
 
         var hers = await BudgetAsync(alice, concept);
 
-        Assert.Equal(3, hers.Spent);
+        Assert.Equal(45, hers.Spent);
 
         await using var scope = _api.Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<TutorDbContext>();

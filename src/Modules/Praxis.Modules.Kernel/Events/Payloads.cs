@@ -50,16 +50,80 @@ public sealed record HintTaken(Guid SessionId, HintRung Rung, int BudgetRemainin
     public static LearningEventType EventType => LearningEventType.HintTaken;
 }
 
+/// **The ladder, and the rung that is not on it.**
+///
+/// Five rungs, each a stronger scaffold than the last. Look at what is missing from the bottom:
+/// there is no `FullReveal`, no `Answer`, no `Solution`, and there is no *number* below
+/// `PartialScaffold` for one to occupy. CANON §1.2 lists a sixth rung, `L5 FULL_REVEAL`, and marks
+/// it *"Gated. In LEARN mode this rung does not exist."*
+///
+/// It does not exist here either — **not as a gated member, not as a member behind a feature flag,
+/// and not as a member that throws.** A gated member is a member somebody can ungate under
+/// deadline; an absent one is an absent one. Going broke on this ladder does not get you the
+/// answer. It gets you **rescheduled** (§1.5).
+///
+/// The scaffold gets stronger as you descend, and the *cost* rises with it (see `HintCost`) — so
+/// the ladder is a slope, not a button.
 public enum HintRung
 {
-    Orient = 1,
-    Probe = 2,
-    Analogy = 3,
-    Partial = 4,
+    /// **L0 — free, and unlimited.** Restate the goal; name what is known and unknown; point at the
+    /// relevant surface. **Zero new content**: it may not introduce a single fact the learner's Twin
+    /// does not already hold.
+    ///
+    /// Free because orienting yourself is a *skill*, and a skill you are charged for is a skill you
+    /// learn not to use.
+    Orient = 0,
 
-    /// The last rung is still not "the answer". It is the smallest scaffold that leaves the
-    /// learner with something to produce.
-    Full = 5,
+    /// **L1 — one Socratic question that narrows the search space.** It may quote the learner's own
+    /// words back at them. It may never contain the answer, or a fact they could simply read off it.
+    Probe = 1,
+
+    /// **L2 — map it onto something they already hold.** The Twin must say `P(knows) ≥ 0.7` for the
+    /// thing being mapped *from*: an analogy the learner does not hold is not a hint, it is a second
+    /// unknown.
+    Analogy = 2,
+
+    /// **L3 — work a different problem, start to finish, thinking aloud.**
+    ///
+    /// *Isomorphic but different.* Never **this** problem: the example must have different surface
+    /// features and **a different answer**. The moment it shares an answer, it is not an example —
+    /// it is the answer with extra steps.
+    WorkedExample = 3,
+
+    /// **L4 — the structure, and only the structure.** The first step; the skeleton; the equation
+    /// with a hole in it; the function signature.
+    ///
+    /// **It does not fill the hole.** This is the last rung, and it is *still not the answer* — it is
+    /// the smallest scaffold that leaves the learner with something to produce. If it ever fills the
+    /// hole, PRAXIS has become an answer key with a personality.
+    PartialScaffold = 4,
+}
+
+/// **The budget is gone, and the answer is still not coming.**
+///
+/// CANON §1.5, in as many words: *"Not this: 'OK fine, here's the answer.' That path does not exist
+/// in the code."*
+///
+/// Zero budget is a **compile signal, not a surrender**. The item stops, the learner writes a stuck
+/// note saying exactly where their reasoning broke, and that note is graded as **misconception
+/// evidence, not mastery evidence** (I-6). The concept is then rescheduled — behind its missing
+/// prerequisites if that is what broke, or with a different carrier if the explanation was what
+/// broke.
+public sealed record AnswerBudgetExhausted(Guid SessionId, HintRung DeepestRungReached, int HintsTaken)
+    : IEventPayload
+{
+    public static LearningEventType EventType => LearningEventType.AnswerBudgetExhausted;
+}
+
+/// *"Where, exactly, does your reasoning break?"*
+///
+/// Mandatory when the budget runs out, and **the most valuable two sentences in the session** — it
+/// is the only artefact in PRAXIS that tells us *why* someone is stuck rather than merely *that*
+/// they are. It is never mastery evidence. It is a diagnosis.
+public sealed record StuckNoteWritten(Guid SessionId, string Note)
+    : IEventPayload
+{
+    public static LearningEventType EventType => LearningEventType.StuckNoteWritten;
 }
 
 // ── Evidence produced ───────────────────────────────────────────────────────

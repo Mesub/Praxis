@@ -44,13 +44,18 @@ namespace Praxis.Modules.Tutor.Domain;
 /// than trusting this comment.
 public sealed class AnswerBudget : BaseEntity
 {
-    /// **The default allowance for one concept.**
+    /// **The default allowance for one concept** (CANON §1.3).
     ///
-    /// Five, because the ladder has five rungs (M6.2) and a learner who takes every one of them has
-    /// been walked all the way down — and should then be *out*, on this concept, until they produce
-    /// something. Not because five is a magic number, but because "you can climb the whole ladder
-    /// exactly once" is a rule a human can hold in their head.
-    public const int DefaultAllowance = 5;
+    /// 120, and the whole ladder from `Probe` to `PartialScaffold` costs 93. So a learner can be
+    /// walked all the way down **exactly once**, with a little left over — and then they are out, on
+    /// this concept, until they *produce* something.
+    ///
+    /// That is the number doing the work. Hint costs are calibrated to be roughly **one production
+    /// event apart**: a learner who produces at the expected rate can climb the ladder indefinitely
+    /// and never go broke, and a learner who only consumes is broke in about four rungs.
+    ///
+    /// **That asymmetry is I-5.** It is not a limit on help; it is a limit on *unearned* help.
+    public const int DefaultAllowance = 120;
 
     public Guid LearnerId { get; private set; }
     public Guid ConceptId { get; private set; }
@@ -132,32 +137,44 @@ public sealed class AnswerBudget : BaseEntity
     }
 }
 
-/// What each rung costs.
+/// What each rung costs (CANON §1.2).
 ///
-/// **It is not flat.** A flat cost makes the cheap rungs feel expensive and the expensive rung feel
-/// free, and a learner optimising against a flat cost jumps straight to the bottom of the ladder
-/// every time — which is precisely the behaviour the ladder exists to prevent.
-///
-/// So orienting is nearly free, and the last rung costs most of the budget. Climbing down slowly is
-/// cheap; demanding the strongest scaffold immediately is not.
+/// **The curve is steep, and it has to be.** Under a flat price a learner optimising against the
+/// cost jumps straight to the strongest scaffold every time — which is precisely the behaviour the
+/// ladder exists to prevent. So each rung costs roughly double the one above it, and the difference
+/// between orienting yourself (free) and being handed the skeleton (45) is the difference between
+/// a nudge and a rescue.
 public static class HintCost
 {
+    /// The surcharge for asking for the same rung again on the same item (**LR-2**).
+    ///
+    /// Not a punishment — a *price signal*. Re-reading a hint you did not understand is fine and
+    /// cheap; wearing the same rung down until it accidentally says something new is not, and this
+    /// is the only thing standing between the tutor and a learner who has discovered that asking the
+    /// same question eleven times gets a slightly different answer each time.
+    public const double RepeatMultiplier = 1.5;
+
     public static int Of(HintRung rung) => rung switch
     {
-        // "What kind of problem is this?" — barely a hint at all. It costs almost nothing because
-        // orienting yourself is a skill, and PRAXIS wants it practised, not rationed.
+        // **Free, and unlimited.** "What kind of problem is this? What do I actually know?" is not a
+        // hint — it is a skill, and a skill you are charged for is a skill you learn not to use.
         HintRung.Orient => 0,
 
-        HintRung.Probe => 1,
-        HintRung.Analogy => 1,
-        HintRung.Partial => 2,
+        HintRung.Probe => 6,
+        HintRung.Analogy => 14,
+        HintRung.WorkedExample => 28,
 
-        // Still not the answer (M6.2) — the smallest scaffold that leaves them something to produce.
-        // It costs most of a budget because it *should* be the last thing that happens.
-        HintRung.Full => 3,
+        // The structure, with the hole still in it. The most expensive thing PRAXIS will do for you,
+        // and it *still* does not fill the hole.
+        HintRung.PartialScaffold => 45,
 
         _ => throw new ArgumentOutOfRangeException(
             nameof(rung), rung,
             "An unpriced rung would be a free one, and a free rung is an unlimited one."),
     };
+
+    /// **LR-2.** 1.5×, rounded up. Free stays free — charging for a second orientation would teach
+    /// exactly the wrong lesson.
+    public static int Repeated(HintRung rung)
+        => (int)Math.Ceiling(Of(rung) * RepeatMultiplier);
 }

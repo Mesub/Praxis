@@ -25,6 +25,14 @@ public enum LearningEventType
     /// A rung of the hint ladder was spent. Costs from the Answer Budget (I-5).
     HintTaken = 11,
 
+    /// The budget ran out. **This is not a path to the answer** — it is a compile signal. The
+    /// concept gets rescheduled, never revealed (CANON §1.5).
+    AnswerBudgetExhausted = 12,
+
+    /// The learner wrote down exactly where their reasoning broke. Misconception evidence (I-6),
+    /// never mastery evidence.
+    StuckNoteWritten = 13,
+
     // ── Evidence produced ───────────────────────────────────────────────────
     AnswerGiven = 20,
     ExplanationRecorded = 21,
