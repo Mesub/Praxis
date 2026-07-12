@@ -1,0 +1,37 @@
+# .NET
+bin/
+obj/
+*.user
+artifacts/
+
+# Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets — never commit
+.env
+.env.local
+*.pem
+*.key
+!packs/**/*.key
+
+# Local data
+data/
+*.db
+*.sqlite
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
