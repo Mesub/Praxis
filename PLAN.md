@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M0
-**Last completed task:** M0.4 — API host: DI, validation, exception handler, logging (35 tests green)
+**Last completed task:** M0.5 — `scripts/verify.ps1`, the gate. Proven to fail on a broken build.
 
 ---
 
@@ -83,7 +83,8 @@ flowchart TB
       → PG 17.10 up and healthy on **port 5433** (5432 was already taken by another project). `vector` + `pgcrypto` extensions verified live; the ten engine schemas exist; pgvector's distance operator returns the right answer.
 - [x] **M0.4** `Praxis.Api` host: Program.cs, DI, Scrutor handler scanning, FluentValidation filter, global exception handler, Serilog, `/health`.
       → All of it, driven through real HTTP by a probe slice living in the test assembly: valid input reaches the handler, invalid input never does, each `Result` status maps to its code, and a thrown bug becomes a 500 with a correlation id and **no stack trace in the body**. 35 tests green.
-- [ ] **M0.5** `scripts/verify.ps1` — builds .NET, runs .NET tests, lints + tests Python, builds + lints web. **This is the gate every later task must pass.** Also `scripts/dev.ps1` to bring the whole stack up.
+- [x] **M0.5** `scripts/verify.ps1` — builds .NET, runs .NET tests, lints + tests Python, builds + lints web. **This is the gate every later task must pass.** Also `scripts/dev.ps1` to bring the whole stack up.
+      → Both written. Stacks that don't exist yet report **SKIP, by name** — and the verdict says *"a skip is not a pass"*, because a gate that quietly reports success for work it never ran is worse than no gate. Proved it fails: broke the build on purpose, and it caught it, refused to run tests against a broken build, and exited 1.
 - [ ] **M0.6** `README.md`: how to run it from a cold clone in under five minutes.
 
 ## M1 — The event kernel
