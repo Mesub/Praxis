@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M3 — the Cognitive Twin (E1)
-**Last completed task:** M3.5 — the Evidence Ceiling in the Twin. No quantity of AI-graded evidence can ever produce mastery. (87 tests)
+**Last completed task:** M3.6 — the misconception set. Relapses reset the road out. (101 tests)
 
 ---
 
@@ -140,7 +140,9 @@ flowchart TB
 - [x] **M3.5** **The Evidence Ceiling (C-4)** — the single most important function in the Twin. `EXPLAIN`/LLM-graded evidence updates `p_knows` but is **hard-capped below the HOLD threshold**. Only `APPLY` (never-seen item), `BUILD` (it ran), or `PREDICT` (reality resolved it) can cross it. Property-test it: *no sequence of EXPLAIN evidence, of any length, at any score, can ever produce a HELD concept.*
       → Property test swept **84 combinations up to 10,000 pieces of perfect model-graded evidence** — none produced a held concept. Ten perfect explanations are worth *exactly* what one is: the tenth adds nothing. Mirror property also holds: one build that ran is enough on its own.
       **Deleting the clamp revealed the two layers are not redundant.** With an *honest* contract the per-clause caps alone hold the line (the Graph's guarantee working — nothing failed). With a *corrupt* contract — one the Graph would never author but a bad migration could produce — the Twin's independent clamp is the **only** thing between a learner and a mastery certificate made of explanations, and that test failed instantly. Two engines, two refusals, neither trusting the other. A single point of failure guarding the only thing that makes the product honest is not a design, it is a hope. 87 tests.
-- [ ] **M3.6** Misconception set: named, specific wrong models attached to the learner, mined in M7.
+- [x] **M3.6** Misconception set: named, specific wrong models attached to the learner, mined in M7.
+      → Pure state machine over observe / contradict / taught. **Being taught retires nothing** — explaining to someone that they are wrong is the least reliable way of discovering whether they still are, and there is a test that says so. One contradiction is not enough (once could be luck; a Twin that forgives easily keeps telling a learner they are fine). A retired misconception **relapses** if shown again.
+      **The subtle rule, which took a moment to see:** contradictions must *not* accumulate across relapses. Otherwise a learner who shows the misconception six times and is contradicted once after each would eventually total two contradictions and be recorded as **cured** — having demonstrated nothing but inconsistency. Showing it again resets the road out; you earn your way out from scratch. Proved it bites by removing the reset — two tests failed instantly. An active misconception also **suppresses belief** in its concept, because someone carrying a confidently-held wrong model is worse off than someone who knows they don't know: they won't ask. 101 tests.
 - [ ] **M3.7** `TwinController`: get twin, get concept state, get the decay forecast. Handler tests + the Evidence Ceiling property test.
 
 ## M4 — E3 Compiler + E4 Scheduler
