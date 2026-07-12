@@ -1,0 +1,334 @@
+using Praxis.Modules.Graph.Packs;
+using Praxis.Shared;
+
+namespace Praxis.Modules.Graph.Tests;
+
+/// A wrong graph does not throw. It quietly wastes a learner's month (R-2). So the pack has to be
+/// refused *before* it reaches anyone, and the refusal has to say what is wrong — all of it, at
+/// once, because an author fixing 180 concepts one error per run stops caring about the graph.
+public sealed class PackValidatorTests
+{
+    [Fact]
+    public void An_honest_pack_passes()
+    {
+        var result = PackValidator.Validate(Parse(Honest));
+
+        Assert.True(result.IsSuccess, string.Join(" | ", result.Errors));
+        Assert.Equal(3, result.Value.BySlug.Count);
+    }
+
+    [Fact]
+    public void A_cycle_in_requires_is_refused_and_the_cycle_is_named()
+    {
+        // A needs B, B needs C, C needs A. The Compiler would either never terminate, or silently
+        // drop an edge to make progress. The first hangs; the second lies.
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: A cycle.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                requires: [c]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: c
+                title: C
+                summary: C.
+                difficulty: 0
+                minutes: 30
+                requires: [b]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("REQUIRES cycle", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, e => e.Contains("->", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_concept_that_requires_itself_is_refused()
+    {
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: Self-reference.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("on itself", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_concept_with_no_proof_contract_is_refused()
+    {
+        // Nothing could ever demonstrate it. The learner would work on it forever and never hold
+        // it — which is precisely the experience PRAXIS exists to abolish.
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: No proof.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("topic, not a concept", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_contract_that_breaches_the_evidence_ceiling_is_refused_by_name()
+    {
+        // The author is being generous, and the generosity would let a language model's opinion
+        // alone confer mastery (C-4). The error names the concept, so they know which one.
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: A dishonest contract.
+            concepts:
+              - slug: honest
+                title: Honest
+                summary: Fine.
+                difficulty: 0
+                minutes: 30
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: dishonest
+                title: Dishonest
+                summary: Talking is enough here, apparently.
+                difficulty: 0
+                minutes: 30
+                requires: [honest]
+                proof:
+                  hold: 0.8
+                  evidence:
+                    - { type: Explain, min-score: 0.7, max: 0.5 }
+                    - { type: Critique, min-score: 0.7, max: 0.4 }
+                    - { type: Apply, min-score: 0.8, max: 0.6 }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e =>
+            e.Contains("'dishonest'", StringComparison.Ordinal)
+            && e.Contains("hallucinating grader", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void An_orphan_is_refused()
+    {
+        // Either the author forgot its prerequisites, and a learner gets walked into a wall — or
+        // it does not belong in this pack.
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: An orphan.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: lonely
+                title: Lonely
+                summary: Connected to nothing.
+                difficulty: 0
+                minutes: 30
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("'lonely' is connected to nothing", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_prerequisite_pointing_at_nothing_is_refused()
+    {
+        // A typo in a prerequisite is indistinguishable from a missing prerequisite until someone
+        // fails the concept it was supposed to unlock.
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: A typo.
+            concepts:
+              - slug: embeddings
+                title: Embeddings
+                summary: Vectors.
+                difficulty: 0
+                minutes: 30
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: retrieval
+                title: Retrieval
+                summary: Search.
+                difficulty: 0
+                minutes: 30
+                requires: [embedings]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("'embedings', which does not exist", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_duplicate_slug_is_refused()
+    {
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: Duplicates.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: a
+                title: A again
+                summary: The same slug.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("defined twice", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Every_problem_is_reported_at_once_not_just_the_first()
+    {
+        // The whole point. An author fixing a 180-concept graph one error per run gives up on the
+        // graph, and a graph nobody maintains is worse than no graph.
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: Several problems at once.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                requires: [nonexistent]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: No proof at all.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+              - slug: orphan
+                title: Orphan
+                summary: Alone.
+                difficulty: 0
+                minutes: 30
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.True(result.Errors.Count >= 3, $"Only reported: {string.Join(" | ", result.Errors)}");
+
+        Assert.Contains(result.Errors, e => e.Contains("does not exist", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, e => e.Contains("topic, not a concept", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, e => e.Contains("connected to nothing", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Broken_yaml_is_reported_with_a_line_number()
+    {
+        var result = PackLoader.Parse("domain: test\nconcepts:\n  - slug: a\n   bad indent here");
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains("line", result.Message!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static PackDocument Parse(string yaml)
+    {
+        var parsed = PackLoader.Parse(yaml);
+        Assert.True(parsed.IsSuccess, parsed.Message);
+        return parsed.Value;
+    }
+
+    private const string Honest = """
+        domain: test
+        version: 1
+        note: Three honest concepts.
+        concepts:
+          - slug: embeddings
+            title: Embeddings
+            summary: Dense vector representations of text.
+            difficulty: -0.2
+            minutes: 60
+            proof:
+              hold: 0.80
+              evidence:
+                - { type: Explain, min-score: 0.7, max: 0.25 }
+                - { type: Apply, min-score: 0.8, max: 0.60, count: 2 }
+          - slug: vector-retrieval
+            title: Vector retrieval
+            summary: Nearest-neighbour search over embeddings.
+            difficulty: 0.6
+            minutes: 90
+            requires: [embeddings]
+            proof:
+              hold: 0.80
+              evidence:
+                - { type: Build, min-score: 1.0, max: 0.70 }
+                - { type: Explain, min-score: 0.7, max: 0.20 }
+          - slug: bm25
+            title: BM25
+            summary: The lexical baseline a RAG system must actually beat.
+            difficulty: 0.3
+            minutes: 45
+            contrasts: [vector-retrieval]
+            proof:
+              hold: 0.80
+              evidence:
+                - { type: Apply, min-score: 0.8, max: 0.60 }
+                - { type: Recall, min-score: 0.9, max: 0.15 }
+        """;
+}
