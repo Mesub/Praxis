@@ -33,6 +33,7 @@ public sealed class AnswerBudgetProjection : IProjection
     public IReadOnlySet<LearningEventType> Handles { get; } = new HashSet<LearningEventType>
     {
         LearningEventType.HintTaken,
+        LearningEventType.ProductionRecorded,
     };
 
     public async Task ApplyAsync(LearningEvent e, CancellationToken ct = default)
@@ -46,8 +47,6 @@ public sealed class AnswerBudgetProjection : IProjection
             return;
         }
 
-        var hint = EventCatalogue.Deserialize<HintTaken>(e);
-
         var budget = await _db.Budgets
             .FirstOrDefaultAsync(b => b.LearnerId == e.LearnerId && b.ConceptId == conceptId, ct);
 
@@ -58,13 +57,31 @@ public sealed class AnswerBudgetProjection : IProjection
             _db.Budgets.Add(budget);
         }
 
-        // **The spend is re-derived, not trusted.** If it now overdraws — because the tutor that
-        // wrote this event had a stale view of the budget — the spend is refused and the log keeps
-        // the event as the record of an attempt that should not have been granted.
-        //
-        // The alternative is to clamp the budget to zero and grant the hint anyway, which is the
-        // worst of both worlds: the learner got the help, and the Ledger says they did not.
-        budget.Spend(hint.Rung);
+        switch (e.Type)
+        {
+            case LearningEventType.HintTaken:
+                // **The spend is re-derived, not trusted.** If it now overdraws — because the tutor
+                // that wrote this event had a stale view — the spend is refused, and the log keeps
+                // the event as the record of an attempt that should not have been granted.
+                //
+                // The alternative is to clamp the budget to zero and grant the hint anyway: the
+                // worst of both worlds, where the learner got the help and the Ledger says they did
+                // not.
+                budget.Spend(EventCatalogue.Deserialize<HintTaken>(e).Rung);
+                break;
+
+            case LearningEventType.ProductionRecorded:
+                // **The other half. "Hints cost. Production earns."**
+                //
+                // Same rule as above, in the other direction: the event says *what the learner
+                // made*, and the value is derived here. A tutor that could name its own price would
+                // eventually name a generous one.
+                budget.Earn(EventCatalogue.Deserialize<ProductionRecorded>(e).Kind);
+                break;
+
+            default:
+                return;
+        }
 
         await _db.SaveChangesAsync(ct);
     }

@@ -43,6 +43,13 @@ public enum LearningEventType
     /// A specific wrong mental model was identified in this learner (I-6).
     MisconceptionDetected = 25,
 
+    /// **The learner made something**, and it earns back Answer Budget (CANON §1.3).
+    ///
+    /// *"Hints cost. Production earns."* Note that a **genuine reasoned wrong attempt** is one of
+    /// these: PRAXIS pays you to fail properly, because a system that only ever pays for correctness
+    /// has taught you to guess, stall, or quietly leave.
+    ProductionRecorded = 26,
+
     // ── Adjudication ────────────────────────────────────────────────────────
     /// Something the learner produced was accepted as proof. The only path to mastery.
     EvidenceAccepted = 30,

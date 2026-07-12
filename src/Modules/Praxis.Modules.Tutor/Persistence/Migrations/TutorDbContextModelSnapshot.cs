@@ -44,6 +44,9 @@ namespace Praxis.Modules.Tutor.Persistence.Migrations
                     b.Property<int?>("DeepestRung")
                         .HasColumnType("integer");
 
+                    b.Property<int>("Earned")
+                        .HasColumnType("integer");
+
                     b.Property<int>("HintsTaken")
                         .HasColumnType("integer");
 
@@ -52,6 +55,9 @@ namespace Praxis.Modules.Tutor.Persistence.Migrations
 
                     b.Property<Guid>("LearnerId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("ProductionsRecorded")
+                        .HasColumnType("integer");
 
                     b.Property<int>("Spent")
                         .HasColumnType("integer");

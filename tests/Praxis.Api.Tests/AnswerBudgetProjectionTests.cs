@@ -135,7 +135,98 @@ public sealed class AnswerBudgetProjectionTests
         Assert.Null(await db.Budgets.FirstOrDefaultAsync(b => b.LearnerId == bob));
     }
 
+    // ── Production earns it back ─────────────────────────────────────────────
+
+    /// **"Hints cost. Production earns."** (CANON §1.1)
+    ///
+    /// The learner takes a scaffold, then teaches the idea back. The scaffold cost them 45; the
+    /// teach-back earns 25. That is the whole economy: help is expensive, and *making something* is
+    /// how you pay for it.
+    [Fact]
+    public async Task Producing_something_buys_back_budget_through_the_real_projection()
+    {
+        var (learner, concept) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+
+        await HintAsync(learner, concept, HintRung.PartialScaffold);   // −45
+
+        Assert.Equal(75, (await BudgetAsync(learner, concept)).Remaining);
+
+        await ProduceAsync(learner, concept, ProductionKind.TeachBack);   // +25
+
+        var budget = await BudgetAsync(learner, concept);
+
+        Assert.Equal(100, budget.Remaining);
+        Assert.Equal(25, budget.Earned);
+        Assert.Equal(1, budget.ProductionsRecorded);
+    }
+
+    /// **PRAXIS pays you to fail properly.**
+    ///
+    /// A real, reasoned, *wrong* answer earns budget. It has to: the moment failure is free but
+    /// unpaid, the rational move is to stop trying and wait for a hint.
+    [Fact]
+    public async Task A_genuine_wrong_attempt_earns_budget_through_the_real_projection()
+    {
+        var (learner, concept) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+
+        await HintAsync(learner, concept, HintRung.Probe);   // −6
+
+        await ProduceAsync(learner, concept, ProductionKind.GenuineWrongAttempt);   // +8
+
+        var budget = await BudgetAsync(learner, concept);
+
+        Assert.Equal(8, budget.Earned);
+
+        // They asked for a hint, got it wrong, *thought about it* — and are better off than they
+        // started. That is not generosity; it is the only rule under which a learner keeps trying.
+        Assert.True(budget.Remaining > AnswerBudget.DefaultAllowance - 6);
+    }
+
+    /// The event says **what the learner made**. The projection decides **what it was worth**. A
+    /// tutor that could name its own price would eventually name a generous one.
+    [Fact]
+    public async Task Earning_survives_being_destroyed_and_rebuilt_from_history()
+    {
+        var (learner, concept) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+
+        await HintAsync(learner, concept, HintRung.Analogy);
+        await ProduceAsync(learner, concept, ProductionKind.SelfExplanation);
+        await ProduceAsync(learner, concept, ProductionKind.CaughtOwnError);
+
+        var before = await BudgetAsync(learner, concept);
+
+        await using (var scope = _api.Factory.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<ProjectionRunner>().RebuildAsync();
+        }
+
+        var after = await BudgetAsync(learner, concept);
+
+        Assert.Equal(before.Spent, after.Spent);
+        Assert.Equal(before.Earned, after.Earned);
+        Assert.Equal(before.Remaining, after.Remaining);
+
+        Assert.Equal(35, after.Earned);   // 20 + 15
+    }
+
     // ── Plumbing ─────────────────────────────────────────────────────────────
+
+    private async Task ProduceAsync(Guid learner, Guid concept, ProductionKind kind)
+    {
+        await using var scope = _api.Factory.Services.CreateAsyncScope();
+
+        var store = scope.ServiceProvider.GetRequiredService<IEventStore>();
+
+        var appended = await store.AppendAsync(
+            learner,
+            new ProductionRecorded(Guid.CreateVersion7(), kind),
+            DateTime.UtcNow,
+            concept);
+
+        Assert.True(appended.IsSuccess, appended.Message);
+
+        await scope.ServiceProvider.GetRequiredService<ProjectionRunner>().CatchUpAsync();
+    }
 
     private async Task HintAsync(Guid learner, Guid concept, HintRung rung, int claimsRemaining = 0)
     {

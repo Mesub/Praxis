@@ -230,8 +230,13 @@ public sealed class AnswerBudgetTests
                 + "oracle-grinding attack, and it is now open.");
         }
 
+        // `Earn` is deliberately here: production is *meant* to buy budget back (M6.2b). What is
+        // banned is acquiring it without producing anything.
         Assert.Equal(
-            new HashSet<string>(StringComparer.Ordinal) { nameof(AnswerBudget.CanAfford), "Spend", "Reset" },
+            new HashSet<string>(StringComparer.Ordinal)
+            {
+                nameof(AnswerBudget.CanAfford), "Spend", "Earn", "Reset",
+            },
             mutators);
     }
 

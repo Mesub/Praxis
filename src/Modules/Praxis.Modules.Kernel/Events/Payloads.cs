@@ -196,6 +196,53 @@ public sealed record MisconceptionDetected(
     public static LearningEventType EventType => LearningEventType.MisconceptionDetected;
 }
 
+/// **The learner made something.** It earns back Answer Budget (CANON §1.3).
+///
+/// Note what this payload does **not** carry: the *amount*. The writer says what happened; the
+/// projection decides what it was worth (the same rule as `HintTaken.BudgetRemaining` — M6.1). A
+/// tutor that could name its own price would eventually name a generous one.
+public sealed record ProductionRecorded(Guid SessionId, ProductionKind Kind)
+    : IEventPayload
+{
+    public static LearningEventType EventType => LearningEventType.ProductionRecorded;
+}
+
+/// What a learner did that PRAXIS is willing to pay for.
+///
+/// Read the list and notice what is **not** on it: logged in, watched the video, completed the
+/// module, kept a streak. Every one of these is something they **made**.
+public enum ProductionKind
+{
+    /// Reached it on the free rungs alone. The generation effect: you did the work.
+    CorrectUnaided = 1,
+
+    /// An explanation that passed a rubric. Putting it in your own words is not a *report on*
+    /// learning — it *is* learning.
+    SelfExplanation = 2,
+
+    /// A Feynman teach-back that passed. The strongest production signal there is.
+    TeachBack = 3,
+
+    /// Correct on a *sibling* item, unaided. Transfer, not memorisation.
+    Transfer = 4,
+
+    /// **They caught their own error before the tutor named it.** Metacognition — the single most
+    /// valuable behaviour in the product, because a learner who can hear their own reasoning creak
+    /// will not need PRAXIS for very much longer (I-10).
+    CaughtOwnError = 5,
+
+    /// **A real, reasoned, incorrect answer. PRAXIS pays you to fail properly.**
+    ///
+    /// Not to fail — to fail *having tried*, which is rarer and much more useful. Productive failure
+    /// is where most learning actually happens, and a system that only ever pays for correctness has
+    /// taught its learners to guess, to stall, or to quietly leave.
+    GenuineWrongAttempt = 6,
+
+    /// A diagram that passed a structural rubric. Dual coding: a drawing forces you to commit to a
+    /// structure that prose lets you smudge.
+    Drawing = 7,
+}
+
 // ── Adjudication ────────────────────────────────────────────────────────────
 
 /// The only path to mastery in the entire system.
