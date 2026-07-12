@@ -1,1 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk" />
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- For ResultExtensions only: the single Result -> IActionResult mapping lives here so
+         that no controller anywhere has to decide what status code a failure deserves. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>
