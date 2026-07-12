@@ -38,6 +38,18 @@ class Task(StrEnum):
     CHECK_CLAIM = "check_claim"
     """The oracle (M5.3). Holds the answer; the tutor never sees it."""
 
+    ADJUDICATE = "adjudicate"
+    """Breaking a tie between disagreeing judges (M5.4).
+
+    The roadmap describes this as *"borderline scores escalate to an Opus-class grader"* — which
+    implies the base judges are something cheaper. They are not, and I did not make them so. The
+    base judges are already Opus-class (see the table below), because a cheaper grader is not a
+    slightly worse grader: it is one that **abstains less**, and abstention is the entire mechanism.
+
+    So the ladder does not climb *up* to a good model. It starts there, and escalates to a model
+    that can see the disagreement, and then to a human.
+    """
+
     SYNTHESISE = "synthesise"
     """Reading a learner's whole history and saying something true about it."""
 
@@ -68,6 +80,7 @@ class Tier(StrEnum):
 _ROUTING: dict[Task, Tier] = {
     Task.GRADE: Tier.HEAVY,
     Task.CHECK_CLAIM: Tier.HEAVY,
+    Task.ADJUDICATE: Tier.HEAVY,
     Task.SYNTHESISE: Tier.HEAVY,
     Task.COMPILE: Tier.HEAVY,
     Task.TUTOR_TURN: Tier.FAST,
@@ -76,7 +89,9 @@ _ROUTING: dict[Task, Tier] = {
 
 #: Tasks whose output PRAXIS treats as a **judgement about a learner**. These may never be routed to
 #: a cheaper tier — not as a matter of policy, but as a matter of arithmetic in a test.
-JUDGEMENT_TASKS = frozenset({Task.GRADE, Task.CHECK_CLAIM, Task.SYNTHESISE, Task.COMPILE})
+JUDGEMENT_TASKS = frozenset(
+    {Task.GRADE, Task.CHECK_CLAIM, Task.ADJUDICATE, Task.SYNTHESISE, Task.COMPILE}
+)
 
 
 def tier_for(task: Task) -> Tier:
