@@ -200,6 +200,64 @@ public sealed class TwinProjectionTests
         Assert.True(afterLapse > 0, "A lapse erased the memory entirely. Relearning is not learning.");
     }
 
+    /// **A rep is not special, and this is the line that enforces it** (M8.3).
+    ///
+    /// The temptation is enormous and entirely reasonable-sounding: the learner has just proved, a
+    /// hundred times, that they still know this. Surely it should count for *something*.
+    ///
+    /// It counts for exactly what it is evidence of — **that the memory is still there** — and not one
+    /// thing more. A rep does not tell you they can *do* anything, and only the second thing is
+    /// mastery.
+    ///
+    /// If a rep could confer it, a learner would reach `HOLD` by answering an endless stream of cheap
+    /// questions about something they had already proved, and **the Evidence Ceiling (C-4) — the
+    /// load-bearing wall of this entire product — would have a door in it marked "review".**
+    [Fact]
+    public async Task A_hundred_perfect_reps_cannot_confer_mastery()
+    {
+        var (db, projection) = Twin();
+        var learner = Guid.CreateVersion7();
+        var concept = Guid.CreateVersion7();
+
+        // One EXPLAIN: real evidence, and ceiling-bound. It raises belief and cannot cross the line.
+        await projection.ApplyAsync(Event(learner, concept, Day1,
+            new EvidenceAccepted(Guid.CreateVersion7(), EvidenceType.Explain, 1.0, 0.8)));
+
+        // **Snapshot the numbers, not the entity.** `State` hands back a *tracked* row, and the
+        // projection writes through the same DbContext — so holding on to the object would mean
+        // comparing it against itself after the reps had already mutated it, and the test would pass
+        // no matter what happened. It cost me a confusing ten minutes; it would cost the next person
+        // the same.
+        var loneExplain = await State(db, learner, concept);
+        var (creditBefore, stabilityBefore) = (loneExplain.MasteryCredit, loneExplain.Stability);
+
+        Assert.False(loneExplain.IsHeld, "The Evidence Ceiling let a lone EXPLAIN through.");
+
+        // Now rep it perfectly, every week, for two years.
+        for (var i = 1; i <= 100; i++)
+        {
+            await projection.ApplyAsync(Event(learner, concept, Day1.AddDays(7 * i),
+                new RepAnswered(Guid.CreateVersion7(), Correct: true, 0.95, 20, 0, 0)));
+        }
+
+        var after = await State(db, learner, concept);
+
+        Assert.Equal(creditBefore, after.MasteryCredit, tolerance: 1e-9);
+
+        Assert.False(
+            after.IsHeld,
+            "A hundred passed reps just conferred mastery. The Evidence Ceiling now has a door in it "
+            + "marked 'review', and every claim in the Ledger is worthless.");
+
+        // And this is not passing because nothing happened: the memory got **far** more durable —
+        // roughly 380× — and PRAXIS still will not say they hold the concept, because they have never
+        // once been asked to *do* anything with it.
+        Assert.True(
+            after.Stability > stabilityBefore * 10,
+            $"The reps did not land: stability went {stabilityBefore:F2} -> {after.Stability:F2}. "
+            + "This test would prove nothing.");
+    }
+
     // ── Calibration ──────────────────────────────────────────────────────────
 
     [Fact]

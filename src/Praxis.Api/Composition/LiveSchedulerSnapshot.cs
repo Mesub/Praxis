@@ -86,7 +86,7 @@ public sealed class LiveSchedulerSnapshot : ISchedulerSnapshot
                 state.ConceptId,
                 concept.Slug,
                 retrievability,
-                Minutes: RepMinutes(concept.EstimatedMinutes)));
+                Minutes: RepMinutes(concept.EstimatedMinutes, retrievability)));
         }
 
         // ── Where they are going ─────────────────────────────────────────────
@@ -98,11 +98,37 @@ public sealed class LiveSchedulerSnapshot : ISchedulerSnapshot
         return Result<SchedulerInputs>.Success(new SchedulerInputs(sessionMinutes, due, next));
     }
 
-    /// A rep is not a re-teach. Retrieving something you already hold costs a fraction of learning
-    /// it — and pricing it as a re-teach would make the Scheduler's rep cap fire constantly, so the
+    /// **What this will actually cost — which depends on whether they are going to get it right.**
+    ///
+    /// A rep is not a re-teach: retrieving something you already hold costs a fraction of learning it,
+    /// and pricing every rep as a re-teach would make the Scheduler's rep cap fire constantly, so the
     /// learner would never review anything and would quietly lose the lot.
-    private static int RepMinutes(int estimatedMinutes)
-        => Math.Clamp((int)Math.Ceiling(estimatedMinutes * 0.10), 2, 10);
+    ///
+    /// **But it is not free either, and it was being priced as though it were.**
+    ///
+    /// This method used to return `clamp(estimated × 0.10, 2, 10)` for *every* due concept — including
+    /// ones at 30% retrievability, which the learner will **fail seven times out of ten**. A failed
+    /// rep is not a three-minute review. It is a lapse: the memory collapses and they spend the
+    /// evening relearning something they thought they knew. Quoting three minutes for that is not an
+    /// estimation error — **it is a false statement about how their evening is going to go**, made by
+    /// the code that builds their day.
+    ///
+    /// So the price is the **expected** one, blended across passing and failing it (M8.2). The
+    /// blending weight comes from E7, which owns the question *"what is a rep actually worth?"* — this
+    /// adapter just has to stop lying about the bill.
+    private static int RepMinutes(int estimatedMinutes, double retrievability)
+    {
+        var whenPassed = Math.Clamp(estimatedMinutes * 0.10, 2.0, 10.0);
+
+        // A failure is a re-learn, and a re-learn is priced as one.
+        var whenFailed = Math.Max(whenPassed, estimatedMinutes * 0.60);
+
+        var r = Math.Clamp(retrievability, 0.0, 1.0);
+
+        var expected = (r * whenPassed) + ((1.0 - r) * whenFailed);
+
+        return Math.Max(2, (int)Math.Ceiling(expected));
+    }
 
     /// How much of it they could actually retrieve **today** — not on the day they proved it.
     private static double RetrievabilityNow(ConceptState state, DateTime now)

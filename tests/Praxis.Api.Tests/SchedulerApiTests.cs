@@ -165,6 +165,49 @@ public sealed class SchedulerApiTests : IAsyncLifetime
         Assert.True(card.Minutes <= 9, $"A rep on a 30-minute concept cost {card.Minutes} minutes.");
     }
 
+    /// **A rep you are going to fail is not a three-minute rep** (M8.2, fixed in M8.3).
+    ///
+    /// The Scheduler used to price *every* due concept the same: a flat tenth of what it cost to learn
+    /// it, clamped to 2–10 minutes. Including the ones the learner would fail seven times out of ten.
+    ///
+    /// A failed rep is not a review. It is a lapse — the memory collapses and they spend the evening
+    /// relearning something they thought they knew. Quoting three minutes for that is not an
+    /// estimation error, **it is a false statement about how their evening is going to go**, made by
+    /// the code that builds their day.
+    ///
+    /// So the price is the *expected* one, and a concept they are probably going to fail is quoted at
+    /// what it will really cost.
+    [Fact]
+    public async Task A_rep_the_learner_will_probably_fail_is_not_priced_like_one_they_will_pass()
+    {
+        var (safe, safeLearner) = await Learner();
+        await SetObjectiveAsync(safe, 60);
+        await ProveAsync(safeLearner, _tokenisation, DaysAgoForRetrievability(0.85));
+
+        var cheap = await CardAsync(safe, 25);
+
+        var (risky, riskyLearner) = await Learner();
+        await SetObjectiveAsync(risky, 60);
+
+        // Far enough gone that they will most likely fail it.
+        await ProveAsync(riskyLearner, _tokenisation, DaysAgoForRetrievability(0.30));
+
+        var expensive = await CardAsync(risky, 25);
+
+        Assert.Equal("tokenisation", cheap.Slug);
+        Assert.Equal("tokenisation", expensive.Slug);
+
+        Assert.True(
+            expensive.Minutes > cheap.Minutes,
+            $"""
+             The same concept was quoted at {cheap.Minutes} minutes when the learner would pass it 85%
+             of the time, and {expensive.Minutes} minutes when they would pass it 30% of the time.
+
+             Those are not the same job. The second one is a re-learn, and pricing it as a review is
+             the code that plans somebody's evening lying to them about it.
+             """);
+    }
+
     /// **The trap most schedulers fall into, proved through the front door.**
     ///
     /// Clearing the rep queue first *feels* responsible. On a busy day the queue **is** the session,

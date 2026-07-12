@@ -16,6 +16,7 @@ using Praxis.Modules.Identity;
 using Praxis.Modules.Identity.Auth;
 using Praxis.Modules.Identity.Persistence;
 using Praxis.Modules.Kernel;
+using Praxis.Modules.Memory;
 using Praxis.Modules.Scheduler;
 using Praxis.Modules.Tutor;
 using Praxis.Modules.Tutor.Persistence;
@@ -47,7 +48,8 @@ builder.Services.AddPraxisInfrastructure(
     typeof(CompilerModule).Assembly,
     typeof(ISchedulerSnapshot).Assembly,
     typeof(TutorModule).Assembly,
-    typeof(AssessmentModule).Assembly);
+    typeof(AssessmentModule).Assembly,
+    typeof(IMemorySnapshot).Assembly);
 
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
@@ -70,6 +72,10 @@ builder.Services.AddScoped<ICompilerSnapshot, LiveCompilerSnapshot>();
 // a conclusion that outlives the evidence it was drawn from is the exact failure the kernel exists
 // to prevent.
 builder.Services.AddScoped<ISchedulerSnapshot, LiveSchedulerSnapshot>();
+
+// E7 knows what forgetting does; the Twin knows what was proved. Neither knows the other exists, so
+// the adapter lives here -- and it is what keeps the rep queue a pure function of plain values.
+builder.Services.AddScoped<IMemorySnapshot, LiveMemorySnapshot>();
 
 builder.Services.AddProjection<TwinProjection>();
 

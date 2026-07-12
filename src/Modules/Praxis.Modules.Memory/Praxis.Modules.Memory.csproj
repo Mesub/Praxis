@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Praxis.Shared\Praxis.Shared.csproj" />
     <ProjectReference Include="..\Praxis.Modules.Kernel\Praxis.Modules.Kernel.csproj" />
+    <ProjectReference Include="..\..\Praxis.Infrastructure\Praxis.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

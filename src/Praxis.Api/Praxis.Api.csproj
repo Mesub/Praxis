@@ -18,6 +18,7 @@
     <ProjectReference Include="..\Modules\Praxis.Modules.Compiler\Praxis.Modules.Compiler.csproj" />
     <ProjectReference Include="..\Modules\Praxis.Modules.Scheduler\Praxis.Modules.Scheduler.csproj" />
     <ProjectReference Include="..\Modules\Praxis.Modules.Assessment\Praxis.Modules.Assessment.csproj" />
+    <ProjectReference Include="..\Modules\Praxis.Modules.Memory\Praxis.Modules.Memory.csproj" />
     <ProjectReference Include="..\Modules\Praxis.Modules.Tutor\Praxis.Modules.Tutor.csproj" />
   </ItemGroup>
 
