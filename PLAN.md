@@ -8,8 +8,8 @@
 
 ## Status
 
-**Current milestone:** M9 — E8 The Reality Loop (code) — **complete**. Next: M10 — E16 The Ledger.
-**Last completed task:** M9.7 — the E8 test/consolidation milestone. The **hostile-code sandbox-escape suite** (headline of M9.7) landed at M9.1 and runs live (148 Reality tests, 0 skipped). Completed E8 with the **forfeit rule** (a lapsed loop scores `baseline + 0.05` — strictly worse than doing nothing so attrition-cherry-picking loses, but small so you are not punished for having a life) and an **end-to-end composition** proving the seams hold: commit → resolve in the sandbox → decouple thesis/outcome → the closed loop on the board with honest Coverage, including the *right-for-the-wrong-reason* path end to end. (13 tests; 866 .NET + 212 AI total)
+**Current milestone:** M10 — E16 The Ledger
+**Last completed task:** M10.1 — the `Evidence` record, immutable and **honest about how far it can be trusted**. Assurance is a different axis from the score: a perfect model-graded EXPLAIN still cannot be recorded as *certain*, because a model graded it — a `Rubric` grade has an assurance ceiling of 0.85 and `Record` **refuses** to exceed it (*"you cannot write down that we are certain of something only a model checked"*), while a BUILD that ran or a PREDICT reality resolved has no ceiling. This is why PRAXIS need not *catch* cheating — it records the assurance honestly and lets the truth stand (C-6). Immutable by reflection; carries its event-log provenance. (12 tests; 878 .NET + 212 AI total)
 
 **⚠️ Open blocker (M13/launch):** two independent experts must double-grade a real golden set. Until then PRAXIS makes **no claim** that its grader marks like an expert.
 
@@ -376,7 +376,10 @@ flowchart TB
 
 ## M10 — E16 The Ledger
 
-- [ ] **M10.1** `Evidence` record: immutable, typed, scored, with the assurance level stated honestly (C-6).
+- [x] **M10.1** `Evidence` record: immutable, typed, scored, with the assurance level stated honestly (C-6).
+      → **One piece of proof, recorded forever, and two things enforced structurally rather than by intention: immutable, and honest about how far it can be trusted.** Immutable because an append-only ledger whose rows can be edited is not append-only — every property is `init`-only, there is no mutator (asserted by reflection, like M7.7a's absent answer column), and the hash chain (M10.2) will commit to these exact bytes.
+      **The honesty refusal is the load-bearing one (C-6), and it is why PRAXIS does not need to *catch* cheating — it only records the assurance honestly and lets the truth stand.** Assurance — *how much we trust this proof* — is **a different axis from the score**. A learner can score a perfect 1.0 on an EXPLAIN and PRAXIS still cannot be *sure* of it, **because a language model graded it**, and a model's opinion is exactly what the Evidence Ceiling refuses to trust. So a `Rubric`-graded piece has an assurance **ceiling of 0.85**, and `Evidence.Record` **returns a failure** if asked to record more — *"you cannot write down that we are certain of something only a model checked."* Not a policy; the record cannot be constructed. Reality- and execution-graded evidence (a BUILD that ran, a PREDICT the world resolved) has **no** ceiling — reality does not have opinions — which is precisely why they are the types that can confer mastery.
+      **Grading method is kept as a separate axis from `IsCeilingBound`** (the same M7.1 separation): RECALL is ceiling-bound *for mastery* yet graded with perfect certainty (a string matched a string); an EXPLAIN can confer real mastery yet is model-graded and so never certain — two different questions, and conflating them is how a confident-sounding wrong answer would launder itself into a certainty. And every piece carries the **event-log sequence** it was derived from, so the whole chain is rebuildable from the log. Three mutations, all caught: the honesty refusal removed, the rubric ceiling raised to 1.0, and score/assurance conflated. 12 tests (878 .NET total).
 - [ ] **M10.2** Append-only **hash chain**: each record commits to the previous. Tamper-evident.
 - [ ] **M10.3** **Ed25519 signing** + published Merkle roots. **No blockchain** — see doc 25 §7; the answer is no, permanently.
 - [ ] **M10.4** Verifiable Competency Record export (JSON + a human-readable page) and a **public, free-forever verification endpoint** — the cold-start weapon for the network (R-7).
