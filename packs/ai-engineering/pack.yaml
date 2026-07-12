@@ -1,0 +1,511 @@
+# PRAXIS — domain pack: AI engineering
+#
+# Objective: "Ship a RAG system that beats BM25 on your own corpus."
+#
+# One objective. Not a track, not a curriculum. One (roadmap §1).
+#
+# ── How to read a concept ────────────────────────────────────────────────────
+#
+#   difficulty  IRT logit scale, roughly -3 (trivial) to +3 (brutal). A PRIOR. It is a domain
+#               expert's guess, and it is replaced by measurement once ~200 learners have
+#               responded. An estimate reality never corrects is an opinion with a decimal point.
+#
+#   minutes     Focused work for a median learner to first produce evidence. Also a prior. A bad
+#               estimate here does not error — it quietly wastes someone's month.
+#
+#   requires    The ONLY ordering claim in this file. Everything else is context.
+#
+#   proof       What would demonstrate understanding. Two rules, and the loader enforces both by
+#               refusing to construct a contract that breaks either (CANON C-4):
+#
+#                 CEILING — model-graded evidence (recall, explain, critique) can never SUM to
+#                           `hold`. If every rubric in the world returned a perfect score, forever,
+#                           the learner still falls short. A hallucinating grader can inflate
+#                           belief; it can never manufacture mastery.
+#
+#                 FLOOR   — unfakeable evidence (apply, build, predict) must be SUFFICIENT to reach
+#                           `hold` on its own. Otherwise the last step into HELD could only be taken
+#                           with a model's blessing, and the ceiling's promise quietly inverts.
+#
+#               Together: real work is always enough, and talk is never enough. Talk only ever
+#               gets you there faster.
+#
+# ── Why the contracts look the way they do ───────────────────────────────────
+#
+# Concepts you can *reason* about (chunking strategy, the eval trap) lean on `apply`: a never-seen
+# problem, judged right or wrong.
+#
+# Concepts that are *systems* (the index, the pipeline, the eval harness) demand `build`: it runs
+# against hidden tests or it does not, and no model's opinion is involved.
+#
+# Concepts where people are *reliably, confidently wrong* (cosine vs euclidean, recall vs
+# precision, "more context is better") carry `critique` — find the flaw in a worked example that
+# looks right — and a hard `contrasts` edge to the thing they get confused with. That edge is
+# where the Assessment engine goes hunting for distractors.
+
+domain: ai-engineering
+version: 1
+note: >
+  Phase 0 seed. 30 concepts on the shortest honest path to shipping a RAG system that beats BM25
+  on your own corpus. Hand-authored; difficulties and durations are priors awaiting cohort data.
+
+concepts:
+
+  # ── Foundations: what text becomes before a machine can search it ──────────
+
+  - slug: tokenisation
+    title: Tokenisation
+    summary: >
+      Text becomes tokens before anything else happens to it. Subword vocabularies, why "unhappily"
+      may be three tokens, and why token counts — not word counts — are what you pay for and what
+      fills a context window.
+    difficulty: -1.0
+    minutes: 30
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Recall, min-score: 0.9, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  - slug: the-inverted-index
+    title: The inverted index
+    summary: >
+      Term to document postings — how lexical search has worked since the 1970s. You are going to
+      spend this pack trying to beat it, so you should know what it does well: exact terms, rare
+      words, and names it has never seen before.
+    difficulty: -0.6
+    minutes: 40
+    requires: [tokenisation]
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  - slug: bm25
+    title: BM25
+    summary: >
+      The baseline you must actually beat. Term frequency saturation and length normalisation, and
+      why a well-tuned BM25 is a genuinely strong retriever — the thing most "our RAG is amazing"
+      demos never bothered to compare against.
+    difficulty: 0.2
+    minutes: 60
+    requires: [the-inverted-index]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.55 }
+        - { type: Build, min-score: 1.0, max: 0.65 }
+
+  - slug: embeddings
+    title: Embeddings
+    summary: >
+      Text as a dense vector, where distance is supposed to mean similarity of meaning. What the
+      model was actually trained to make close together — which is often not what you assume.
+    difficulty: -0.2
+    minutes: 60
+    requires: [tokenisation]
+    contrasts: [bm25]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.25 }
+        - { type: Apply, min-score: 0.8, max: 0.80, count: 2 }
+
+  - slug: vector-similarity
+    title: Cosine, dot product, euclidean
+    summary: >
+      Three ways to measure closeness, and they do not agree. Cosine ignores magnitude; dot product
+      does not; euclidean is neither. Which one your index uses, and whether your vectors are
+      normalised, changes your results — and almost everyone gets this wrong once.
+    difficulty: 0.4
+    minutes: 45
+    requires: [embeddings]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.25 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: the-curse-of-dimensionality
+    title: The curse of dimensionality
+    summary: >
+      In high dimensions, everything is roughly equidistant from everything else. Why nearest
+      neighbour gets harder as dimensions grow, and why that makes approximate search necessary
+      rather than merely convenient.
+    difficulty: 0.8
+    minutes: 50
+    requires: [vector-similarity]
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.25 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  # ── Building an index that answers in time ─────────────────────────────────
+
+  - slug: exact-nearest-neighbour
+    title: Exact nearest neighbour
+    summary: >
+      Brute force: compare the query to every vector. Correct by definition, linear in corpus size,
+      and completely fine up to a surprisingly large number of documents. Start here, and only
+      leave when you have measured that you must.
+    difficulty: 0.1
+    minutes: 40
+    requires: [vector-similarity]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Build, min-score: 1.0, max: 0.85 }
+        - { type: Recall, min-score: 0.9, max: 0.15 }
+
+  - slug: approximate-nearest-neighbour
+    title: Approximate nearest neighbour
+    summary: >
+      Trade a little recall for a lot of speed. The word "approximate" is doing real work: your
+      index is now allowed to miss the right answer, and you had better know how often it does.
+    difficulty: 0.9
+    minutes: 60
+    requires: [exact-nearest-neighbour, the-curse-of-dimensionality]
+    contrasts: [exact-nearest-neighbour]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.60 }
+        - { type: Build, min-score: 1.0, max: 0.70 }
+
+  - slug: hnsw
+    title: HNSW
+    summary: >
+      The index most vector databases actually run. A navigable small-world graph in layers; how
+      `M` and `efSearch` trade recall against latency, and why the defaults someone else chose are
+      not the defaults for your corpus.
+    difficulty: 1.3
+    minutes: 90
+    requires: [approximate-nearest-neighbour]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Build, min-score: 1.0, max: 0.80 }
+
+  - slug: index-recall-vs-latency
+    title: Index recall vs latency
+    summary: >
+      Every ANN parameter is a dial between "finds the right document" and "answers quickly". The
+      curve is measurable and it is yours to choose a point on — and if you have not measured it,
+      someone else chose for you.
+    difficulty: 1.0
+    minutes: 60
+    requires: [hnsw]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Build, min-score: 1.0, max: 0.75 }
+        - { type: Predict, min-score: 0.7, max: 0.60 }
+
+  # ── The corpus: the part everyone rushes and then blames the model for ─────
+
+  - slug: chunk-sizing
+    title: Chunk sizing
+    summary: >
+      A document is too big to embed as one vector, so it gets cut up. Where you cut determines
+      what can ever be retrieved. Most RAG systems are bad because of this, and blame the LLM.
+    difficulty: 0.5
+    minutes: 50
+    requires: [embeddings]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Apply, min-score: 0.8, max: 0.55 }
+        - { type: Build, min-score: 1.0, max: 0.70 }
+
+  - slug: chunk-overlap
+    title: Chunk overlap
+    summary: >
+      Overlap so that meaning is not sliced in half at a boundary — and pay for it in storage and
+      in near-duplicate results. There is no correct overlap, only a measured one.
+    difficulty: 0.4
+    minutes: 35
+    requires: [chunk-sizing]
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  - slug: structure-aware-chunking
+    title: Structure-aware chunking
+    summary: >
+      A fixed character window is a guess that ignores everything the document told you. Headings,
+      code blocks, tables and sentence boundaries are free structure — using them usually beats
+      tuning the window size.
+    difficulty: 0.7
+    minutes: 60
+    requires: [chunk-overlap]
+    contrasts: [chunk-sizing]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.20 }
+        - { type: Build, min-score: 1.0, max: 0.80 }
+
+  - slug: metadata-and-filtering
+    title: Metadata and filtering
+    summary: >
+      Half of "the retrieval is wrong" is a filter that should have been applied and was not. Dates,
+      sources, permissions, document types — cheap, exact, and routinely forgotten in the rush to
+      make everything semantic.
+    difficulty: 0.3
+    minutes: 40
+    requires: [chunk-sizing]
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Apply, min-score: 0.8, max: 0.55 }
+        - { type: Build, min-score: 1.0, max: 0.65 }
+
+  - slug: embedding-model-choice
+    title: Choosing an embedding model
+    summary: >
+      Dimensions, context length, training domain, and cost. A model trained on web text may be
+      quietly terrible on your legal contracts — and the leaderboard it topped was not your corpus.
+    difficulty: 0.6
+    minutes: 45
+    requires: [embeddings]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  # ── Measuring it, which is the entire point ───────────────────────────────
+
+  - slug: recall-and-precision
+    title: Recall and precision
+    summary: >
+      Of the right documents, how many did you get? Of what you got, how many were right? Two
+      questions, routinely conflated, and pointing at opposite fixes.
+    difficulty: 0.2
+    minutes: 40
+    requires: [bm25]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.85, max: 0.80 }
+
+  - slug: recall-at-k
+    title: Recall@k
+    summary: >
+      Retrieval's honest metric. Did the right passage make it into the top k that you actually
+      hand to the model? Nothing downstream can recover what retrieval never surfaced.
+    difficulty: 0.4
+    minutes: 40
+    requires: [recall-and-precision]
+    contrasts: [recall-and-precision]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Apply, min-score: 0.85, max: 0.55 }
+        - { type: Build, min-score: 1.0, max: 0.70 }
+
+  - slug: ranking-metrics
+    title: MRR and NDCG
+    summary: >
+      Position matters: the right document at rank 9 is nearly useless. Rank-aware metrics, and
+      which one to reach for when you care about the first good hit versus the whole ordering.
+    difficulty: 0.7
+    minutes: 50
+    requires: [recall-at-k]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: building-an-eval-set
+    title: Building an eval set
+    summary: >
+      Queries with known-correct passages, from your own corpus. Fifty honest labelled examples
+      beat any public benchmark, because a benchmark measures someone else's problem.
+    difficulty: 0.8
+    minutes: 90
+    requires: [recall-at-k, metadata-and-filtering]
+    proof:
+      hold: 0.85
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.15 }
+        - { type: Build, min-score: 1.0, max: 0.850 }
+
+  - slug: the-eval-trap
+    title: The eval trap
+    summary: >
+      If you write the eval set by reading the documents your system already retrieves, you have
+      measured your own assumptions. Where the labels come from decides whether the number means
+      anything at all.
+    difficulty: 1.1
+    minutes: 50
+    requires: [building-an-eval-set]
+    contrasts: [building-an-eval-set]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.75, max: 0.25 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: the-bm25-baseline-run
+    title: Running the BM25 baseline
+    summary: >
+      Before you tune anything: score BM25 on your eval set and write the number down. Everything
+      after this is measured against it — and a distressing number of RAG systems never beat it.
+    difficulty: 0.5
+    minutes: 60
+    requires: [bm25, the-eval-trap]
+    proof:
+      hold: 0.85
+      evidence:
+        - { type: Build, min-score: 1.0, max: 0.75 }
+        - { type: Predict, min-score: 0.7, max: 0.55 }
+
+  # ── Retrieval that is actually better ─────────────────────────────────────
+
+  - slug: dense-retrieval
+    title: Dense retrieval
+    summary: >
+      Query and corpus in the same vector space; nearest neighbours are your candidates. Strong on
+      paraphrase and meaning, and reliably worse than BM25 on exact identifiers, rare names and
+      acronyms.
+    difficulty: 0.7
+    minutes: 70
+    requires: [index-recall-vs-latency, structure-aware-chunking, embedding-model-choice]
+    contrasts: [bm25]
+    proof:
+      hold: 0.85
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.15 }
+        - { type: Build, min-score: 1.0, max: 0.850 }
+
+  - slug: hybrid-retrieval
+    title: Hybrid retrieval
+    summary: >
+      Run both, and fuse. Reciprocal rank fusion is three lines of code and beats either alone on
+      most real corpora — which is why "we replaced BM25 with vectors" is usually a mistake rather
+      than an upgrade.
+    difficulty: 0.9
+    minutes: 70
+    requires: [dense-retrieval, the-bm25-baseline-run]
+    proof:
+      hold: 0.85
+      evidence:
+        - { type: Apply, min-score: 0.8, max: 0.50 }
+        - { type: Build, min-score: 1.0, max: 0.80 }
+
+  - slug: reranking
+    title: Cross-encoder reranking
+    summary: >
+      Retrieve 100 cheaply, then rerank the top candidates with a model that reads query and
+      passage together. Expensive per pair, and usually the single largest quality jump available.
+    difficulty: 1.2
+    minutes: 80
+    requires: [hybrid-retrieval, ranking-metrics]
+    proof:
+      hold: 0.85
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.15 }
+        - { type: Build, min-score: 1.0, max: 0.850 }
+
+  - slug: query-rewriting
+    title: Query rewriting
+    summary: >
+      Users do not write good queries. Expansion, decomposition of multi-part questions, and
+      resolving "it" and "that one" against the conversation — before the query ever reaches the
+      index.
+    difficulty: 0.9
+    minutes: 60
+    requires: [hybrid-retrieval]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Apply, min-score: 0.8, max: 0.55 }
+        - { type: Build, min-score: 1.0, max: 0.70 }
+
+  # ── Generation, and being honest about it ─────────────────────────────────
+
+  - slug: context-assembly
+    title: Context assembly
+    summary: >
+      What you actually put in the prompt: how many passages, in what order, deduplicated how. More
+      context is not better — models attend badly to the middle, and a stuffed window buries the
+      answer you worked so hard to retrieve.
+    difficulty: 0.8
+    minutes: 60
+    requires: [reranking]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.20 }
+        - { type: Build, min-score: 1.0, max: 0.80 }
+
+  - slug: grounded-generation
+    title: Grounded generation
+    summary: >
+      Answer from the retrieved passages, cite them, and say "I don't know" when they do not
+      contain the answer. The last is the hard one, and it is the one users actually need.
+    difficulty: 1.0
+    minutes: 70
+    requires: [context-assembly]
+    proof:
+      hold: 0.85
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.15 }
+        - { type: Build, min-score: 1.0, max: 0.850 }
+
+  - slug: faithfulness-evaluation
+    title: Faithfulness evaluation
+    summary: >
+      Is every claim in the answer supported by a retrieved passage? A fluent, confident, entirely
+      unsupported answer is the worst failure mode a RAG system has, because it is the one nobody
+      notices.
+    difficulty: 1.3
+    minutes: 80
+    requires: [grounded-generation, the-eval-trap]
+    proof:
+      hold: 0.85
+      evidence:
+        - { type: Critique, min-score: 0.75, max: 0.15 }
+        - { type: Build, min-score: 1.0, max: 0.850 }
+
+  - slug: end-to-end-evaluation
+    title: End-to-end evaluation
+    summary: >
+      Retrieval quality and answer quality are different numbers and they move independently. You
+      need both, on the same eval set, run automatically — or you are tuning by vibes.
+    difficulty: 1.2
+    minutes: 90
+    requires: [faithfulness-evaluation, ranking-metrics]
+    proof:
+      hold: 0.85
+      evidence:
+        - { type: Build, min-score: 1.0, max: 0.80 }
+        - { type: Predict, min-score: 0.7, max: 0.55 }
+
+  # ── The build target ──────────────────────────────────────────────────────
+
+  - slug: beating-the-baseline
+    title: Beating the baseline
+    summary: >
+      The objective, and the only thing that counts: your system, measured on your own eval set,
+      beating your own tuned BM25 — with the number written down and the ablation showing which
+      change actually earned it.
+    difficulty: 1.5
+    minutes: 120
+    requires: [end-to-end-evaluation, hybrid-retrieval, query-rewriting]
+    proof:
+      hold: 0.90
+      evidence:
+        - { type: Build, min-score: 1.0, max: 0.85 }
+        - { type: Predict, min-score: 0.75, max: 0.60 }
+        - { type: Explain, min-score: 0.8, max: 0.15 }

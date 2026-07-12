@@ -138,7 +138,7 @@ public sealed class PackValidatorTests
                   evidence:
                     - { type: Explain, min-score: 0.7, max: 0.5 }
                     - { type: Critique, min-score: 0.7, max: 0.4 }
-                    - { type: Apply, min-score: 0.8, max: 0.6 }
+                    - { type: Apply, min-score: 0.8, max: 0.85 }
             """));
 
         Assert.Equal(ResultStatus.Invalid, result.Status);
@@ -307,7 +307,7 @@ public sealed class PackValidatorTests
               hold: 0.80
               evidence:
                 - { type: Explain, min-score: 0.7, max: 0.25 }
-                - { type: Apply, min-score: 0.8, max: 0.60, count: 2 }
+                - { type: Apply, min-score: 0.8, max: 0.80, count: 2 }
           - slug: vector-retrieval
             title: Vector retrieval
             summary: Nearest-neighbour search over embeddings.
@@ -317,7 +317,7 @@ public sealed class PackValidatorTests
             proof:
               hold: 0.80
               evidence:
-                - { type: Build, min-score: 1.0, max: 0.70 }
+                - { type: Build, min-score: 1.0, max: 0.85 }
                 - { type: Explain, min-score: 0.7, max: 0.20 }
           - slug: bm25
             title: BM25
@@ -328,7 +328,7 @@ public sealed class PackValidatorTests
             proof:
               hold: 0.80
               evidence:
-                - { type: Apply, min-score: 0.8, max: 0.60 }
+                - { type: Apply, min-score: 0.8, max: 0.80 }
                 - { type: Recall, min-score: 0.9, max: 0.15 }
         """;
 }

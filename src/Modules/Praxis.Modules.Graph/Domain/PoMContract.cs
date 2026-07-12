@@ -78,6 +78,28 @@ public sealed class PoMContract : BaseEntity
                 nameof(accepted));
         }
 
+        // THE FLOOR, and it is the ceiling's other half.
+        //
+        // Unfakeable evidence must be *sufficient on its own* to reach the threshold. If it is not,
+        // then the last step into HELD can only be taken with a language model's blessing — and the
+        // ceiling's whole promise, that real work is what crosses the line, quietly inverts.
+        //
+        // Model-graded evidence may accelerate a learner. It may never be what completes them.
+        var unfakeableCeiling = accepted
+            .Where(a => EvidenceTypes.CanCrossTheHoldThreshold.Contains(a.Type))
+            .Sum(a => a.MaxContribution);
+
+        if (unfakeableCeiling < holdThreshold)
+        {
+            throw new ArgumentException(
+                $"Evidence a model cannot fake ({string.Join(", ", accepted.Where(a => !a.Type.IsModelGraded()).Select(a => a.Type))}) "
+                + $"tops out at {unfakeableCeiling:F2}, below the hold threshold of {holdThreshold:F2}. "
+                + "So a learner who did every piece of real work this concept asks for would still "
+                + "need a rubric's opinion to be recorded as holding it. Real work must be enough. "
+                + "Raise the contributions, or lower the threshold. (CANON C-4.)",
+                nameof(accepted));
+        }
+
         // THE CEILING. If every model-graded rubric returned a perfect score, forever, the learner
         // must still fall short of holding this concept.
         var modelGradedCeiling = accepted

@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M2 — the Graph (E2)
-**Last completed task:** M2.4 — graph traversal: prerequisites, dependents, topological order, the frontier (62 tests)
+**Last completed task:** M2.5 — the 30-concept AI-engineering seed pack. Authoring it exposed a hole in the Evidence Ceiling; added the Floor. (73 tests)
 
 ---
 
@@ -118,7 +118,9 @@ flowchart TB
       → YAML format, a validator that **reports every problem at once** (an author fixing 180 concepts one error per run stops maintaining the graph), and a loader that persists only what passed. Refuses: `REQUIRES` cycles (named, with the path — the Compiler would either hang or silently drop an edge; the first stalls, the second lies), self-requirement, a concept with no contract, a contract that breaches the **Evidence Ceiling** (surfaced *by concept name*), orphans, dangling slugs (a typo in a prerequisite is indistinguishable from a missing one until someone fails), and duplicate slugs. Republishing a version is refused — an old credential's meaning depends on the graph it was issued against. A reload is a **complete statement, not a patch**: a deleted prerequisite that lingers is as harmful as one never authored. 51 tests.
 - [x] **M2.4** Graph queries via recursive CTE: prerequisites-of, dependents-of, topological order, **the learner's frontier** (concepts whose prereqs are all HELD but which are not).
       → All four, plus `Blocked` (how many prerequisites still stand between the learner and each locked concept — the difference between *"you are not ready"* and *"you are two concepts away"*, which is the difference between a wall and a ladder). Only `REQUIRES` is walked; a CONTRASTS edge orders nothing, and there is a test that says so. **Test-quality catch:** my first "diamond" had two equal-length branches, so mutating deepest-path→shortest-path changed nothing and the test proved nothing. Rebuilt it asymmetric (one branch a hop longer, and the deep branch's last concept sorts *after* its dependent alphabetically so a lucky tie-break can't hide the bug) — now the mutation fails 2 tests with the exact diagnosis. 62 tests.
-- [ ] **M2.5** Seed pack v0: **30 concepts** for the Objective *"Ship a RAG system that beats BM25 on your own corpus"* — hand-authored, real prerequisites. (Grows to 180 in M13.)
+- [x] **M2.5** Seed pack v0: **30 concepts** for the Objective *"Ship a RAG system that beats BM25 on your own corpus"* — hand-authored, real prerequisites. (Grows to 180 in M13.)
+      → `packs/ai-engineering/pack.yaml`. One root (tokenisation), one build target (beating-the-baseline), and the objective is provably reachable from zero by walking the frontier one concept at a time. The pedagogical spine is enforced by the graph: you cannot claim to have beaten BM25 without having *run* BM25 and built an eval set you did not contaminate.
+      **The pack found a design hole.** Writing 30 real contracts exposed that the Evidence Ceiling had only one half. 18 of 30 concepts I authored could *only* be pushed over the line with a model-graded top-up — a learner who did every problem and shipped every build would still need a rubric's blessing. That inverts the ceiling's promise. Added **the Floor** to `PoMContract.Create`: unfakeable evidence must be **sufficient on its own**. Together: *real work is always enough; talk is never enough — talk only gets you there faster.* Fixed all 18, and the old test fixtures that had the same flaw. 73 tests.
 - [ ] **M2.6** `GraphController` + handler tests + a cycle-rejection test.
 
 ## M3 — E1 The Cognitive Twin

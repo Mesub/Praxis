@@ -32,11 +32,56 @@ public sealed class PoMContractTests
             [
                 AcceptedEvidence.Of(EvidenceType.Explain, minScore: 0.7, maxContribution: 0.50),
                 AcceptedEvidence.Of(EvidenceType.Critique, minScore: 0.7, maxContribution: 0.30),
-                AcceptedEvidence.Of(EvidenceType.Apply, minScore: 0.8, maxContribution: 0.60),
+
+                // Enough real work to satisfy the Floor, so it is the Ceiling that trips here.
+                AcceptedEvidence.Of(EvidenceType.Apply, minScore: 0.8, maxContribution: 0.85),
             ]));
 
         Assert.Contains("hallucinating grader would manufacture mastery", ex.Message, StringComparison.Ordinal);
         Assert.Contains("C-4", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// **The Floor — the Ceiling's other half.**
+    ///
+    /// Unfakeable evidence must be *sufficient on its own*. If it is not, a learner who did every
+    /// piece of real work the concept asks for would still need a rubric's blessing to be recorded
+    /// as holding it — and the Ceiling's promise, that real work is what crosses the line, quietly
+    /// inverts into its opposite.
+    ///
+    /// Real work is always enough. Talk is never enough. Talk only gets you there faster.
+    [Fact]
+    public void Real_work_alone_must_be_enough_to_hold_a_concept()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => PoMContract.Create(
+            Concept,
+            holdThreshold: 0.80,
+            accepted:
+            [
+                // Do every problem perfectly and you reach 0.70 — still short of 0.80. The only
+                // way over the line would be an explanation a model liked.
+                AcceptedEvidence.Of(EvidenceType.Apply, minScore: 0.8, maxContribution: 0.70),
+                AcceptedEvidence.Of(EvidenceType.Explain, minScore: 0.7, maxContribution: 0.25),
+            ]));
+
+        Assert.Contains("Real work must be enough", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("C-4", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_contract_where_real_work_exactly_reaches_the_threshold_is_accepted()
+    {
+        var contract = PoMContract.Create(
+            Concept,
+            holdThreshold: 0.80,
+            accepted:
+            [
+                AcceptedEvidence.Of(EvidenceType.Apply, minScore: 0.8, maxContribution: 0.80),
+                AcceptedEvidence.Of(EvidenceType.Explain, minScore: 0.7, maxContribution: 0.25),
+            ]);
+
+        // Real work is exactly enough; the explanation is an accelerant, not a requirement.
+        Assert.Equal(0.80, contract.HoldThreshold);
+        Assert.True(contract.ModelGradedCeiling < contract.HoldThreshold);
     }
 
     [Fact]
@@ -49,9 +94,10 @@ public sealed class PoMContractTests
             accepted:
             [
                 AcceptedEvidence.Of(EvidenceType.Explain, 0.7, maxContribution: 0.70),
-                AcceptedEvidence.Of(EvidenceType.Build, 1.0, maxContribution: 0.60),
+                AcceptedEvidence.Of(EvidenceType.Build, 1.0, maxContribution: 0.75),
             ]));
 
+        Assert.Contains("hallucinating grader", ex.Message, StringComparison.Ordinal);
         Assert.Contains("C-4", ex.Message, StringComparison.Ordinal);
     }
 
