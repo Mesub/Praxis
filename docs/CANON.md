@@ -280,14 +280,46 @@ These were not in the original brief. They emerged from writing the engines and 
 **canon**, because each one makes the system *more honest* than it was designed to be.
 
 ### C-1 — The Decay Wall (carrying capacity)
-There exists a daily-minutes floor below which an Objective is **structurally unreachable** —
-not "slow", *unreachable*. Below it, decay removes mastery faster than the learner can add it.
-At 20 min/day, "Become an AI Engineer" never converges: the compiler's forward simulation
-diverges. **PRAXIS must say so, out loud, and narrow the Objective rather than sell a plan it
-does not believe.** Every other product in this industry would happily take the money.
-> *"At 20 minutes a day you will not become an AI Engineer. You will forget faster than you
-> learn. What you CAN become in that time is a competent ML practitioner in PyTorch, by week 40.
-> Shall I compile that instead — or can you find 40 minutes?"*
+
+> **⚠️ CORRECTED IN M4.3 — by building the simulation instead of asserting it.**
+>
+> The original claim below was that the wall is a **divergence**: that below some minutes/day,
+> decay removes mastery faster than a learner can add it and the forward simulation *never
+> converges*.
+>
+> **That is false, and the simulation says so.** Spaced repetition forbids divergence: every
+> successful retrieval pushes the next one exponentially further away, so a concept's long-run
+> maintenance cost falls towards zero and the total bill grows *sub-linearly*. It always
+> converges. This is not a modelling artefact — it is why real spaced-repetition users hold tens
+> of thousands of items on twenty minutes a day. A model in which they could not would be a model
+> of despair, not of memory.
+>
+> **What actually happens is worse in a quieter way.** At 20 min/day the 180-concept objective is
+> reached — *three and a half years later*, with the learner spending most of every session
+> treading water. Measured against an eighteen-month horizon, they hold **85 of 180 concepts** and
+> are still climbing.
+>
+> So **the wall is a horizon, not a divergence.** The refusal stands, unchanged and just as
+> important. Only the reason has been corrected, and it is now the true one.
+>
+> The real numbers, simulated (180 concepts, 18-month horizon):
+>
+> | Minutes/day | Verdict |
+> |---|---|
+> | 20 | **No.** In 18 months you would hold 85 of 180. |
+> | 30 | **No.** In 18 months you would hold 127 of 180. |
+> | 45 | Yes — 17 months. |
+> | 60 | Yes — 12 months. |
+> | 90 | Yes — 8 months. |
+
+There exists a daily-minutes floor below which an Objective is **unreachable inside any horizon a
+human would accept** — not "slow", *unreachable in practice*. **PRAXIS must say so, out loud, and
+narrow the Objective rather than sell a plan it does not believe.** Every other product in this
+industry would happily take the money.
+> *"At 20 minutes a day you will not become an AI Engineer inside two years — you would hold about
+> half of it, and spend most of your time keeping what you have. What you CAN become in that time
+> is a competent ML practitioner in PyTorch, by week 40. Shall I compile that instead — or can you
+> find 45 minutes?"*
 → `10-curriculum-compiler.md`
 
 ### C-2 — Reality scores the sources, too (E8 × E10)
