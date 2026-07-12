@@ -8,8 +8,8 @@
 
 ## Status
 
-**Current milestone:** M3 — the Cognitive Twin (E1)
-**Last completed task:** M3.7a — the Twin projection. The learner is now derived from history, live. (114 tests)
+**Current milestone:** M4 — the Compiler (E3) + Scheduler (E4)
+**Last completed task:** M3.7b — the Twin API. **M3 complete.** (146 tests across twin + API)
 
 ---
 
@@ -145,7 +145,11 @@ flowchart TB
       **The subtle rule, which took a moment to see:** contradictions must *not* accumulate across relapses. Otherwise a learner who shows the misconception six times and is contradicted once after each would eventually total two contradictions and be recorded as **cured** — having demonstrated nothing but inconsistency. Showing it again resets the road out; you earn your way out from scratch. Proved it bites by removing the reset — two tests failed instantly. An active misconception also **suppresses belief** in its concept, because someone carrying a confidently-held wrong model is worse off than someone who knows they don't know: they won't ask. 101 tests.
 - [x] **M3.7a** `TwinProjection`: fold the event log into `ConceptState` + misconceptions. BKT on graded answers, FSRS on reps, mastery credit on accepted evidence, calibration throughout. *(Split out of M3.7 — the controller has nothing to serve without it, and the projection is the keystone: it is where every pure function built in M3.2–M3.6 meets the real event log.)*
       → Every pure function from M3.2–M3.6 now meets real events, out of a real database, with real timestamps. **It reads no clock** — times come from the events, because that is when things happened in the learner's world. **`ConceptTaught` is not even handled**: a learner can sit through instruction all day and the Twin does not move. Idempotent on accepted evidence (a rebuild that double-counted would make every learner in the system better than they are). **The Evidence Ceiling holds through the real projection**: 50 perfect explanations, through events, through Postgres — still not held. A concept with no contract **refuses to be believed about** rather than inventing a standard of proof. Rebuild reproduces the learner exactly, and erases a forged belief history does not support. `IMasteryContracts` is the seam: Graph and Twin never reference each other; the contract crosses as a value and the adapter lives at the composition root. Verified live — `--rebuild-projections` now drives it. 114 tests.
-- [ ] **M3.7b** `TwinController`: get twin, get concept state, get the decay forecast. Handler tests + the Evidence Ceiling property test at the API boundary.
+- [x] **M3.7b** `TwinController`: get twin, get concept state, get the decay forecast. Handler tests + the Evidence Ceiling property test at the API boundary.
+      → **Decay is applied at read time**, not by a nightly job — refresh an hour later and the number is lower, because an hour of forgetting actually happened. A belief that only rots when cron remembers to run is not a model of forgetting; it is a model of cron. The summary reports the number nobody else in the industry shows you: **how much of what you "know" is currently rotting** (held, and heading below threshold) and how much has already lapsed. **The Evidence Ceiling is now proved end-to-end through real HTTP**: 50 perfect explanations, as real events, through the real projection, read back over the wire — not held, and the API says plainly that none of it rests on work a model could not fake. There is **no `?learnerId=` parameter and there never will be**; a learner sees only themselves.
+      **Found a real bug:** an untouched concept has no due date, and I returned *infinity* — which `System.Text.Json` cannot serialise, so a learner's very first look at a concept they hadn't touched was a **500**. Now nullable, with a regression test. 122 twin + 24 API tests.
+
+**M3 complete.** The Cognitive Twin holds: belief that can be falsified, knowledge that visibly rots, calibration that catches outsourced work without accusing anyone, mastery that no language model can manufacture, and named wrong beliefs that must be *un*-demonstrated rather than merely corrected.
 
 ## M4 — E3 Compiler + E4 Scheduler
 

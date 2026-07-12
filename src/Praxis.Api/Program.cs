@@ -30,7 +30,8 @@ var connectionString = builder.Configuration.GetConnectionString("Praxis")
 builder.Services.AddPraxisInfrastructure(
     typeof(Program).Assembly,
     typeof(IdentityModule).Assembly,
-    typeof(GraphModule).Assembly);
+    typeof(GraphModule).Assembly,
+    typeof(TwinModule).Assembly);
 
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
