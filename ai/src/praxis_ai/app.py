@@ -26,7 +26,9 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, Request
 
 from praxis_ai.config import Settings, get_settings
+from praxis_ai.cost import assert_priced
 from praxis_ai.logging import configure_logging, request_id
+from praxis_ai.models import Task, model_for
 
 log = logging.getLogger("praxis.ai")
 
@@ -50,6 +52,12 @@ async def lifespan(app: FastAPI):
             "No ANTHROPIC_API_KEY is configured. Every route that needs a model will refuse, "
             "and say so plainly rather than pretending. Copy .env.example to .env to fix it."
         )
+
+    # **A crash, and deliberately so.** Every model PRAXIS routes to must have a price before it
+    # serves anybody. An unpriced model would be billed to a learner at a rate nobody knows and
+    # recorded against them as if it were free — and the first anyone would hear of it is the
+    # invoice. Failing here is a nuisance for us; failing later is a nuisance for them.
+    assert_priced({model_for(task, settings) for task in Task})
 
     yield
 
