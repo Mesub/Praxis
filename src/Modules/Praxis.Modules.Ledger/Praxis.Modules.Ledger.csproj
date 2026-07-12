@@ -5,6 +5,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Evidence's properties are `internal init`: immutable to every consumer, but reachable by the
+         Ledger's own tests so they can simulate an attacker who edited one stored field and prove the
+         hash chain catches it. External modules still cannot mutate or `with`-copy around the honesty
+         ceiling — only this module and its tests can. -->
+    <InternalsVisibleTo Include="Praxis.Modules.Ledger.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Praxis.Shared\Praxis.Shared.csproj" />
     <ProjectReference Include="..\Praxis.Modules.Kernel\Praxis.Modules.Kernel.csproj" />
   </ItemGroup>

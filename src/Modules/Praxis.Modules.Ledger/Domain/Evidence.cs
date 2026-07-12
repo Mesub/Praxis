@@ -37,31 +37,31 @@ public sealed record Evidence
     private Evidence() { }
 
     /// A stable identity, assigned at creation. The chain and the signature commit to it.
-    public Guid Id { get; private init; }
+    public Guid Id { get; internal init; }
 
-    public Guid LearnerId { get; private init; }
+    public Guid LearnerId { get; internal init; }
 
-    public Guid ConceptId { get; private init; }
+    public Guid ConceptId { get; internal init; }
 
     /// What kind of proof this is (RECALL … PREDICT). Domain language, shared across engines.
-    public EvidenceType Type { get; private init; }
+    public EvidenceType Type { get; internal init; }
 
     /// **How it was graded**, which is what determines how far it can be trusted.
-    public GradingMethod GradingMethod { get; private init; }
+    public GradingMethod GradingMethod { get; internal init; }
 
     /// The graded result, in [0, 1]. *What* they achieved.
-    public double Score { get; private init; }
+    public double Score { get; internal init; }
 
     /// **How much PRAXIS trusts that result**, in [0, 1]. *How sure we are* — a different axis from the
     /// score, and the one the Evidence Ceiling caps. Recorded honestly or not at all.
-    public double Assurance { get; private init; }
+    public double Assurance { get; internal init; }
 
     /// The position in the event log this evidence was derived from. **Provenance**: the Ledger never
     /// records a conclusion it cannot trace back to the fact that produced it, which is what makes the
     /// whole thing rebuildable from zero (the kernel's one rule).
-    public long SourceSequence { get; private init; }
+    public long SourceSequence { get; internal init; }
 
-    public DateTime ProducedAt { get; private init; }
+    public DateTime ProducedAt { get; internal init; }
 
     /// **Write a piece of evidence into the record — or refuse.**
     ///
