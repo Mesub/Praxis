@@ -1,0 +1,53 @@
+[project]
+name = "praxis-ai"
+version = "0.1.0"
+description = "The PRAXIS AI plane — stateless, and it does not hold the answer."
+requires-python = ">=3.13"
+
+dependencies = [
+    "fastapi>=0.128.0",
+    "uvicorn[standard]>=0.38.0",
+    "pydantic>=2.12.0",
+    "pydantic-settings>=2.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.0",
+    "pytest-asyncio>=1.3.0",
+    "ruff>=0.15.0",
+    "httpx>=0.28.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/praxis_ai"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # import sorting
+    "N",         # naming
+    "UP",        # pyupgrade
+    "B",         # bugbear
+    "S",         # flake8-bandit — the AI plane handles keys and answer keys
+    "RUF",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert. That is their job.
+"tests/*" = ["S101"]

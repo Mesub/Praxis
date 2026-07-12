@@ -8,8 +8,8 @@
 
 ## Status
 
-**Current milestone:** M4 — the Compiler (E3) + Scheduler (E4)
-**Last completed task:** M4.6 — Compiler + Scheduler endpoints. **M4 is complete.** PRAXIS now refuses a real learner over real HTTP, and answers "I have 15 minutes, what do I do?" with one card. (15 scheduler + 53 API tests)
+**Current milestone:** M5 — the AI plane
+**Last completed task:** M5.1 — the FastAPI scaffold, and the muzzle: the answer key cannot survive a log line, because a log is a context too. (11 tests; verify.ps1 now runs the AI stages)
 
 ---
 
@@ -184,7 +184,10 @@ flowchart TB
 
 ## M5 — The AI plane
 
-- [ ] **M5.1** FastAPI scaffold: `ai/`, uv/pip, pytest, ruff, `/health`, structured logging, `.env.example`.
+- [x] **M5.1** FastAPI scaffold: `ai/`, uv/pip, pytest, ruff, `/health`, structured logging, `.env.example`.
+      → Python 3.14 + FastAPI, managed by `uv` (lockfile committed, so the gate tests pinned versions rather than whatever this machine happens to have). `verify.ps1` now **runs** the AI stages instead of skipping them — two SKIPs left, both web. Stateless by construction: no database, no session, no memory of the last request.
+      **The muzzle.** PRAXIS's central claim is that the tutor cannot give the answer because the answer is never in its context (C-5) — a jailbreak retrieves nothing because there is nothing there. **A log is a context too.** A service that carefully withholds the answer key from the model and then writes it to stdout at INFO has not protected anything; it has moved the leak somewhere with worse access control and a longer retention period. So redaction lives at the *logging boundary*, where it cannot be forgotten, rather than at the hundred call sites where it could be: forbidden field names (`answer`, `expected`, `solution`, …) are scrubbed however deeply nested, and API keys are pattern-matched out of any line. Removed `answer` from the forbidden list to prove the test bites — the answer key came straight through into the log.
+      The key is a `SecretStr`, so a stray print, a crash repr, a validation error or an over-helpful structured log cannot leak it; reading it requires saying so out loud in code. `/health` reports `model_configured` as a **boolean** — whether a key exists, never what it is — and deliberately does *not* claim the key works, because proving that means spending a learner's money and a health check that quietly bills someone is not a health check. Every request carries an id, so M5.2 can attribute cost to a learner-minute. 11 tests.
 - [ ] **M5.2** Claude client + model router: Opus-class for grading/synthesis, Sonnet-class for tutor turns and item generation. Every call is cost-attributed and logged to a learner-minute.
 - [ ] **M5.3** **The `check_claim` oracle** — the architectural heart of I-5. Holds the answer key. Takes the learner's claim + the item id, returns `{correct, partial, wrong}` + which misconception it matches. **The tutor calls this. The tutor never sees the answer.**
 - [ ] **M5.4** Rubric grader with **abstention as a first-class output** (R-1): borderline scores escalate to an Opus-class grader, then to a human queue, and are written as `pending` — never as `passed`.

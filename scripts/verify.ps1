@@ -79,11 +79,19 @@ elseif ($Quick) {
     Add-Result -Stage 'AI    lint' -Status 'SKIP' -Detail '-Quick'
     Add-Result -Stage 'AI    test' -Status 'SKIP' -Detail '-Quick'
 }
+elseif (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    # Named, not silently skipped. A machine without uv cannot verify the AI plane, and it must say
+    # so rather than printing a green tick it has not earned.
+    Add-Result -Stage 'AI    lint' -Status 'SKIP' -Detail 'uv is not installed (https://astral.sh/uv)'
+    Add-Result -Stage 'AI    test' -Status 'SKIP' -Detail 'uv is not installed (https://astral.sh/uv)'
+}
 else {
     Push-Location $aiDir
     try {
-        Invoke-Stage 'AI    lint' { python -m ruff check . } | Out-Null
-        Invoke-Stage 'AI    test' { python -m pytest -q } | Out-Null
+        # `uv run` syncs the venv from the lockfile first, so the gate tests the pinned versions
+        # rather than whatever happens to be installed on this machine.
+        Invoke-Stage 'AI    lint' { uv run ruff check . } | Out-Null
+        Invoke-Stage 'AI    test' { uv run pytest -q } | Out-Null
     }
     finally {
         Pop-Location
