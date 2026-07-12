@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M3 — the Cognitive Twin (E1)
-**Last completed task:** M3.1 — the Twin's state: belief, decay, calibration, assurance, misconceptions (18 tests)
+**Last completed task:** M3.2 — BKT. Found and fixed two model-inverting bugs: the degenerate regime and the absorbing state. (33 tests)
 
 ---
 
@@ -130,7 +130,9 @@ flowchart TB
 
 - [x] **M3.1** `ConceptState` projection: `p_knows`, `stability`, `difficulty`, `last_seen`, `next_due`, `confidence_gap`, `assurance`.
       → `twin.concept_states` + `twin.misconceptions`. An unseen concept starts at `P(knows) = 0.10`: PRAXIS does not assume competence and wait to be disproved. **`ConfidenceGap` is computed, never stored** — a stored copy of a derived value is a second version of the truth and it will drift. All mutators are `internal`: only the projection may write a belief, and only in response to an event; handlers and controllers physically cannot. A **misconception is a named wrong belief, not a wrong answer** ("cosine gives the same answer whether or not I normalised") — and being *told* you are wrong does not retire it. Two clean contradictions do, and it comes back if you show it again, because misconceptions relapse. 18 tests.
-- [ ] **M3.2** **BKT** update on each graded response (`p_transit`, `p_slip`, `p_guess` per concept, seeded from the pack's difficulty prior).
+- [x] **M3.2** **BKT** update on each graded response (`p_transit`, `p_slip`, `p_guess` per concept, seeded from the pack's difficulty prior).
+      → Pure function: no clock, no randomness, no model call, so a replay lands byte-identical. Inference and learning are separated — conflating them is the classic BKT bug that lets a *wrong* answer raise belief. Swept 100+ parameter combinations to prove a wrong answer never beats a right one.
+      **Two real bugs found by the tests.** (1) **The degenerate regime**: when `slip + guess ≥ 1` the model *inverts* — a correct answer becomes evidence you do **not** know it, and PRAXIS would teach hardest to the people getting things right. Demonstrated numerically (wrong answer → 0.636, right answer → 0.556) and refused at construction. (2) **The absorbing-state trap**: transit drives belief asymptotically to 1 and in floating point it *arrives* — and at exactly 1.0 the Bayesian update dies, so **no evidence can ever move belief again**. The Twin would insist a learner knows something while watching them fail forever. Belief is now clamped strictly inside (0, 1). An unfalsifiable belief about a person is not a model, it is a verdict. 33 tests.
 - [ ] **M3.3** **FSRS-class decay**: retrievability as a function of elapsed time and stability; `p_knows` bleeds continuously. The Graph must be able to show rot in real time.
 - [ ] **M3.4** **Calibration**: learner states confidence before every graded item; Brier score accumulates per concept and globally. Confidence-vs-competence gap (Dunning–Kruger delta) is a first-class field.
 - [ ] **M3.5** **The Evidence Ceiling (C-4)** — the single most important function in the Twin. `EXPLAIN`/LLM-graded evidence updates `p_knows` but is **hard-capped below the HOLD threshold**. Only `APPLY` (never-seen item), `BUILD` (it ran), or `PREDICT` (reality resolved it) can cross it. Property-test it: *no sequence of EXPLAIN evidence, of any length, at any score, can ever produce a HELD concept.*
