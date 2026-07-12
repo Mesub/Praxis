@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Praxis.Modules.Graph.Packs;
 using Praxis.Shared;
@@ -12,7 +13,12 @@ namespace Praxis.Api.Tests;
 [Collection(SharedApi.Name)]
 public sealed class GraphApiTests : IAsyncLifetime
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    /// Enums cross the wire as **names**, not numbers (M6.5) — `"apply"`, not `2`. A number is
+    /// unreadable in a log and silently reorderable in a diff.
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
 
     private readonly ApiFixture _api;
 

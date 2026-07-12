@@ -30,9 +30,14 @@ def test_the_committed_contract_matches_the_service() -> None:
     )
 
 
-def test_the_contract_offers_the_core_exactly_three_things() -> None:
-    """Everything the .NET core is allowed to ask an LLM for. If a fourth appears, it was designed
-    somewhere other than here."""
+def test_the_contract_offers_the_core_exactly_four_things() -> None:
+    """Everything the .NET core is allowed to ask an LLM for. If a fifth appears, it was designed
+    somewhere other than here.
+
+    Note there is exactly **one** door to the oracle. An earlier draft of the tutor route grew its
+    own `/tutor/check` — a second way to reach the answer key. Two doors to one secret is one door
+    too many. Deleted.
+    """
     committed = json.loads(CONTRACT.read_text(encoding="utf-8"))
 
     assert set(committed["paths"]) == {
@@ -40,7 +45,11 @@ def test_the_contract_offers_the_core_exactly_three_things() -> None:
         "/oracle/check-claim",
         "/assessment/grade",
         "/assessment/items",
+        "/tutor/turn",
     }
+
+    # The oracle has one door, and it is the one the tutor knocks on.
+    assert len([p for p in committed["paths"] if "check" in p]) == 1
 
 
 def test_no_schema_in_the_contract_can_carry_an_answer() -> None:

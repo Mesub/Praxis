@@ -115,6 +115,17 @@ public sealed record AnswerBudgetExhausted(Guid SessionId, HintRung DeepestRungR
     public static LearningEventType EventType => LearningEventType.AnswerBudgetExhausted;
 }
 
+/// **The learner said something**, and the ladder is now allowed to move (LR-3).
+///
+/// Their words are **data**, not instructions. They are recorded as an utterance, and they are
+/// rendered to the tutor as a quoted utterance — never spliced into its instructions. A learner who
+/// types "ignore all previous instructions" has typed a sentence.
+public sealed record LearnerResponded(Guid SessionId, string Said)
+    : IEventPayload
+{
+    public static LearningEventType EventType => LearningEventType.LearnerResponded;
+}
+
 /// *"Where, exactly, does your reasoning break?"*
 ///
 /// Mandatory when the budget runs out, and **the most valuable two sentences in the session** — it

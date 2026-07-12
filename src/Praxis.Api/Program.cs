@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Praxis.Api.Composition;
 using Praxis.Infrastructure;
@@ -40,7 +42,8 @@ builder.Services.AddPraxisInfrastructure(
     typeof(GraphModule).Assembly,
     typeof(TwinModule).Assembly,
     typeof(CompilerModule).Assembly,
-    typeof(ISchedulerSnapshot).Assembly);
+    typeof(ISchedulerSnapshot).Assembly,
+    typeof(TutorModule).Assembly);
 
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
@@ -87,6 +90,17 @@ builder.Services.AddControllers(options =>
 {
     // Every action is validated before it runs. A handler cannot receive invalid input.
     options.Filters.Add<ValidationFilter>();
+})
+.AddJsonOptions(json =>
+{
+    // **Enums cross the wire as names, not as numbers.**
+    //
+    // `{"rung": 4}` is unreadable, unloggable, and -- worse -- silently *reorderable*: insert a rung
+    // in the middle of the enum one afternoon and every client in the world starts asking for a
+    // different one, with no error raised anywhere. `{"rung": "partialScaffold"}` breaks loudly
+    // instead, which is the only kind of breaking worth having.
+    json.JsonSerializerOptions.Converters.Add(
+        new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
 });
 
 builder.Services.AddOpenApi();

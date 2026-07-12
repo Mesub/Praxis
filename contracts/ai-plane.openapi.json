@@ -332,6 +332,18 @@
         "title": "HardFailSpec",
         "type": "object"
       },
+      "HintRung": {
+        "description": "Mirrors ``Praxis.Modules.Kernel.Events.HintRung`` exactly (M6.2).\n\nFive rungs, and **there is no sixth**. CANON lists an `L5 FULL_REVEAL` and marks it *\"in LEARN\nmode this rung does not exist\"* \u2014 so it does not exist here either. Not gated, not flagged,\nabsent. There is no enum value to reach for, so there is no code path to write.",
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "title": "HintRung",
+        "type": "integer"
+      },
       "ItemResponse": {
         "description": "**Everything the core, the tutor and the learner ever see of an item.**\n\nThere is no `answer` field, and there must never be one. The answer exists \u2014 it went to the\noracle's store the moment the item was made \u2014 and the only thing that ever comes back out of it\nis one of three words (M5.3).",
         "properties": {
@@ -420,6 +432,109 @@
           "dimensions"
         ],
         "title": "RubricSpec",
+        "type": "object"
+      },
+      "TurnSpec": {
+        "description": "One utterance. The learner's words are **data** \u2014 they land here and nowhere else.",
+        "properties": {
+          "said": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Said",
+            "type": "string"
+          },
+          "who": {
+            "pattern": "^(learner|tutor)$",
+            "title": "Who",
+            "type": "string"
+          }
+        },
+        "required": [
+          "who",
+          "said"
+        ],
+        "title": "TurnSpec",
+        "type": "object"
+      },
+      "TutorTurnRequest": {
+        "description": "**Everything the tutor is ever given.**\n\nNo ``answer``. No ``rubric`` (its band descriptions *are* the answer \u2014 M5.4). No ``expected``.\nA field that does not exist on the wire cannot be populated by a caller having a bad day.",
+        "properties": {
+          "budget_remaining": {
+            "minimum": 0.0,
+            "title": "Budget Remaining",
+            "type": "integer"
+          },
+          "concept_id": {
+            "minLength": 1,
+            "title": "Concept Id",
+            "type": "string"
+          },
+          "concept_summary": {
+            "minLength": 1,
+            "title": "Concept Summary",
+            "type": "string"
+          },
+          "item_stem": {
+            "minLength": 1,
+            "title": "Item Stem",
+            "type": "string"
+          },
+          "known_misconceptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Known Misconceptions",
+            "type": "array"
+          },
+          "learner_id": {
+            "minLength": 1,
+            "title": "Learner Id",
+            "type": "string"
+          },
+          "rung": {
+            "$ref": "#/components/schemas/HintRung"
+          },
+          "transcript": {
+            "items": {
+              "$ref": "#/components/schemas/TurnSpec"
+            },
+            "title": "Transcript",
+            "type": "array"
+          }
+        },
+        "required": [
+          "concept_summary",
+          "item_stem",
+          "rung",
+          "budget_remaining",
+          "learner_id",
+          "concept_id"
+        ],
+        "title": "TutorTurnRequest",
+        "type": "object"
+      },
+      "TutorTurnResponse": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usd"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TutorTurnResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -612,6 +727,47 @@
         "summary": "Check Claim",
         "tags": [
           "oracle"
+        ]
+      }
+    },
+    "/tutor/turn": {
+      "post": {
+        "operationId": "turn_tutor_turn_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TutorTurnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TutorTurnResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Turn",
+        "tags": [
+          "tutor"
         ]
       }
     }

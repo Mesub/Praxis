@@ -33,6 +33,13 @@ public enum LearningEventType
     /// never mastery evidence.
     StuckNoteWritten = 13,
 
+    /// **The learner said something.**
+    ///
+    /// This is what LR-3 gates on: the tutor may not take two turns in a row, and the ladder does
+    /// not advance without a learner utterance. A hint delivered to somebody who has not spoken yet
+    /// is not scaffolding — it is a lecture with a price tag.
+    LearnerResponded = 14,
+
     // ── Evidence produced ───────────────────────────────────────────────────
     AnswerGiven = 20,
     ExplanationRecorded = 21,

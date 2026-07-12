@@ -56,6 +56,18 @@ public sealed class Session : BaseEntity
     /// not take two turns in a row.
     public bool AwaitingLearner { get; private set; }
 
+    // ── Where they are on the ladder ─────────────────────────────────────────
+
+    /// The high-water mark. A **descent does not lower it** (LR-4) — the learner has still seen the
+    /// deeper rung, and pretending otherwise would let them walk back up it for free, forever.
+    public HintRung? DeepestRungServed { get; private set; }
+
+    /// How many times each rung has been served. Drives the re-request surcharge (LR-2).
+    public Dictionary<HintRung, int> RungsServed { get; private set; } = [];
+
+    /// The ladder's view of this session, as a value the pure policy can reason about (M6.2).
+    public LadderState Ladder => new(DeepestRungServed, AwaitingLearner, RungsServed);
+
     /// **The test the whole session has to pass.** Something was said, written, drawn, built, or —
     /// at the very least — an honest account of where they got stuck.
     public bool MadeSomething => Produced > 0 || StuckNotes > 0;
@@ -85,9 +97,18 @@ public sealed class Session : BaseEntity
 
     internal void LearnerSpoke() => AwaitingLearner = false;
 
-    internal void HintServed()
+    internal void HintServed(HintRung rung)
     {
         HintsTaken++;
+
+        RungsServed[rung] = RungsServed.GetValueOrDefault(rung) + 1;
+
+        // A descent does not lower the high-water mark (LR-4).
+        if (DeepestRungServed is not { } deepest || rung > deepest)
+        {
+            DeepestRungServed = rung;
+        }
+
         AwaitingLearner = true;   // every hint ends with something for them to do
     }
 
@@ -173,6 +194,8 @@ public sealed class Session : BaseEntity
         StuckNotes = 0;
         HintsTaken = 0;
         AwaitingLearner = false;
+        DeepestRungServed = null;
+        RungsServed = [];
     }
 }
 

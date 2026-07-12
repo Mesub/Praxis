@@ -45,6 +45,10 @@ public sealed partial class AiPlaneClient : IAiPlane
         GenerateItemRequest request, CancellationToken ct = default)
         => PostAsync<GenerateItemRequest, ItemResponse>("assessment/items", request, ct);
 
+    public Task<Result<TutorTurnResponse>> TutorTurnAsync(
+        TutorTurnRequest request, CancellationToken ct = default)
+        => PostAsync<TutorTurnRequest, TutorTurnResponse>("tutor/turn", request, ct);
+
     private async Task<Result<TOut>> PostAsync<TIn, TOut>(
         string path, TIn body, CancellationToken ct)
     {

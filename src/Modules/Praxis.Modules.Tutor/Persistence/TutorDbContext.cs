@@ -1,4 +1,8 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Praxis.Modules.Kernel.Events;
 using Praxis.Modules.Tutor.Domain;
 
 namespace Praxis.Modules.Tutor.Persistence;
@@ -54,6 +58,22 @@ public sealed class TutorDbContext : DbContext
             session.Property(s => s.StuckNotes).IsRequired();
             session.Property(s => s.HintsTaken).IsRequired();
             session.Property(s => s.AwaitingLearner).IsRequired();
+            session.Property(s => s.DeepestRungServed);
+
+            // The ladder's per-rung counts, which drive the re-request surcharge (LR-2). A small map
+            // stored as JSON: it is read and written whole, and nothing ever queries inside it.
+            session.Property(s => s.RungsServed)
+                   .HasConversion(
+                       v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                       v => JsonSerializer.Deserialize<Dictionary<HintRung, int>>(v, (JsonSerializerOptions?)null)
+                            ?? new Dictionary<HintRung, int>(),
+                       new ValueComparer<Dictionary<HintRung, int>>(
+                           (a, b) => a!.SequenceEqual(b!),
+                           d => d.Aggregate(0, (h, kv) => HashCode.Combine(h, kv.Key, kv.Value)),
+                           d => new Dictionary<HintRung, int>(d)))
+                   .HasColumnType("jsonb");
+
+            session.Ignore(s => s.Ladder);
 
             // Derived, never stored. A stored "did they make something" is a second version of the
             // truth, and it is the version somebody would eventually set to `true` to unblock a

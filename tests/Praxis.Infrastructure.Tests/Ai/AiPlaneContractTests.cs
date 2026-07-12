@@ -34,6 +34,7 @@ public sealed class AiPlaneContractTests
         Assert.Contains("/oracle/check-claim", paths);
         Assert.Contains("/assessment/grade", paths);
         Assert.Contains("/assessment/items", paths);
+        Assert.Contains("/tutor/turn", paths);
 
         // And the client exposes one method per capability, and no more. A fourth method here means
         // somebody added a route without anyone reading this file.
@@ -45,6 +46,7 @@ public sealed class AiPlaneContractTests
                 nameof(IAiPlane.CheckClaimAsync),
                 nameof(IAiPlane.GradeAsync),
                 nameof(IAiPlane.GenerateItemAsync),
+                nameof(IAiPlane.TutorTurnAsync),
             },
             methods);
     }
@@ -61,6 +63,9 @@ public sealed class AiPlaneContractTests
     [InlineData(typeof(RubricSpec), "RubricSpec")]
     [InlineData(typeof(DimensionSpec), "DimensionSpec")]
     [InlineData(typeof(HardFailSpec), "HardFailSpec")]
+    [InlineData(typeof(TutorTurnRequest), "TutorTurnRequest")]
+    [InlineData(typeof(TutorTurnResponse), "TutorTurnResponse")]
+    [InlineData(typeof(TurnSpec), "TurnSpec")]
     public void Every_property_on_the_csharp_record_exists_in_the_contract(Type type, string schema)
     {
         var declared = Schemas.GetProperty(schema).GetProperty("properties")
@@ -82,6 +87,7 @@ public sealed class AiPlaneContractTests
     [InlineData(typeof(CheckClaimResponse), "CheckClaimResponse")]
     [InlineData(typeof(GradeResponse), "GradeResponse")]
     [InlineData(typeof(ItemResponse), "ItemResponse")]
+    [InlineData(typeof(TutorTurnResponse), "TutorTurnResponse")]
     public void Every_field_the_contract_returns_is_read_by_the_csharp_record(Type type, string schema)
     {
         // The other direction, and the one that actually bites: the AI plane starts sending a field
@@ -162,6 +168,7 @@ public sealed class AiPlaneContractTests
     [InlineData("CheckClaimRequest")]
     [InlineData("GradeRequest")]
     [InlineData("GenerateItemRequest")]
+    [InlineData("TutorTurnRequest")]
     public void Every_request_names_the_learner_it_is_spending_on(string schema)
     {
         var required = Schemas.GetProperty(schema).GetProperty("required")

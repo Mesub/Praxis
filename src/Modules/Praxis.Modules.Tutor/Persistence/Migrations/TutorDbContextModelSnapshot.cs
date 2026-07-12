@@ -97,6 +97,9 @@ namespace Praxis.Modules.Tutor.Persistence.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("DeepestRungServed")
+                        .HasColumnType("integer");
+
                     b.Property<int>("HintsTaken")
                         .HasColumnType("integer");
 
@@ -114,6 +117,10 @@ namespace Praxis.Modules.Tutor.Persistence.Migrations
 
                     b.Property<int>("Produced")
                         .HasColumnType("integer");
+
+                    b.Property<string>("RungsServed")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.Property<int>("State")
                         .HasColumnType("integer");

@@ -38,6 +38,60 @@ public interface IAiPlane
     /// A never-seen item. The answer key goes to the oracle's store on the far side and is never
     /// returned here.
     Task<Result<ItemResponse>> GenerateItemAsync(GenerateItemRequest request, CancellationToken ct = default);
+
+    /// **One turn of Socratic dialogue.**
+    ///
+    /// Look at `TutorTurnRequest`. There is no `Answer`, no `Rubric`, no `Expected`. The core could
+    /// not send the tutor an answer even if it had one — and it does not have one, because the
+    /// answer lives in the oracle's store on the *far* side of this wire and comes back only as one
+    /// of three words.
+    ///
+    /// **That is the guarantee surviving the network hop**, which is where most guarantees quietly
+    /// die.
+    Task<Result<TutorTurnResponse>> TutorTurnAsync(TutorTurnRequest request, CancellationToken ct = default);
+}
+
+// ── The tutor ────────────────────────────────────────────────────────────────
+
+/// **Everything the tutor is ever given.** No answer. No rubric. No expected.
+public sealed record TutorTurnRequest(
+    string ConceptSummary,
+
+    /// The question the learner is looking at. They can see it — it is not a secret.
+    string ItemStem,
+
+    /// The conversation so far. **The learner's words live here and nowhere else** — they are data,
+    /// never instructions, and a learner who types "ignore all previous instructions" has typed a
+    /// sentence.
+    IReadOnlyList<TurnSpec> Transcript,
+
+    /// The deepest rung the ladder has authorised. There is nothing below `PartialScaffold`.
+    HintRung Rung,
+
+    int BudgetRemaining,
+
+    /// Misconception **keys** only, from a closed declared set. Never free text.
+    IReadOnlyList<string> KnownMisconceptions,
+
+    string LearnerId,
+    string ConceptId);
+
+public sealed record TurnSpec(string Who, string Said);
+
+public sealed record TutorTurnResponse(string Text, double? Usd);
+
+/// Mirrors `Praxis.Modules.Kernel.Events.HintRung` and the AI plane's enum, exactly.
+///
+/// **There is no sixth rung.** CANON lists an `L5 FULL_REVEAL` and marks it *"in LEARN mode this
+/// rung does not exist"* — so it does not exist here, on the wire, or on the far side. Not gated,
+/// not flagged: **absent**.
+public enum HintRung
+{
+    Orient = 0,
+    Probe = 1,
+    Analogy = 2,
+    WorkedExample = 3,
+    PartialScaffold = 4,
 }
 
 // ── The oracle ───────────────────────────────────────────────────────────────

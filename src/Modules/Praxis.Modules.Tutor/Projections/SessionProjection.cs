@@ -26,6 +26,7 @@ public sealed class SessionProjection : IProjection
         LearningEventType.HintTaken,
         LearningEventType.ProductionRecorded,
         LearningEventType.StuckNoteWritten,
+        LearningEventType.LearnerResponded,
         LearningEventType.SessionCompleted,
         LearningEventType.SessionAbandoned,
     };
@@ -73,7 +74,12 @@ public sealed class SessionProjection : IProjection
         switch (e.Type)
         {
             case LearningEventType.HintTaken:
-                session.HintServed();
+                session.HintServed(EventCatalogue.Deserialize<HintTaken>(e).Rung);
+                break;
+
+            case LearningEventType.LearnerResponded:
+                // **LR-3.** The ball is back with the tutor.
+                session.LearnerSpoke();
                 break;
 
             case LearningEventType.ProductionRecorded:
@@ -109,6 +115,7 @@ public sealed class SessionProjection : IProjection
     private static Guid? SessionIdOf(LearningEvent e) => EventCatalogue.Deserialize(e) switch
     {
         HintTaken hint => hint.SessionId,
+        LearnerResponded said => said.SessionId,
         ProductionRecorded made => made.SessionId,
         StuckNoteWritten note => note.SessionId,
         SessionCompleted done => done.SessionId,

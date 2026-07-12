@@ -1,4 +1,5 @@
 using System.Reflection;
+using Praxis.Modules.Kernel.Events;
 using Praxis.Modules.Tutor.Domain;
 using Praxis.Shared;
 
@@ -30,13 +31,13 @@ public sealed class SessionTests
         var session = Open();
 
         // They read. They were helped. Four times.
-        session.HintServed();
+        session.HintServed(HintRung.Probe);
         session.LearnerSpoke();
-        session.HintServed();
+        session.HintServed(HintRung.Probe);
         session.LearnerSpoke();
-        session.HintServed();
+        session.HintServed(HintRung.Probe);
         session.LearnerSpoke();
-        session.HintServed();
+        session.HintServed(HintRung.Probe);
 
         Assert.False(session.MadeSomething);
 
@@ -74,7 +75,7 @@ public sealed class SessionTests
     {
         var session = Open();
 
-        session.HintServed();
+        session.HintServed(HintRung.Probe);
         session.Made();
 
         var completed = session.Complete(held: true, partial: false);
@@ -98,9 +99,9 @@ public sealed class SessionTests
     {
         var session = Open();
 
-        session.HintServed();
+        session.HintServed(HintRung.Probe);
         session.LearnerSpoke();
-        session.HintServed();
+        session.HintServed(HintRung.Probe);
 
         // Out of budget. They write down exactly where their reasoning broke.
         session.WroteStuckNote();
@@ -174,7 +175,7 @@ public sealed class SessionTests
     {
         var session = Open();
 
-        session.HintServed();
+        session.HintServed(HintRung.Probe);
 
         var left = session.Abandon();
 
@@ -223,7 +224,7 @@ public sealed class SessionTests
     {
         var session = Open();
 
-        session.HintServed();
+        session.HintServed(HintRung.Probe);
 
         Assert.True(session.AwaitingLearner);
 
@@ -237,7 +238,7 @@ public sealed class SessionTests
     {
         var session = Open();
 
-        session.HintServed();
+        session.HintServed(HintRung.Probe);
         session.Made();
 
         Assert.False(session.AwaitingLearner);
