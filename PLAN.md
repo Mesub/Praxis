@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M2 — the Graph (E2)
-**Last completed task:** M2.3 — domain-pack format, validator (every error at once), and loader (51 tests)
+**Last completed task:** M2.4 — graph traversal: prerequisites, dependents, topological order, the frontier (62 tests)
 
 ---
 
@@ -116,7 +116,8 @@ flowchart TB
       → **The Evidence Ceiling (C-4) is now arithmetic, not policy.** `PoMContract.Create` *refuses to construct* a contract in which model-graded evidence (RECALL/EXPLAIN/CRITIQUE) can sum to the hold threshold. So: if every rubric in the world returned a perfect score, forever, the learner still falls short. Crossing requires APPLY, BUILD or PREDICT — a never-seen problem, code that ran, or a prediction reality settled. A contract offering *only* model-graded evidence is also refused: it would be unholdable forever, and shipping a concept nobody can finish is worse than refusing it. Proved it bites by disabling the check — 3 tests went red instantly. `EvidenceType` moved to `Praxis.Shared` (it is domain language, not the kernel's private business). 34 tests.
 - [x] **M2.3** Domain-pack format (`packs/{name}/pack.yaml`) + loader + validator: rejects cycles in `REQUIRES`, rejects a concept with no PoM contract, rejects an orphan.
       → YAML format, a validator that **reports every problem at once** (an author fixing 180 concepts one error per run stops maintaining the graph), and a loader that persists only what passed. Refuses: `REQUIRES` cycles (named, with the path — the Compiler would either hang or silently drop an edge; the first stalls, the second lies), self-requirement, a concept with no contract, a contract that breaches the **Evidence Ceiling** (surfaced *by concept name*), orphans, dangling slugs (a typo in a prerequisite is indistinguishable from a missing one until someone fails), and duplicate slugs. Republishing a version is refused — an old credential's meaning depends on the graph it was issued against. A reload is a **complete statement, not a patch**: a deleted prerequisite that lingers is as harmful as one never authored. 51 tests.
-- [ ] **M2.4** Graph queries via recursive CTE: prerequisites-of, dependents-of, topological order, **the learner's frontier** (concepts whose prereqs are all HELD but which are not).
+- [x] **M2.4** Graph queries via recursive CTE: prerequisites-of, dependents-of, topological order, **the learner's frontier** (concepts whose prereqs are all HELD but which are not).
+      → All four, plus `Blocked` (how many prerequisites still stand between the learner and each locked concept — the difference between *"you are not ready"* and *"you are two concepts away"*, which is the difference between a wall and a ladder). Only `REQUIRES` is walked; a CONTRASTS edge orders nothing, and there is a test that says so. **Test-quality catch:** my first "diamond" had two equal-length branches, so mutating deepest-path→shortest-path changed nothing and the test proved nothing. Rebuilt it asymmetric (one branch a hop longer, and the deep branch's last concept sorts *after* its dependent alphabetically so a lucky tie-break can't hide the bug) — now the mutation fails 2 tests with the exact diagnosis. 62 tests.
 - [ ] **M2.5** Seed pack v0: **30 concepts** for the Objective *"Ship a RAG system that beats BM25 on your own corpus"* — hand-authored, real prerequisites. (Grows to 180 in M13.)
 - [ ] **M2.6** `GraphController` + handler tests + a cycle-rejection test.
 
