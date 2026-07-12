@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Praxis.Api.Composition;
 using Praxis.Infrastructure;
 using Praxis.Infrastructure.Web;
 using Praxis.Modules.Graph;
@@ -9,6 +10,7 @@ using Praxis.Modules.Identity.Persistence;
 using Praxis.Modules.Kernel;
 using Praxis.Modules.Twin;
 using Praxis.Modules.Twin.Persistence;
+using Praxis.Modules.Twin.Projections;
 using Praxis.Modules.Kernel.Persistence;
 using Praxis.Modules.Kernel.Projections;
 using Serilog;
@@ -33,6 +35,11 @@ builder.Services.AddPraxisInfrastructure(
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
 builder.Services.AddTwin(connectionString);
+
+// The seam between the Graph and the Twin: neither module references the other, so the contract
+// crosses as a value and the adapter lives here, where the application is assembled.
+builder.Services.AddScoped<IMasteryContracts, GraphMasteryContracts>();
+builder.Services.AddProjection<TwinProjection>();
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 builder.Services.AddIdentityModule(connectionString, jwt);

@@ -17,6 +17,10 @@ public sealed class TwinDbContext : DbContext
     public DbSet<ConceptState> States => Set<ConceptState>();
     public DbSet<Misconception> Misconceptions => Set<Misconception>();
 
+    /// The Twin's working memory of what the learner produced. Derived, and thrown away by a
+    /// rebuild — the Ledger (E16) is the record of truth, not this.
+    public DbSet<EvidenceItem> Evidence => Set<EvidenceItem>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -56,6 +60,25 @@ public sealed class TwinDbContext : DbContext
 
             // The Compiler's hot path: "what does this learner already hold".
             e.HasIndex(x => new { x.LearnerId, x.IsHeld });
+
+            e.Property(x => x.Version).IsRowVersion();
+        });
+
+        modelBuilder.Entity<EvidenceItem>(e =>
+        {
+            e.ToTable("evidence_items", Schema);
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Type).HasConversion<int>().IsRequired();
+            e.Property(x => x.Score).IsRequired();
+            e.Property(x => x.Assurance).IsRequired();
+            e.Property(x => x.OccurredAt).IsRequired();
+
+            // Replaying an event that was already applied must not count it twice, or a rebuild
+            // would inflate every learner in the system.
+            e.HasIndex(x => x.EvidenceId).IsUnique();
+
+            e.HasIndex(x => new { x.LearnerId, x.ConceptId });
 
             e.Property(x => x.Version).IsRowVersion();
         });
