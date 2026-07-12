@@ -60,6 +60,24 @@ public sealed record SandboxJob(
 {
     /// The image. Pinned, minimal, and **ours to choose** — never the learner's.
     public string Image { get; init; } = "python:3.13-alpine";
+
+    /// **Host-controlled environment only.** Nothing here ever comes from the learner — it is how the
+    /// grading harness receives the per-run nonce (`WithNonce`), and a learner-supplied value must
+    /// never reach it, because an env var is a channel and every channel into untrusted code is a
+    /// channel out of it.
+    public IReadOnlyDictionary<string, string> Env { get; init; } =
+        new Dictionary<string, string>();
+
+    /// Hand the container a single host-generated environment value.
+    public SandboxJob WithNonce(string nonce)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(nonce);
+
+        return this with
+        {
+            Env = new Dictionary<string, string>(Env) { ["PRAXIS_NONCE"] = nonce },
+        };
+    }
 }
 
 /// **The walls.**

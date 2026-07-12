@@ -183,7 +183,8 @@ public sealed class SandboxEscapeTests
 
             assert add(2, 3) == 5
             print("ok")
-            """));
+            """,
+            new SandboxLimits(WallClockSeconds: 30)));
 
         Assert.True(result.IsSuccess);
         Assert.Equal(ExecutionOutcome.Passed, result.Value.Outcome);
@@ -199,7 +200,8 @@ public sealed class SandboxEscapeTests
         var result = await Sandbox().RunAsync(Attack(
             """
             assert 2 + 2 == 5, "maths still works"
-            """));
+            """,
+            new SandboxLimits(WallClockSeconds: 30)));
 
         Assert.True(result.IsSuccess);
         Assert.Equal(ExecutionOutcome.Failed, result.Value.Outcome);

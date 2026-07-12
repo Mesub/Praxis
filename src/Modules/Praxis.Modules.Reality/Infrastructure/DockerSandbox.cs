@@ -120,9 +120,16 @@ public sealed partial class DockerSandbox : ISandbox
             "--env=PYTHONDONTWRITEBYTECODE=1",
             "--env=PYTHONUNBUFFERED=1",
             "--env=HOME=/tmp",
-
-            job.Image,
         };
+
+        // Host-controlled env only (the grading nonce). Sorted for a deterministic, auditable command
+        // line — the same job produces the same argv every time.
+        foreach (var (key, value) in job.Env.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+        {
+            flags.Add($"--env={key}={value}");
+        }
+
+        flags.Add(job.Image);
 
         flags.AddRange(job.Command);
 
