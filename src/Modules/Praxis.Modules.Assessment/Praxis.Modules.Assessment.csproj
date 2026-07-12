@@ -5,12 +5,28 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The mutators on BankedItem, LearnerMisconception and AbilityEstimate are internal on
+         purpose: only a projection may move them, and only in response to an event. No handler, no
+         controller and no "adjust this learner's ability" endpoint can reach them, because none of
+         them exist. The tests need to reach them to prove it. -->
+    <InternalsVisibleTo Include="Praxis.Modules.Assessment.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\Praxis.Shared\Praxis.Shared.csproj" />
     <ProjectReference Include="..\Praxis.Modules.Kernel\Praxis.Modules.Kernel.csproj" />
+    <ProjectReference Include="..\..\Praxis.Infrastructure\Praxis.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 
 </Project>
