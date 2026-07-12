@@ -43,6 +43,31 @@ public class Result
 
     public static Result Unauthorized(string message)
         => new(ResultStatus.Unauthorized, message, null);
+
+    /// Re-type a failure without flattening what kind of failure it was.
+    ///
+    /// A slice that calls a service and maps its failure by hand will, sooner or later, turn every
+    /// one of them into a 400 — and then a learner with no objective is told their *request* was
+    /// malformed, which is both wrong and unhelpful. The status is carried, so the shape of the
+    /// refusal survives the trip to the client.
+    public Result<TOut> CarryFailure<TOut>()
+    {
+        if (IsSuccess)
+        {
+            throw new InvalidOperationException(
+                "CarryFailure was called on a successful result. There is no failure to carry, and "
+                + "the value would be silently dropped.");
+        }
+
+        return Status switch
+        {
+            ResultStatus.NotFound => Result<TOut>.NotFound(Message!),
+            ResultStatus.Conflict => Result<TOut>.Conflict(Message!),
+            ResultStatus.Forbidden => Result<TOut>.Forbidden(Message!),
+            ResultStatus.Unauthorized => Result<TOut>.Unauthorized(Message!),
+            _ => Result<TOut>.Invalid(Message!, Errors),
+        };
+    }
 }
 
 public sealed class Result<T> : Result

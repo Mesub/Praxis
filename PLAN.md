@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M4 — the Compiler (E3) + Scheduler (E4)
-**Last completed task:** M4.5 — the Scheduler. One card, one action; reps capped so the queue can never become the session. (14 tests)
+**Last completed task:** M4.6 — Compiler + Scheduler endpoints. **M4 is complete.** PRAXIS now refuses a real learner over real HTTP, and answers "I have 15 minutes, what do I do?" with one card. (15 scheduler + 53 API tests)
 
 ---
 
@@ -176,7 +176,11 @@ flowchart TB
       → Pure chooser. **The single hardest moment in learning is starting**, and a screen that presents a choice hands that moment straight back to the person who is demonstrably bad at it. So PRAXIS decides, and the learner is owed a *reason* — a scheduler that cannot give one is guessing. **If the card ever becomes a list, PRAXIS has lost.**
       Three priorities, and the middle one is counterintuitive: **(1) rescue a dissolving foundation** — it is not "due", it is *load-bearing*; everything above it now costs multiples more and the learner will experience that as *impossible*, not harder, and will blame themselves. **(2) Reps are capped at 60% of a session.** Clearing the rep queue first *feels* responsible and is a trap: on a busy day the queue **is** the session, the learner revises for weeks, the graph never moves, and they correctly conclude it is going nowhere. Proved the cap bites by removing it — *"In a 5-minute session the scheduler chose a 5-minute rep. The learner is now revising instead of learning, and will keep doing so forever."* **(3) Move forward.**
       And **"nothing" is a real answer**: no invented quiz, no streak to protect. *"There is no work worth doing today. PRAXIS will not invent some to keep you here — the point was never the app."* 14 tests.
-- [ ] **M4.6** `CompilerController` + `SchedulerController` + tests, including the Decay Wall test.
+- [x] **M4.6** `CompilerController` + `SchedulerController` + tests, including the Decay Wall test.
+      → `POST api/compiler/objectives` (one objective at a time — a learner pursuing three things is pursuing none), `GET api/compiler/plan`, `GET api/scheduler/today?minutes=`. No `POST /plans` and no `GET /queue`: a plan is recomputed every request (a cached one describes a learner who no longer exists), and a queue is a *list*, and a list is a choice.
+      **The Decay Wall, through the front door.** A real learner asks to go from zero to beating BM25 in 90 days at 10 min/day; PRAXIS runs the simulation, comes back **no**, and offers a narrower objective plus the pace that would work. It is a **200, not a 400** — the refusal is not an error, it is the product's most considered opinion, and the plan comes back attached to it. Deleted the wall to prove the test bites: *"It has just sold a plan it has no reason to believe in, which is the one thing this product exists not to do."*
+      **A failing test found a real honesty bug.** Rescue and Rep shared one deferral sentence, so a learner doing a cheap 3-minute rep was told their new work was blocked by a *dissolving foundation*. Nothing was dissolving. The card's reasons **are** the product; a wrong one is a lie about their own mind that they cannot check. Split, and pinned by a test.
+      And a thing I did not design and would not have predicted: on a rescue the card defers **nothing** — because the Compiler, reasoning independently, had already priced the rotted concept as a `Refresh` and put it at the front of the plan. Two engines, no knowledge of each other, same answer. Added `Result.CarryFailure<T>()` so refusals keep their shape (no objective = 404, deadline in the past = 400). 15 scheduler + 53 API tests.
 
 ## M5 — The AI plane
 

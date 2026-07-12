@@ -10,6 +10,7 @@ using Praxis.Modules.Identity;
 using Praxis.Modules.Identity.Auth;
 using Praxis.Modules.Identity.Persistence;
 using Praxis.Modules.Kernel;
+using Praxis.Modules.Scheduler;
 using Praxis.Modules.Twin;
 using Praxis.Modules.Twin.Persistence;
 using Praxis.Modules.Twin.Projections;
@@ -33,7 +34,9 @@ builder.Services.AddPraxisInfrastructure(
     typeof(Program).Assembly,
     typeof(IdentityModule).Assembly,
     typeof(GraphModule).Assembly,
-    typeof(TwinModule).Assembly);
+    typeof(TwinModule).Assembly,
+    typeof(CompilerModule).Assembly,
+    typeof(ISchedulerSnapshot).Assembly);
 
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
@@ -47,6 +50,14 @@ builder.Services.AddScoped<IMasteryContracts, GraphMasteryContracts>();
 // The Graph knows the subject; the Twin knows the learner; the Compiler knows neither. This is the
 // only place the three meet.
 builder.Services.AddScoped<ICompilerSnapshot, LiveCompilerSnapshot>();
+
+// The Scheduler owns no tables and registers no module. It has nothing to persist: the card is a
+// pure function of what the Twin believes and what the Compiler planned, and both of those are
+// themselves derived from the event log. Storing today's card would be storing a *conclusion* — and
+// a conclusion that outlives the evidence it was drawn from is the exact failure the kernel exists
+// to prevent.
+builder.Services.AddScoped<ISchedulerSnapshot, LiveSchedulerSnapshot>();
+
 builder.Services.AddProjection<TwinProjection>();
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();

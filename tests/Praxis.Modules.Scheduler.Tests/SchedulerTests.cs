@@ -131,6 +131,28 @@ public sealed class SchedulerTests
         Assert.Equal(3, card.Minutes);
     }
 
+    /// **A deferral must say why it was deferred, and a rep is not a rescue.**
+    ///
+    /// Both paths defer the plan step, and the first version reused one sentence for both — so a
+    /// learner doing a cheap three-minute rep was told their new work was waiting on a *dissolving
+    /// foundation*. Nothing was dissolving. The card's reasons ARE the product: a wrong one is a lie
+    /// told to someone about their own mind, and they have no way to check it.
+    [Fact]
+    public void A_rep_does_not_borrow_the_rescues_excuse()
+    {
+        var rep = TodayScheduler.Choose(new SchedulerInputs(
+            15, [Due("cheap", 0.85, minutes: 3)], Step("forward", 30)));
+
+        Assert.Equal(CardKind.Rep, rep.Kind);
+
+        var deferred = rep.AlsoDue.Single(d => d.Slug == "forward");
+
+        Assert.Contains("it will keep", deferred.Reason, StringComparison.Ordinal);
+
+        Assert.DoesNotContain(
+            "ground under it is solid", deferred.Reason, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Reps_can_never_consume_more_than_their_share_of_a_session()
     {

@@ -70,8 +70,11 @@ public static class TodayScheduler
         {
             var worst = dissolving[0];
 
-            deferred.AddRange(Everything(inputs, except: worst.ConceptId,
-                "Rescuing something that was about to be lost took priority."));
+            deferred.AddRange(Everything(
+                inputs,
+                except: worst.ConceptId,
+                dueReason: "Rescuing something that was about to be lost took priority.",
+                stepReason: "New work waits until the ground under it is solid."));
 
             return new TodayCard(
                 Kind: CardKind.Rescue,
@@ -98,8 +101,14 @@ public static class TodayScheduler
         {
             var rep = dueNow[0];
 
-            deferred.AddRange(Everything(inputs, except: rep.ConceptId,
-                "A rep was due, and reps are cheap."));
+            // The plan step is deferred here for a *completely different reason* than in a rescue,
+            // and saying otherwise would be a lie told to a learner about their own foundations.
+            // Nothing is dissolving. They are doing a three-minute rep, and then they move on.
+            deferred.AddRange(Everything(
+                inputs,
+                except: rep.ConceptId,
+                dueReason: "A rep was due, and reps are cheap.",
+                stepReason: "A quick rep came first. This is still next, and it will keep."));
 
             return new TodayCard(
                 Kind: CardKind.Rep,
@@ -153,20 +162,25 @@ public static class TodayScheduler
             AlsoDue: []);
     }
 
-    private static IEnumerable<Deferred> Everything(SchedulerInputs inputs, Guid except, string reason)
+    /// Everything that lost today, and **why it lost** — which is not the same sentence for a rescue
+    /// as for a rep, and must not be allowed to become one.
+    ///
+    /// Note the `except`. When a concept has rotted far enough to be rescued, the Compiler has
+    /// independently priced it as a `Refresh` step — so the plan's next step and the rescue are the
+    /// *same concept*, and it is not both the card and a thing deferred behind the card. Two engines,
+    /// reasoning separately, arriving at the same answer.
+    private static IEnumerable<Deferred> Everything(
+        SchedulerInputs inputs, Guid except, string dueReason, string stepReason)
     {
         foreach (var due in inputs.Due.Where(d => d.ConceptId != except))
         {
-            yield return new Deferred(due.ConceptId, due.Slug, reason, due.Minutes);
+            yield return new Deferred(due.ConceptId, due.Slug, dueReason, due.Minutes);
         }
 
         if (inputs.NextStep is { } step && step.ConceptId != except)
         {
             yield return new Deferred(
-                step.ConceptId,
-                step.Slug,
-                "New work waits until the ground under it is solid.",
-                (int)Math.Ceiling(step.Minutes));
+                step.ConceptId, step.Slug, stepReason, (int)Math.Ceiling(step.Minutes));
         }
     }
 }

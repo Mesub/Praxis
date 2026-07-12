@@ -42,9 +42,6 @@ public sealed class ApiFixture : IAsyncLifetime
         await scope.ServiceProvider.GetRequiredService<GraphDbContext>().Database.MigrateAsync();
         await scope.ServiceProvider.GetRequiredService<TwinDbContext>().Database.MigrateAsync();
         await scope.ServiceProvider.GetRequiredService<CompilerDbContext>().Database.MigrateAsync();
-    await scope.ServiceProvider.GetRequiredService<CompilerDbContext>().Database.MigrateAsync();
-    await scope.ServiceProvider.GetRequiredService<TwinDbContext>().Database.MigrateAsync();
-    await scope.ServiceProvider.GetRequiredService<CompilerDbContext>().Database.MigrateAsync();
     }
 
     public async Task DisposeAsync()
