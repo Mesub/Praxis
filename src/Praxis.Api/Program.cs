@@ -25,7 +25,8 @@ var connectionString = builder.Configuration.GetConnectionString("Praxis")
 // are discovered by convention rather than registered by hand.
 builder.Services.AddPraxisInfrastructure(
     typeof(Program).Assembly,
-    typeof(IdentityModule).Assembly);
+    typeof(IdentityModule).Assembly,
+    typeof(GraphModule).Assembly);
 
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);

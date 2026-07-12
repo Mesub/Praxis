@@ -8,8 +8,8 @@
 
 ## Status
 
-**Current milestone:** M2 — the Graph (E2)
-**Last completed task:** M2.5 — the 30-concept AI-engineering seed pack. Authoring it exposed a hole in the Evidence Ceiling; added the Floor. (73 tests)
+**Current milestone:** M3 — the Cognitive Twin (E1)
+**Last completed task:** M2.6 — the Graph API. **M2 complete.** (99 tests across graph + API)
 
 ---
 
@@ -121,7 +121,10 @@ flowchart TB
 - [x] **M2.5** Seed pack v0: **30 concepts** for the Objective *"Ship a RAG system that beats BM25 on your own corpus"* — hand-authored, real prerequisites. (Grows to 180 in M13.)
       → `packs/ai-engineering/pack.yaml`. One root (tokenisation), one build target (beating-the-baseline), and the objective is provably reachable from zero by walking the frontier one concept at a time. The pedagogical spine is enforced by the graph: you cannot claim to have beaten BM25 without having *run* BM25 and built an eval set you did not contaminate.
       **The pack found a design hole.** Writing 30 real contracts exposed that the Evidence Ceiling had only one half. 18 of 30 concepts I authored could *only* be pushed over the line with a model-graded top-up — a learner who did every problem and shipped every build would still need a rubric's blessing. That inverts the ceiling's promise. Added **the Floor** to `PoMContract.Create`: unfakeable evidence must be **sufficient on its own**. Together: *real work is always enough; talk is never enough — talk only gets you there faster.* Fixed all 18, and the old test fixtures that had the same flaw. 73 tests.
-- [ ] **M2.6** `GraphController` + handler tests + a cycle-rejection test.
+- [x] **M2.6** `GraphController` + handler tests + a cycle-rejection test.
+      → Three slices (`GetConcept`, `ListConcepts`, `GetFrontier`) behind a thin controller, behind auth. A concept's response **states the standard the learner will be held to before they are held to it** — including the most a language model's opinion of them could ever be worth, and the fact that it is not enough. `GetFrontier` takes `held` from the caller rather than guessing: the Graph does not know what anyone knows, the Twin does. Cycle-rejection test confirms an unwalkable graph never reaches a learner. **Found more test pollution:** the persistence tests were scribbling throwaway concepts into the *real* `ai-engineering` domain, so the seed pack's own tests were counting them. Moved to their own domain. 82 graph + 17 API tests.
+
+**M2 complete.** The Graph holds: a validated 30-concept curriculum, contracts that cannot be dishonest in either direction, traversal that cannot mis-order a diamond, and an API that tells the learner the truth up front.
 
 ## M3 — E1 The Cognitive Twin
 

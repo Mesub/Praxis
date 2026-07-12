@@ -7,6 +7,11 @@ namespace Praxis.Modules.Graph.Tests;
 [Collection(SharedGraph.Name)]
 public sealed class PoMPersistenceTests
 {
+
+    /// These tests scribble throwaway concepts into the database. They must NOT do it in
+    /// "ai-engineering" — that is the real seed pack, and the pack's own tests count what is
+    /// in it.
+    private const string TestDomain = "graph-persistence-tests";
     private readonly GraphFixture _graph;
 
     public PoMPersistenceTests(GraphFixture graph) => _graph = graph;
@@ -19,7 +24,7 @@ public sealed class PoMPersistenceTests
         var concept = Concept.Create(
             $"rag-eval-{Guid.CreateVersion7():N}", "Evaluating a RAG system",
             "Measuring retrieval and generation quality against a baseline.",
-            "ai-engineering", 0.9, 120);
+            TestDomain, 0.9, 120);
 
         db.Concepts.Add(concept);
         await db.SaveChangesAsync();
@@ -60,7 +65,7 @@ public sealed class PoMPersistenceTests
         await using var db = _graph.CreateContext();
 
         var concept = Concept.Create(
-            $"dupe-{Guid.CreateVersion7():N}", "Dupe", "One contract only.", "ai-engineering", 0.0, 30);
+            $"dupe-{Guid.CreateVersion7():N}", "Dupe", "One contract only.", TestDomain, 0.0, 30);
 
         db.Concepts.Add(concept);
         await db.SaveChangesAsync();

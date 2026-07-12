@@ -7,6 +7,11 @@ namespace Praxis.Modules.Graph.Tests;
 [Collection(SharedGraph.Name)]
 public sealed class GraphPersistenceTests
 {
+
+    /// These tests scribble throwaway concepts into the database. They must NOT do it in
+    /// "ai-engineering" — that is the real seed pack, and the pack's own tests count what is
+    /// in it.
+    private const string TestDomain = "graph-persistence-tests";
     private readonly GraphFixture _graph;
 
     public GraphPersistenceTests(GraphFixture graph) => _graph = graph;
@@ -18,11 +23,11 @@ public sealed class GraphPersistenceTests
 
         var embeddings = Concept.Create(
             Slug("embeddings"), "Embeddings", "Dense vector representations of text.",
-            "ai-engineering", -0.2, 60);
+            TestDomain, -0.2, 60);
 
         var retrieval = Concept.Create(
             Slug("vector-retrieval"), "Vector retrieval", "Nearest-neighbour search over embeddings.",
-            "ai-engineering", 0.6, 90);
+            TestDomain, 0.6, 90);
 
         db.Concepts.AddRange(embeddings, retrieval);
         await db.SaveChangesAsync();
@@ -48,10 +53,10 @@ public sealed class GraphPersistenceTests
 
         var slug = Slug("chunking");
 
-        db.Concepts.Add(Concept.Create(slug, "Chunking", "Splitting a corpus.", "ai-engineering", 0.3, 45));
+        db.Concepts.Add(Concept.Create(slug, "Chunking", "Splitting a corpus.", TestDomain, 0.3, 45));
         await db.SaveChangesAsync();
 
-        db.Concepts.Add(Concept.Create(slug, "Chunking (again)", "A duplicate.", "ai-engineering", 0.3, 45));
+        db.Concepts.Add(Concept.Create(slug, "Chunking (again)", "A duplicate.", TestDomain, 0.3, 45));
 
         var ex = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
 
@@ -65,8 +70,8 @@ public sealed class GraphPersistenceTests
         // would quietly overestimate the work and mis-order the route.
         await using var db = _graph.CreateContext();
 
-        var a = Concept.Create(Slug("a"), "A", "A.", "ai-engineering", 0.0, 30);
-        var b = Concept.Create(Slug("b"), "B", "B.", "ai-engineering", 0.0, 30);
+        var a = Concept.Create(Slug("a"), "A", "A.", TestDomain, 0.0, 30);
+        var b = Concept.Create(Slug("b"), "B", "B.", TestDomain, 0.0, 30);
 
         db.Concepts.AddRange(a, b);
         await db.SaveChangesAsync();
@@ -86,8 +91,8 @@ public sealed class GraphPersistenceTests
         // — and that is where the misconception lives.
         await using var db = _graph.CreateContext();
 
-        var precision = Concept.Create(Slug("precision"), "Precision", "Of retrieved, how many were right.", "ai-engineering", 0.1, 20);
-        var recall = Concept.Create(Slug("recall"), "Recall", "Of the right ones, how many were retrieved.", "ai-engineering", 0.1, 20);
+        var precision = Concept.Create(Slug("precision"), "Precision", "Of retrieved, how many were right.", TestDomain, 0.1, 20);
+        var recall = Concept.Create(Slug("recall"), "Recall", "Of the right ones, how many were retrieved.", TestDomain, 0.1, 20);
 
         db.Concepts.AddRange(precision, recall);
         await db.SaveChangesAsync();
@@ -109,7 +114,7 @@ public sealed class GraphPersistenceTests
     {
         await using var db = _graph.CreateContext();
 
-        var real = Concept.Create(Slug("real"), "Real", "Exists.", "ai-engineering", 0.0, 30);
+        var real = Concept.Create(Slug("real"), "Real", "Exists.", TestDomain, 0.0, 30);
         db.Concepts.Add(real);
         await db.SaveChangesAsync();
 
