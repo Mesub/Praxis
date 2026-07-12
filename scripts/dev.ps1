@@ -88,7 +88,7 @@ if (-not $healthy) {
     exit 1
 }
 
-Write-Host 'Postgres is healthy on localhost:5433.' -ForegroundColor Green
+Write-Host 'Postgres is healthy on localhost:5455.' -ForegroundColor Green
 
 if ($InfraOnly) {
     exit 0

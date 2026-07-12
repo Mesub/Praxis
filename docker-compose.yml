@@ -17,9 +17,11 @@ services:
       # Deterministic ordering, so a query's results don't depend on the host's locale.
       POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
     ports:
-      # 5433, not 5432 — other projects on this machine already own the default port.
-      # PRAXIS does not get to evict them.
-      - "5433:5432"
+      # 5455, well clear of the usual range. 5432 belongs to another project's container, and
+      # 5433 is already held by a native Windows PostgreSQL service — Docker will happily bind
+      # alongside it and then lose the race for incoming connections, which fails as a password
+      # error and sends you hunting for a credential bug that does not exist.
+      - "5455:5432"
     volumes:
       - praxis-pgdata:/var/lib/postgresql/data
       - ./scripts/db/init:/docker-entrypoint-initdb.d:ro

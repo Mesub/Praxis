@@ -39,9 +39,13 @@ If a change would make any of these easier to violate, it is wrong, regardless o
 Secrets live in `ai/.env` and `src/Praxis.Api/appsettings.Development.json` — both gitignored.
 Never commit a key. Never print a key.
 
-**Local Postgres runs on port 5433, not 5432.** Other projects on this machine already own the
-default port, and PRAXIS does not get to evict them.
-Connection string: `Host=localhost;Port=5433;Database=praxis;Username=praxis;Password=praxis_dev_only`
+**Local Postgres runs on port 5455.** Not 5432 (another project's container owns it) and not 5433
+(a native Windows PostgreSQL service is already listening there — Docker will bind alongside it
+and then lose the race for incoming connections, which surfaces as a *password* failure and sends
+you hunting for a credential bug that does not exist). Check a port is genuinely free before
+claiming it: `netstat -ano | Select-String ":<port>\s.*LISTENING"`.
+
+Connection string: `Host=localhost;Port=5455;Database=praxis;Username=praxis;Password=praxis_dev_only`
 
 Each engine owns a **schema** (`kernel`, `graph`, `twin`, `compiler`, `tutor`, `assessment`,
 `memory`, `reality`, `ledger`, `identity`), created in `scripts/db/init/01-extensions.sql`.

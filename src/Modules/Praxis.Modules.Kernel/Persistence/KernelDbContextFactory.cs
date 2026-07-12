@@ -10,7 +10,7 @@ public sealed class KernelDbContextFactory : IDesignTimeDbContextFactory<KernelD
     {
         var options = new DbContextOptionsBuilder<KernelDbContext>()
             .UseNpgsql(
-                "Host=localhost;Port=5433;Database=praxis;Username=praxis;Password=praxis_dev_only",
+                "Host=localhost;Port=5455;Database=praxis;Username=praxis;Password=praxis_dev_only",
                 npgsql => npgsql.MigrationsHistoryTable("__migrations", KernelDbContext.Schema))
             .Options;
 

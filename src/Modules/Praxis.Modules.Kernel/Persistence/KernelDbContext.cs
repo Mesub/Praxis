@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Praxis.Modules.Kernel.Domain;
+using Praxis.Modules.Kernel.Projections;
 
 namespace Praxis.Modules.Kernel.Persistence;
 
@@ -19,6 +20,10 @@ public sealed class KernelDbContext : DbContext
     public KernelDbContext(DbContextOptions<KernelDbContext> options) : base(options) { }
 
     public DbSet<LearningEvent> Events => Set<LearningEvent>();
+
+    /// How far each projection has read. The only mutable rows the kernel owns — and they hold
+    /// no knowledge, only bookmarks.
+    public DbSet<ProjectionCheckpoint> Checkpoints => Set<ProjectionCheckpoint>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -60,6 +65,17 @@ public sealed class KernelDbContext : DbContext
 
             // Decay and rep scheduling ask "what happened to this concept, and when".
             e.HasIndex(x => new { x.LearnerId, x.ConceptId, x.OccurredAt });
+        });
+
+        modelBuilder.Entity<ProjectionCheckpoint>(c =>
+        {
+            c.ToTable("projection_checkpoints", Schema);
+
+            c.HasKey(x => x.ProjectionName);
+            c.Property(x => x.ProjectionName).HasMaxLength(200);
+
+            c.Property(x => x.LastSequence).IsRequired();
+            c.Property(x => x.UpdatedAt).IsRequired();
         });
 
         base.OnModelCreating(modelBuilder);

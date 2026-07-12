@@ -63,6 +63,23 @@ namespace Praxis.Modules.Kernel.Persistence.Migrations
 
                     b.ToTable("learning_events", "kernel");
                 });
+
+            modelBuilder.Entity("Praxis.Modules.Kernel.Projections.ProjectionCheckpoint", b =>
+                {
+                    b.Property<string>("ProjectionName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<long>("LastSequence")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ProjectionName");
+
+                    b.ToTable("projection_checkpoints", "kernel");
+                });
 #pragma warning restore 612, 618
         }
     }

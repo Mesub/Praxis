@@ -1,5 +1,9 @@
+using Microsoft.EntityFrameworkCore;
 using Praxis.Infrastructure;
 using Praxis.Infrastructure.Web;
+using Praxis.Modules.Kernel;
+using Praxis.Modules.Kernel.Persistence;
+using Praxis.Modules.Kernel.Projections;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,9 +13,14 @@ builder.Host.UseSerilog((context, config) => config
     .Enrich.FromLogContext()
     .WriteTo.Console());
 
-// Engine assemblies get appended here as each one lands. Their slices — handlers and
-// validators — are then discovered by convention rather than registered by hand.
+var connectionString = builder.Configuration.GetConnectionString("Praxis")
+    ?? "Host=localhost;Port=5455;Database=praxis;Username=praxis;Password=praxis_dev_only";
+
+// Engine assemblies get appended here as each one lands. Their slices — handlers and validators —
+// are discovered by convention rather than registered by hand.
 builder.Services.AddPraxisInfrastructure(typeof(Program).Assembly);
+
+builder.Services.AddKernel(connectionString);
 
 builder.Services.AddControllers(options =>
 {
@@ -23,8 +32,43 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Expected failures came back as Results and were already mapped. Anything reaching here
-// is a bug or an infrastructure fault.
+// ── Operational commands ────────────────────────────────────────────────────
+//
+// `dotnet run -- --migrate`             apply pending migrations, then exit
+// `dotnet run -- --rebuild-projections` destroy every projection and recompute it from the log
+//
+// The rebuild is not a repair tool. It is the standing proof that the event log is the source of
+// truth: everything PRAXIS believes about a learner must be reachable by replaying history alone.
+// If it ever stops being runnable, some belief is being kept somewhere history cannot audit.
+
+if (args.Contains("--migrate", StringComparer.Ordinal))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<KernelDbContext>().Database.MigrateAsync();
+
+    Log.Information("Migrations applied.");
+    return;
+}
+
+if (args.Contains("--rebuild-projections", StringComparer.Ordinal))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var runner = scope.ServiceProvider.GetRequiredService<ProjectionRunner>();
+
+    var result = await runner.RebuildAsync();
+
+    Log.Information(
+        "Rebuilt {Count} projection(s) from {Events} event(s).",
+        result.ProjectionCount,
+        result.EventsApplied);
+
+    return;
+}
+
+// ── The request pipeline ────────────────────────────────────────────────────
+
+// Expected failures came back as Results and were already mapped. Anything reaching here is a bug
+// or an infrastructure fault.
 app.UseExceptionHandler();
 
 app.UseSerilogRequestLogging();

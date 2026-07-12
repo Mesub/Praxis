@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M1 — the event kernel
-**Last completed task:** M1.3 — the typed event catalogue. The "no completion button" refusal is now a test that provably fails. (37 tests)
+**Last completed task:** M1.4 — projections: checkpointed replay, rebuild-from-zero, and both CLI commands run for real (45 tests)
 
 ---
 
@@ -80,7 +80,7 @@ flowchart TB
 - [x] **M0.2** `Praxis.Shared`: `Result`/`Result<T>`, `ApiResponse<T>`, `ResultExtensions`, `BaseEntity`, `PagedResult<T>`, `IUserContext`. (Single-tenant for Phase 0 — no `ITenantContext` yet, but `BaseEntity` keeps the shape.)
       → All six, plus `IClock` (decay and scheduling make time the domain — it has to be fakeable). `Result<T>.Value` throws on a failure rather than handing back a null. 29 tests green.
 - [x] **M0.3** `docker-compose.yml`: PostgreSQL 17 + pgvector, one volume, one healthcheck. Nothing else.
-      → PG 17.10 up and healthy on **port 5433** (5432 was already taken by another project). `vector` + `pgcrypto` extensions verified live; the ten engine schemas exist; pgvector's distance operator returns the right answer.
+      → PG 17.10 up and healthy (originally port 5433; moved to **5455** in M1.4 — see there). `vector` + `pgcrypto` extensions verified live; the ten engine schemas exist; pgvector's distance operator returns the right answer.
 - [x] **M0.4** `Praxis.Api` host: Program.cs, DI, Scrutor handler scanning, FluentValidation filter, global exception handler, Serilog, `/health`.
       → All of it, driven through real HTTP by a probe slice living in the test assembly: valid input reaches the handler, invalid input never does, each `Result` status maps to its code, and a thrown bug becomes a 500 with a correlation id and **no stack trace in the body**. 35 tests green.
 - [x] **M0.5** `scripts/verify.ps1` — builds .NET, runs .NET tests, lints + tests Python, builds + lints web. **This is the gate every later task must pass.** Also `scripts/dev.ps1` to bring the whole stack up.
@@ -98,7 +98,9 @@ flowchart TB
       → The only door in and out of the log. Batch appends are atomic and single-learner. Optimistic concurrency: append with the last sequence you saw, and a writer working from a stale view of the stream gets `Conflict` instead of silently committing a conclusion drawn from history that has since moved. `ReadAllFromAsync` walks by keyset, not `OFFSET` — a rebuild reads the entire log, and `OFFSET` would make that quadratic. 19 tests green.
 - [x] **M1.3** The event catalogue as a closed discriminated set: `ConceptTaught`, `AnswerGiven`, `ExplanationRecorded`, `HintTaken`, `RepDue`, `RepAnswered`, `PredictionMade`, `PredictionResolved`, `ArtifactSubmitted`, `SessionStarted`, `SessionAbandoned`, `SessionCompleted`, `EvidenceAccepted`, `EvidenceRejected`. **There is no `ConceptCompleted`. There never will be.**
       → 16 typed payload records (plus `EvidenceAbstained` — abstention is a first-class output, R-1), a reflection-built catalogue that fails a test if any event lacks exactly one payload, and typed append so a payload cannot be filed under the wrong event type. **The refusal is now a test**: `No_event_can_declare_a_concept_finished` scans for Complete/Done/Mastered/Passed/… as whole words — proved it fires by adding `ConceptCompleted = 99` and watching two tests fail with the CANON citation, then reverted. 37 tests green.
-- [ ] **M1.4** Projection framework: `IProjection`, a checkpointed replay runner, and a `rebuild-projections` CLI command that drops every projection and replays the log from zero.
+- [x] **M1.4** Projection framework: `IProjection`, a checkpointed replay runner, and a `rebuild-projections` CLI command that drops every projection and replays the log from zero.
+      → `IProjection` + checkpoints + `ProjectionRunner` (catch-up and rebuild), and both CLI commands run for real: `dotnet run -- --migrate` and `dotnet run -- --rebuild-projections`. The checkpoint advances past events a projection ignores (or it re-reads the log's tail forever) and cannot move backwards. Rebuild resets, replays, and lands on byte-identical state. 45 tests.
+      **Port moved 5433 → 5455**: a native Windows PostgreSQL service was already listening on 5433, Docker bound alongside it, and connections lost the race — surfacing as a *password* error. Documented in `CLAUDE.md` so nobody hunts that ghost twice.
 - [ ] **M1.5** Identity module: `Learner`, register/login, JWT, `IUserContext` wired from the token. Deliberately minimal — this is not the interesting part.
 - [ ] **M1.6** Integration test: append 50 events → rebuild projections from zero → state is byte-identical. **If this test is ever red, the kernel is broken and nothing else matters.**
 

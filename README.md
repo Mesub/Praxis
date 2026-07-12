@@ -43,7 +43,7 @@ To stop, and optionally destroy the data:
 .\scripts\dev.ps1 -Down -Volumes   # ...and delete the event log. There is no undo.
 ```
 
-**Postgres listens on `localhost:5433`**, not the default 5432 — other projects on this machine
+**Postgres listens on `localhost:5455`**, not the default 5432 — other projects on this machine
 already own that port.
 
 ## Verify it
