@@ -5,6 +5,7 @@ using Praxis.Modules.Scheduler;
 using Praxis.Modules.Scheduler.Domain;
 using Praxis.Modules.Twin.Domain;
 using Praxis.Modules.Twin.Features.States;
+using Praxis.Modules.Memory.Domain;
 using Praxis.Modules.Twin.Learning;
 using Praxis.Modules.Twin.Persistence;
 using Praxis.Shared;

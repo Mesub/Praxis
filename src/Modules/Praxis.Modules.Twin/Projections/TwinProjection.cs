@@ -3,6 +3,7 @@ using Praxis.Modules.Kernel.Domain;
 using Praxis.Modules.Kernel.Events;
 using Praxis.Modules.Kernel.Projections;
 using Praxis.Modules.Twin.Domain;
+using Praxis.Modules.Memory.Domain;
 using Praxis.Modules.Twin.Learning;
 using Praxis.Modules.Twin.Persistence;
 using Praxis.Shared;
@@ -97,7 +98,7 @@ public sealed class TwinProjection : IProjection
         var calibration = Calibration.Observe(
             CalibrationOf(state), payload.StatedConfidence, payload.Correct);
 
-        var difficulty = Fsrs.UpdateDifficulty(state.Difficulty, payload.Correct);
+        var difficulty = Fsrs.NextDifficulty(state.Difficulty, Grading.Of(payload.Correct));
 
         Write(state, pKnows, calibration, difficulty, state.Stability, state.LastEvidenceAt, e.OccurredAt);
     }
@@ -112,9 +113,10 @@ public sealed class TwinProjection : IProjection
         var retrievability = Fsrs.Retrievability(state.Stability, elapsed);
 
         // The spacing effect: how hard it *was* to recall determines what recalling it was worth.
-        var stability = payload.Correct
-            ? Fsrs.StabilityAfterRecall(state.Stability, state.Difficulty, retrievability)
-            : Fsrs.StabilityAfterLapse(state.Stability, state.Difficulty);
+        // E7 owns this arithmetic; the Twin only stores what comes out of it.
+        var stability = Fsrs
+            .Next(new MemoryState(state.Stability, state.Difficulty), Grading.Of(payload.Correct), elapsed)
+            .Stability;
 
         var bkt = BktParameters.ForDifficulty(0.0);
         var pKnows = Bkt.Observe(Decayed(state, e.OccurredAt), payload.Correct, bkt);
@@ -122,7 +124,7 @@ public sealed class TwinProjection : IProjection
         var calibration = Calibration.Observe(
             CalibrationOf(state), payload.StatedConfidence, payload.Correct);
 
-        var difficulty = Fsrs.UpdateDifficulty(state.Difficulty, payload.Correct);
+        var difficulty = Fsrs.NextDifficulty(state.Difficulty, Grading.Of(payload.Correct));
 
         Write(state, pKnows, calibration, difficulty, stability, e.OccurredAt, e.OccurredAt);
     }
@@ -177,7 +179,7 @@ public sealed class TwinProjection : IProjection
         // schedule a rep for.
         var stability = state.Stability > 0
             ? state.Stability
-            : Fsrs.InitialStability(state.Difficulty);
+            : Fsrs.InitialStability(Grade.Good);
 
         state.Set(
             pKnows: pKnows,
@@ -186,7 +188,7 @@ public sealed class TwinProjection : IProjection
             stability: stability,
             difficulty: state.Difficulty,
             lastEvidenceAt: e.OccurredAt,
-            nextDueAt: e.OccurredAt.AddDays(Fsrs.DaysUntil(stability, TargetRetention)),
+            nextDueAt: e.OccurredAt.AddDays(Fsrs.Interval(stability, TargetRetention)),
             meanStatedConfidence: state.MeanStatedConfidence,
             meanCorrectness: state.MeanCorrectness,
             brierScore: state.BrierScore,
@@ -275,7 +277,7 @@ public sealed class TwinProjection : IProjection
         DateTime occurredAt)
     {
         var due = stability > 0
-            ? occurredAt.AddDays(Fsrs.DaysUntil(stability, TargetRetention))
+            ? occurredAt.AddDays(Fsrs.Interval(stability, TargetRetention))
             : state.NextDueAt;
 
         state.Set(

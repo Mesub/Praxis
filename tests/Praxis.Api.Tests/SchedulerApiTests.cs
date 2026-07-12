@@ -12,6 +12,7 @@ using Praxis.Modules.Kernel.Projections;
 using Praxis.Modules.Twin.Learning;
 using Praxis.Modules.Twin.Persistence;
 using Praxis.Shared;
+using Praxis.Modules.Memory.Domain;
 
 namespace Praxis.Api.Tests;
 
@@ -310,7 +311,7 @@ public sealed class SchedulerApiTests : IAsyncLifetime
     /// Derived from the curve, not guessed at. If the FSRS constants ever change, these tests move
     /// with them instead of quietly starting to prove something else.
     private DateTime DaysAgoForRetrievability(double retrievability)
-        => DateTime.UtcNow.AddDays(-Fsrs.DaysUntil(_stability, retrievability));
+        => DateTime.UtcNow.AddDays(-Fsrs.Interval(_stability, retrievability));
 
     /// What one clean APPLY is actually worth, read back out of the real Twin. Assuming it would be
     /// hardcoding the model into the test of the model.

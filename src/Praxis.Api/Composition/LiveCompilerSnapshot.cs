@@ -5,6 +5,7 @@ using Praxis.Modules.Graph.Domain;
 using Praxis.Modules.Graph.Persistence;
 using Praxis.Modules.Graph.Queries;
 using Praxis.Modules.Twin.Domain;
+using Praxis.Modules.Memory.Domain;
 using Praxis.Modules.Twin.Learning;
 using Praxis.Modules.Twin.Persistence;
 using Praxis.Shared;

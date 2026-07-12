@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Praxis.Modules.Memory.Domain;
 using Praxis.Modules.Twin.Learning;
 using Praxis.Modules.Twin.Persistence;
 using Praxis.Shared;
