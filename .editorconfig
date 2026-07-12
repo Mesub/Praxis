@@ -25,6 +25,12 @@ dotnet_diagnostic.CA1716.severity = none
 # of the type. The rule's concern — that callers must name the type argument — is what we want.
 dotnet_diagnostic.CA1000.severity = none
 
+[**/*Controller.cs]
+# CA1822: a controller action that touches no instance state can be static. Ours never touch
+# instance state — that IS the pattern (bind, resolve the handler, map the Result). MVC requires
+# them to be instance methods anyway.
+dotnet_diagnostic.CA1822.severity = none
+
 [**/Migrations/*.cs]
 # EF scaffolds these. We hand-edit only the Sql() blocks; the rest is generated, and holding
 # generated code to hand-written style rules just means editing it back after every scaffold.

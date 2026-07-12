@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M1 — the event kernel
-**Last completed task:** M1.4 — projections: checkpointed replay, rebuild-from-zero, and both CLI commands run for real (45 tests)
+**Last completed task:** M1.5 — identity: register, login, JWT, and the host reads the learner off the token (21 tests)
 
 ---
 
@@ -101,7 +101,8 @@ flowchart TB
 - [x] **M1.4** Projection framework: `IProjection`, a checkpointed replay runner, and a `rebuild-projections` CLI command that drops every projection and replays the log from zero.
       → `IProjection` + checkpoints + `ProjectionRunner` (catch-up and rebuild), and both CLI commands run for real: `dotnet run -- --migrate` and `dotnet run -- --rebuild-projections`. The checkpoint advances past events a projection ignores (or it re-reads the log's tail forever) and cannot move backwards. Rebuild resets, replays, and lands on byte-identical state. 45 tests.
       **Port moved 5433 → 5455**: a native Windows PostgreSQL service was already listening on 5433, Docker bound alongside it, and connections lost the race — surfacing as a *password* error. Documented in `CLAUDE.md` so nobody hunts that ghost twice.
-- [ ] **M1.5** Identity module: `Learner`, register/login, JWT, `IUserContext` wired from the token. Deliberately minimal — this is not the interesting part.
+- [x] **M1.5** Identity module: `Learner`, register/login, JWT, `IUserContext` wired from the token. Deliberately minimal — this is not the interesting part.
+      → Register, login, `/me`, JWT, PBKDF2 hashing (framework's, not homemade; old hashes upgrade on next login). Wrong-password and unknown-email are refused **identically**, so the endpoint can't be used to enumerate who has an account. A missing or under-32-byte signing key throws at startup — HS256 signs with a 4-byte key without complaining. `Learner` is deliberately thin: PRAXIS holds the most intimate model of this person anyone has built, and **none of it lives here** — it lives in the Twin, derived from their evidence, and it is theirs. 21 tests (9 module + 12 API, incl. register → token → authenticated call over real HTTP).
 - [ ] **M1.6** Integration test: append 50 events → rebuild projections from zero → state is byte-identical. **If this test is ever red, the kernel is broken and nothing else matters.**
 
 ## M2 — E2 Graph

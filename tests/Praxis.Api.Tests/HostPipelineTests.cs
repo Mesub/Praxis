@@ -11,13 +11,14 @@ namespace Praxis.Api.Tests;
 ///   - invalid input never reaches a handler
 ///   - a Result comes back in the standard envelope, with the right status code
 ///   - a bug becomes a 500 with a correlation id, and never leaks a stack trace
-public sealed class HostPipelineTests : IClassFixture<PraxisApiFactory>
+[Collection(SharedApi.Name)]
+public sealed class HostPipelineTests
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private readonly PraxisApiFactory _factory;
 
-    public HostPipelineTests(PraxisApiFactory factory) => _factory = factory;
+    public HostPipelineTests(ApiFixture api) => _factory = api.Factory;
 
     [Fact]
     public async Task Health_reports_ok()

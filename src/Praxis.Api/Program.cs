@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Praxis.Infrastructure;
 using Praxis.Infrastructure.Web;
+using Praxis.Modules.Identity;
+using Praxis.Modules.Identity.Auth;
+using Praxis.Modules.Identity.Persistence;
 using Praxis.Modules.Kernel;
 using Praxis.Modules.Kernel.Persistence;
 using Praxis.Modules.Kernel.Projections;
@@ -18,9 +21,14 @@ var connectionString = builder.Configuration.GetConnectionString("Praxis")
 
 // Engine assemblies get appended here as each one lands. Their slices — handlers and validators —
 // are discovered by convention rather than registered by hand.
-builder.Services.AddPraxisInfrastructure(typeof(Program).Assembly);
+builder.Services.AddPraxisInfrastructure(
+    typeof(Program).Assembly,
+    typeof(IdentityModule).Assembly);
 
 builder.Services.AddKernel(connectionString);
+
+var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+builder.Services.AddIdentityModule(connectionString, jwt);
 
 builder.Services.AddControllers(options =>
 {
@@ -44,7 +52,9 @@ var app = builder.Build();
 if (args.Contains("--migrate", StringComparer.Ordinal))
 {
     await using var scope = app.Services.CreateAsyncScope();
+
     await scope.ServiceProvider.GetRequiredService<KernelDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
 
     Log.Information("Migrations applied.");
     return;
@@ -72,6 +82,9 @@ if (args.Contains("--rebuild-projections", StringComparer.Ordinal))
 app.UseExceptionHandler();
 
 app.UseSerilogRequestLogging();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
