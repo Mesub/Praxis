@@ -8,8 +8,8 @@
 
 ## Status
 
-**Current milestone:** M1 — the event kernel
-**Last completed task:** M1.5 — identity: register, login, JWT, and the host reads the learner off the token (21 tests)
+**Current milestone:** M2 — the Graph (E2)
+**Last completed task:** M1.6 — rebuild-from-zero is byte-identical, and erases beliefs history does not support. **M1 complete.**
 
 ---
 
@@ -103,7 +103,10 @@ flowchart TB
       **Port moved 5433 → 5455**: a native Windows PostgreSQL service was already listening on 5433, Docker bound alongside it, and connections lost the race — surfacing as a *password* error. Documented in `CLAUDE.md` so nobody hunts that ghost twice.
 - [x] **M1.5** Identity module: `Learner`, register/login, JWT, `IUserContext` wired from the token. Deliberately minimal — this is not the interesting part.
       → Register, login, `/me`, JWT, PBKDF2 hashing (framework's, not homemade; old hashes upgrade on next login). Wrong-password and unknown-email are refused **identically**, so the endpoint can't be used to enumerate who has an account. A missing or under-32-byte signing key throws at startup — HS256 signs with a 4-byte key without complaining. `Learner` is deliberately thin: PRAXIS holds the most intimate model of this person anyone has built, and **none of it lives here** — it lives in the Twin, derived from their evidence, and it is theirs. 21 tests (9 module + 12 API, incl. register → token → authenticated call over real HTTP).
-- [ ] **M1.6** Integration test: append 50 events → rebuild projections from zero → state is byte-identical. **If this test is ever red, the kernel is broken and nothing else matters.**
+- [x] **M1.6** Integration test: append 50 events → rebuild projections from zero → state is byte-identical. **If this test is ever red, the kernel is broken and nothing else matters.**
+      → Against a **database-backed** projection, not an in-memory one — a rebuild has to have something real to destroy. A learner's fortnight (50 events: sessions, teaching, hints, wrong answers, misconceptions, and only sometimes evidence that counts) → catch up → rebuild → byte-identical. Plus: **a rebuild erases a belief history does not support** (forge "mastered" straight into the table; the rebuild deletes it — the log is the only thing that gets to decide what is true), rebuilding twice equals rebuilding once, and the 50 events survive intact. Proved the tests bite by commenting out `ResetAsync` — 3 of 4 went red immediately.
+
+**M1 complete.** The kernel holds: history cannot be edited, beliefs are derived from it and nothing else, and both can be proved at any time by throwing the derived state away.
 
 ## M2 — E2 Graph
 
