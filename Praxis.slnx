@@ -5,6 +5,7 @@
     <Project Path="src/Praxis.Shared/Praxis.Shared.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Praxis.Api.Tests/Praxis.Api.Tests.csproj" />
     <Project Path="tests/Praxis.Shared.Tests/Praxis.Shared.Tests.csproj" />
   </Folder>
 </Solution>

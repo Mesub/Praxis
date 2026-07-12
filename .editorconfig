@@ -29,3 +29,7 @@ dotnet_diagnostic.CA1000.severity = none
 # Test names are sentences. `Explain_evidence_can_never_cross_the_hold_threshold` is the
 # point of the test; PascalCase would bury it.
 dotnet_diagnostic.CA1707.severity = none
+
+# CA1822: controller actions are instance methods by convention, even when they touch no
+# instance state — which, given thin controllers, is always.
+dotnet_diagnostic.CA1822.severity = none
