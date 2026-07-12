@@ -8,12 +8,14 @@
     <Project Path="src/Modules/Praxis.Modules.Graph/Praxis.Modules.Graph.csproj" />
     <Project Path="src/Modules/Praxis.Modules.Identity/Praxis.Modules.Identity.csproj" />
     <Project Path="src/Modules/Praxis.Modules.Kernel/Praxis.Modules.Kernel.csproj" />
+    <Project Path="src/Modules/Praxis.Modules.Twin/Praxis.Modules.Twin.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Praxis.Api.Tests/Praxis.Api.Tests.csproj" />
     <Project Path="tests/Praxis.Modules.Graph.Tests/Praxis.Modules.Graph.Tests.csproj" />
     <Project Path="tests/Praxis.Modules.Identity.Tests/Praxis.Modules.Identity.Tests.csproj" />
     <Project Path="tests/Praxis.Modules.Kernel.Tests/Praxis.Modules.Kernel.Tests.csproj" />
+    <Project Path="tests/Praxis.Modules.Twin.Tests/Praxis.Modules.Twin.Tests.csproj" />
     <Project Path="tests/Praxis.Shared.Tests/Praxis.Shared.Tests.csproj" />
   </Folder>
 </Solution>

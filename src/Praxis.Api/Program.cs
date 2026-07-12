@@ -7,6 +7,8 @@ using Praxis.Modules.Identity;
 using Praxis.Modules.Identity.Auth;
 using Praxis.Modules.Identity.Persistence;
 using Praxis.Modules.Kernel;
+using Praxis.Modules.Twin;
+using Praxis.Modules.Twin.Persistence;
 using Praxis.Modules.Kernel.Persistence;
 using Praxis.Modules.Kernel.Projections;
 using Serilog;
@@ -30,6 +32,7 @@ builder.Services.AddPraxisInfrastructure(
 
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
+builder.Services.AddTwin(connectionString);
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 builder.Services.AddIdentityModule(connectionString, jwt);
@@ -60,6 +63,7 @@ if (args.Contains("--migrate", StringComparer.Ordinal))
     await scope.ServiceProvider.GetRequiredService<KernelDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<GraphDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<TwinDbContext>().Database.MigrateAsync();
 
     Log.Information("Migrations applied.");
     return;

@@ -14,6 +14,7 @@
     <ProjectReference Include="..\Modules\Praxis.Modules.Kernel\Praxis.Modules.Kernel.csproj" />
     <ProjectReference Include="..\Modules\Praxis.Modules.Identity\Praxis.Modules.Identity.csproj" />
     <ProjectReference Include="..\Modules\Praxis.Modules.Graph\Praxis.Modules.Graph.csproj" />
+    <ProjectReference Include="..\Modules\Praxis.Modules.Twin\Praxis.Modules.Twin.csproj" />
   </ItemGroup>
 
 </Project>
