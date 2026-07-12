@@ -62,7 +62,7 @@ public static class ConceptMappings
         return new ProofResponse(
             contract.HoldThreshold,
             [.. contract.Accepted.Select(a => new EvidenceClauseResponse(
-                a.Type, a.MinScore, a.MaxContribution, a.RequiredCount, a.Type.IsModelGraded()))],
+                a.Type, a.MinScore, a.MaxContribution, a.RequiredCount, a.Type.IsCeilingBound()))],
             contract.ModelGradedCeiling);
     }
 }

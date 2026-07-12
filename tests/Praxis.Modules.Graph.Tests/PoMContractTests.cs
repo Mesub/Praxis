@@ -233,9 +233,9 @@ public sealed class PoMContractTests
         Assert.Contains(EvidenceType.Build, EvidenceTypes.CanCrossTheHoldThreshold);
         Assert.Contains(EvidenceType.Predict, EvidenceTypes.CanCrossTheHoldThreshold);
 
-        Assert.True(EvidenceType.Explain.IsModelGraded());
-        Assert.True(EvidenceType.Recall.IsModelGraded());
-        Assert.True(EvidenceType.Critique.IsModelGraded());
-        Assert.False(EvidenceType.Build.IsModelGraded());
+        Assert.True(EvidenceType.Explain.IsCeilingBound());
+        Assert.True(EvidenceType.Recall.IsCeilingBound());
+        Assert.True(EvidenceType.Critique.IsCeilingBound());
+        Assert.False(EvidenceType.Build.IsCeilingBound());
     }
 }

@@ -64,7 +64,7 @@ public sealed class SeedPackTests
         Assert.Equal(0.90, target.Proof.Hold);
 
         var modelGraded = target.Proof.Evidence
-            .Where(e => e.Type.IsModelGraded())
+            .Where(e => e.Type.IsCeilingBound())
             .Sum(e => e.Max);
 
         Assert.True(modelGraded < target.Proof.Hold);

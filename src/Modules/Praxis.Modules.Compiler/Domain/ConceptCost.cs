@@ -78,7 +78,7 @@ public static class ConceptCost
         // Only the unfakeable clauses drive the cost. Explaining is cheap and, by the Floor, never
         // sufficient — so it cannot be the thing that makes a concept expensive.
         var required = contract.Clauses
-            .Where(c => !c.Type.IsModelGraded())
+            .Where(c => !c.Type.IsCeilingBound())
             .Sum(c => WeightOf(c.Type) * c.RequiredCount);
 
         // A high hold threshold means more of the work has to actually land.

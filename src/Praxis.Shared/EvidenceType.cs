@@ -46,8 +46,38 @@ public static class EvidenceTypes
             EvidenceType.Predict,
         };
 
-    /// Evidence whose verdict comes from a language model's judgement, and which therefore
-    /// inherits every one of that model's failure modes.
-    public static bool IsModelGraded(this EvidenceType type)
+    /// **Evidence that can never confer mastery on its own** — the other side of the ceiling.
+    ///
+    /// ## This used to be called `IsModelGraded`, and that name was a lie waiting to be believed
+    ///
+    /// The *behaviour* was always right: `RECALL`, `EXPLAIN` and `CRITIQUE` are ceiling-bound. But
+    /// the **name** claimed they are all graded by a language model, and `RECALL` is not — it is
+    /// graded by an **exact key match**, deterministically, with no model involved anywhere.
+    ///
+    /// That is not a cosmetic problem. It is a trap. Sooner or later somebody reads
+    /// `IsModelGraded(Recall) == true`, checks how recall is actually marked, finds a string
+    /// comparison, and concludes — **correctly, on the evidence in front of them** — that the code
+    /// is wrong. They change it to `false`. And in that instant `RECALL` becomes ceiling-free, and
+    /// a learner can reach mastery by remembering things, which is the one thing CANON says a search
+    /// engine can also do.
+    ///
+    /// **A well-meaning refactor would have gutted C-4**, and every test would still have passed,
+    /// because the tests asserted the old lie.
+    ///
+    /// ## The two properties are orthogonal, and they must stay that way
+    ///
+    /// *How* evidence is graded (`GradingPath`) and *whether it can confer mastery* (this) are
+    /// different questions with different answers:
+    ///
+    /// * `RECALL` — deterministically graded, **and still cannot confer mastery**, because it is
+    ///   fakeable by *looking it up*, not by fooling a grader.
+    /// * `EXPLAIN`, `CRITIQUE` — model-graded, and cannot confer mastery because a model's opinion
+    ///   is exactly what C-4 refuses to trust.
+    /// * `APPLY`, `BUILD`, `PREDICT` — can confer mastery, because each is checked by something a
+    ///   model cannot talk its way past: a never-seen problem, a test suite, or reality itself.
+    ///
+    /// Conflating them is how *"well, RECALL is deterministic, so surely it counts"* eventually gets
+    /// said out loud in a planning meeting.
+    public static bool IsCeilingBound(this EvidenceType type)
         => !CanCrossTheHoldThreshold.Contains(type);
 }

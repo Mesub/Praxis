@@ -15,14 +15,14 @@ public sealed record MasteryContract(
     /// **Always strictly below `HoldThreshold`.** That is the Evidence Ceiling (CANON C-4), and it
     /// is the reason a hallucinating grader can inflate belief but never manufacture mastery.
     public double ModelGradedCeiling
-        => Clauses.Where(c => c.Type.IsModelGraded()).Sum(c => c.MaxContribution);
+        => Clauses.Where(c => c.Type.IsCeilingBound()).Sum(c => c.MaxContribution);
 
     /// The most that evidence a model *cannot* fake could contribute.
     ///
     /// **Always at or above `HoldThreshold`.** That is the Floor: a learner who does every piece of
     /// real work the concept asks for must be able to hold it without any rubric's blessing.
     public double UnfakeableCeiling
-        => Clauses.Where(c => !c.Type.IsModelGraded()).Sum(c => c.MaxContribution);
+        => Clauses.Where(c => !c.Type.IsCeilingBound()).Sum(c => c.MaxContribution);
 
     public EvidenceClause? ClauseFor(EvidenceType type)
         => Clauses.FirstOrDefault(c => c.Type == type);

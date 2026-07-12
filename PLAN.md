@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M7 — E6 Assessment
-**Last completed task:** M6.5b — streaming. **M6 is complete.** A stream has no schema, so every structural guarantee stops applying — the whole jailbreak corpus was re-run against it, character by character, and every gate now fires before a single byte leaves. (188 AI + 109 .NET tests)
+**Last completed task:** M7.1 — the six evidence types as a real table. **Found and defused a latent catastrophe**: `IsModelGraded` was a lie about RECALL that a well-meaning refactor would have believed, gutting C-4 with every test still green. (14 tests; 556 .NET + 188 AI total)
 
 **⚠️ Open blocker (M13/launch):** two independent experts must double-grade a real golden set. Until then PRAXIS makes **no claim** that its grader marks like an expert.
 
@@ -260,7 +260,11 @@ flowchart TB
 
 ## M7 — E6 Assessment
 
-- [ ] **M7.1** The six evidence types as first-class domain: `RECALL`, `APPLY`, `EXPLAIN`, `BUILD`, `CRITIQUE`, `PREDICT`. Each with its own intake, grading path, and MC weight.
+- [x] **M7.1** The six evidence types as first-class domain: `RECALL`, `APPLY`, `EXPLAIN`, `BUILD`, `CRITIQUE`, `PREDICT`. Each with its own intake, grading path, and MC weight.
+      → One readable table (CANON §1): what each proves, how it is produced, how it is graded, its **weight** `w` (the six sum to exactly **1.00** — a set that does not produces a score that means nothing and still looks like a number), its **update gain** `κ` (*not* the same number: BUILD is worth 0.25 of a concept but moves belief by **1.40**, because one build that ran tells you a great deal *right now*; RECALL's gain of 0.35 means twenty correct recalls should still leave you genuinely unsure), and — honestly stated — **how it gets gamed and what actually stops it**.
+      **RECALL is deliberately the weakest, and the reason is one sentence: it is the only one of the six a *search engine* can also do.** A product that weights recall highly is not measuring a person; it is measuring their access to a lookup. Its defence is not a clever countermeasure — it is *"we simply don't weight it much"*. **Design-level immunity**: there is nothing to gain by cheating at the thing worth the least. And **PREDICT cannot be cheated at all**, because *the answer does not exist yet* — no key to leak, no bank to share, no model to ask. **You cannot Google next Thursday.**
+      **⚠️ Found a latent catastrophe in code I shipped at M0.** `Praxis.Shared` had `IsModelGraded(type) => !CanCrossTheHoldThreshold.Contains(type)`. The *behaviour* was right everywhere — but the **name was a lie**: it claimed RECALL is model-graded, and RECALL is graded by an **exact key match**, deterministically, with no model anywhere. That is a trap, not a typo. Sooner or later someone reads `IsModelGraded(Recall) == true`, checks how recall is actually marked, finds a string comparison, and concludes — **correctly, on the evidence in front of them** — that the code is broken. They "fix" it to `false`. **RECALL becomes ceiling-free, a learner reaches mastery by remembering things, and every test still passes**, because the tests asserted the same lie.
+      Renamed to `IsCeilingBound`, and **separated the two orthogonal properties**: *how it is graded* (`GradingPath`: KeyMatch · Rubric · Execution · Reality — a language model touches only **two of the six**) and *whether it can confer mastery* (C-4). RECALL is **deterministically graded and still ceiling-bound**, because it is fakeable by *looking it up*, not by fooling a grader — different attacks, different defences. Conflating them is how *"well, RECALL is deterministic, so surely it counts"* eventually gets said out loud in a planning meeting. Performed the refactor to prove it: **8 tests failed across three modules**. 14 tests.
 - [ ] **M7.2** **Adaptive diagnostic (IRT)**: 2PL model, seeded from an LLM difficulty prior, converging after ~200 responses. 12 minutes, and it produces a rich Twin on day one — this is the cold-start weapon (R-7).
 - [ ] **M7.3** The **"here's what you think you know but don't"** result screen — confidence vs. competence, per concept. The wow moment with zero accumulated data.
 - [ ] **M7.4** **Failure-seeking item selection** (I-6): hunt the boundary of knowledge, not the comfortable middle.

@@ -80,11 +80,11 @@ public static class MasteryCredit
         }
 
         var fromModelGraded = creditByType
-            .Where(kv => kv.Key.IsModelGraded())
+            .Where(kv => kv.Key.IsCeilingBound())
             .Sum(kv => kv.Value);
 
         var fromUnfakeable = creditByType
-            .Where(kv => !kv.Key.IsModelGraded())
+            .Where(kv => !kv.Key.IsCeilingBound())
             .Sum(kv => kv.Value);
 
         // ── THE CEILING ──────────────────────────────────────────────────────

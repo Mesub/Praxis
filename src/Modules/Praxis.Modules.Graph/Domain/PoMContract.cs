@@ -92,7 +92,7 @@ public sealed class PoMContract : BaseEntity
         if (unfakeableCeiling < holdThreshold)
         {
             throw new ArgumentException(
-                $"Evidence a model cannot fake ({string.Join(", ", accepted.Where(a => !a.Type.IsModelGraded()).Select(a => a.Type))}) "
+                $"Evidence a model cannot fake ({string.Join(", ", accepted.Where(a => !a.Type.IsCeilingBound()).Select(a => a.Type))}) "
                 + $"tops out at {unfakeableCeiling:F2}, below the hold threshold of {holdThreshold:F2}. "
                 + "So a learner who did every piece of real work this concept asks for would still "
                 + "need a rubric's opinion to be recorded as holding it. Real work must be enough. "
@@ -103,13 +103,13 @@ public sealed class PoMContract : BaseEntity
         // THE CEILING. If every model-graded rubric returned a perfect score, forever, the learner
         // must still fall short of holding this concept.
         var modelGradedCeiling = accepted
-            .Where(a => a.Type.IsModelGraded())
+            .Where(a => a.Type.IsCeilingBound())
             .Sum(a => a.MaxContribution);
 
         if (modelGradedCeiling >= holdThreshold)
         {
             throw new ArgumentException(
-                $"Model-graded evidence ({string.Join(", ", accepted.Where(a => a.Type.IsModelGraded()).Select(a => a.Type))}) "
+                $"Model-graded evidence ({string.Join(", ", accepted.Where(a => a.Type.IsCeilingBound()).Select(a => a.Type))}) "
                 + $"can contribute up to {modelGradedCeiling:F2}, which reaches the hold threshold "
                 + $"of {holdThreshold:F2}. That means a learner could be recorded as holding this "
                 + "concept on the strength of a language model's opinion alone — and a "
@@ -132,7 +132,7 @@ public sealed class PoMContract : BaseEntity
     /// The most mastery this contract could ever grant from evidence a model grades. Always
     /// strictly below <see cref="HoldThreshold"/> — that is the whole point.
     public double ModelGradedCeiling
-        => _accepted.Where(a => a.Type.IsModelGraded()).Sum(a => a.MaxContribution);
+        => _accepted.Where(a => a.Type.IsCeilingBound()).Sum(a => a.MaxContribution);
 
     public bool Accepts(EvidenceType type) => _accepted.Any(a => a.Type == type);
 
