@@ -70,6 +70,92 @@ public static class LedgerMerkle
         return Convert.ToHexStringLower(level[0]);
     }
 
+    /// **An inclusion proof: the handful of sibling hashes that prove one leaf is under the root**,
+    /// without revealing any of the other leaves.
+    ///
+    /// This is what makes a Verifiable Competency Record *selective* — a learner can prove *"this one
+    /// competency is in the ledger PRAXIS signed"* while showing nobody the rest of their record. The
+    /// verifier walks the proof up from the leaf, and if it arrives at the published root, the leaf was
+    /// there. Nothing about the other `count − 1` records leaks, and nothing can be forged into it.
+    public static MerkleProof Proof(IReadOnlyList<string> leafHashes, int index)
+    {
+        ArgumentNullException.ThrowIfNull(leafHashes);
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, leafHashes.Count);
+
+        var level = leafHashes.Select(LeafHash).ToList();
+        var position = index;
+        var steps = new List<ProofStep>();
+
+        while (level.Count > 1)
+        {
+            // The sibling is the other half of this pair. An odd node out is paired with itself (the
+            // same duplication convention the tree is built with, so proofs and roots agree).
+            var siblingOnRight = position % 2 == 0;
+            var siblingIndex = siblingOnRight ? position + 1 : position - 1;
+
+            if (siblingIndex >= level.Count)
+            {
+                siblingIndex = position;   // the duplicated last node
+            }
+
+            steps.Add(new ProofStep(Convert.ToHexStringLower(level[siblingIndex]), siblingOnRight));
+
+            var next = new List<byte[]>((level.Count + 1) / 2);
+
+            for (var i = 0; i < level.Count; i += 2)
+            {
+                var right = i + 1 < level.Count ? level[i + 1] : level[i];
+                next.Add(InteriorHash(level[i], right));
+            }
+
+            level = next;
+            position /= 2;
+        }
+
+        return new MerkleProof(steps);
+    }
+
+    /// **Verify an inclusion proof against a root** — the whole of what a public verifier does for one
+    /// record. Recompute the leaf hash, fold the siblings in, and check we reach the root.
+    public static bool VerifyProof(string leafHash, MerkleProof proof, string expectedRoot)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(leafHash);
+        ArgumentNullException.ThrowIfNull(proof);
+        ArgumentException.ThrowIfNullOrEmpty(expectedRoot);
+
+        byte[] running;
+
+        try
+        {
+            running = LeafHash(leafHash);
+        }
+        catch (FormatException)
+        {
+            return false;   // not even a valid hex hash — never verifies, never throws
+        }
+
+        foreach (var step in proof.Steps)
+        {
+            byte[] sibling;
+
+            try
+            {
+                sibling = Convert.FromHexString(step.SiblingHash);
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+
+            running = step.SiblingOnRight
+                ? InteriorHash(running, sibling)
+                : InteriorHash(sibling, running);
+        }
+
+        return string.Equals(Convert.ToHexStringLower(running), expectedRoot, StringComparison.Ordinal);
+    }
+
     internal static byte[] LeafHash(string hexHash)
     {
         var bytes = Convert.FromHexString(hexHash);
@@ -80,6 +166,13 @@ public static class LedgerMerkle
     internal static byte[] InteriorHash(byte[] left, byte[] right)
         => SHA256.HashData([0x01, .. left, .. right]);
 }
+
+/// A path from a leaf to the root: the sibling at each level, and which side it sits on.
+public sealed record MerkleProof(IReadOnlyList<ProofStep> Steps);
+
+/// One sibling on the way up. `SiblingOnRight` says whether it hashes to the *right* of the running
+/// value — getting that order wrong would compute a different, wrong root, so it is carried explicitly.
+public sealed record ProofStep(string SiblingHash, bool SiblingOnRight);
 
 /// A signed, published commitment to a ledger at a point in time: the head hash the signature covers,
 /// the Merkle root over every record, the record count, and the signature itself.
