@@ -1,0 +1,55 @@
+{
+  "rubric_id": "rub.sr.explain.v2",
+  "concept_id": "support-resistance",
+
+  "double_graded": false,
+  "_double_graded_why": [
+    "FALSE, and it must stay false until it is genuinely true.",
+    "",
+    "These bands were authored once, from the worked examples in docs/12 §5.2. They have NOT been",
+    "marked independently by two experts, and they therefore measure agreement with one opinion.",
+    "",
+    "Setting this flag to true without doing the double-grading would not be a shortcut. It would be",
+    "PRAXIS certifying its own grader against its own homework, and then printing a number that",
+    "looks exactly like a real one. The harness refuses to certify this set, and that refusal is the",
+    "harness working, not a bug to route around.",
+    "",
+    "To certify: two independent expert raters band every response below, an adjudicator resolves",
+    "the disagreements, and their names go in `raters`. Then, and only then, this flag becomes true."
+  ],
+
+  "responses": [
+    {
+      "id": "sr-001",
+      "response": "Support is a price area where enough resting buy orders exist to absorb the sells arriving — not a barrier, a budget. It holds only while that pile is being refilled faster than it's spent, and the refilling depends entirely on why people want it there — so a level with no reason behind it anymore breaks on the touch that finally empties it.",
+      "raters": {
+        "canon-doc-12": { "mechanism": 4, "invalidation": 4 }
+      },
+      "adjudicated": { "mechanism": 4, "invalidation": 4 }
+    },
+    {
+      "id": "sr-002",
+      "response": "Support is a level where the price stops going down and bounces back up. It's an important level for traders to watch. If it breaks, it can become resistance.",
+      "raters": {
+        "canon-doc-12": { "mechanism": 2, "invalidation": 2 }
+      },
+      "adjudicated": { "mechanism": 2, "invalidation": 2 }
+    },
+    {
+      "id": "sr-003",
+      "response": "Support is the floor. The stock can't fall below it. The more times it touches, the stronger it gets.",
+      "raters": {
+        "canon-doc-12": { "mechanism": 0, "invalidation": 0 }
+      },
+      "adjudicated": { "mechanism": 0, "invalidation": 0 }
+    },
+    {
+      "id": "sr-004",
+      "response": "There are more buyers than sellers around that price, so demand outweighs supply and the price tends to turn. I'd consider it broken if it closes below on decent volume.",
+      "raters": {
+        "canon-doc-12": { "mechanism": 3, "invalidation": 3 }
+      },
+      "adjudicated": { "mechanism": 3, "invalidation": 3 }
+    }
+  ]
+}
