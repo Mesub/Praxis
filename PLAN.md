@@ -8,8 +8,8 @@
 
 ## Status
 
-**Current milestone:** M0
-**Last completed task:** M0.5 — `scripts/verify.ps1`, the gate. Proven to fail on a broken build.
+**Current milestone:** M1 — the event kernel
+**Last completed task:** M0.6 — README, verified by cold-starting the whole stack from an empty volume. **M0 is complete.**
 
 ---
 
@@ -85,7 +85,10 @@ flowchart TB
       → All of it, driven through real HTTP by a probe slice living in the test assembly: valid input reaches the handler, invalid input never does, each `Result` status maps to its code, and a thrown bug becomes a 500 with a correlation id and **no stack trace in the body**. 35 tests green.
 - [x] **M0.5** `scripts/verify.ps1` — builds .NET, runs .NET tests, lints + tests Python, builds + lints web. **This is the gate every later task must pass.** Also `scripts/dev.ps1` to bring the whole stack up.
       → Both written. Stacks that don't exist yet report **SKIP, by name** — and the verdict says *"a skip is not a pass"*, because a gate that quietly reports success for work it never ran is worse than no gate. Proved it fails: broke the build on purpose, and it caught it, refused to run tests against a broken build, and exited 1.
-- [ ] **M0.6** `README.md`: how to run it from a cold clone in under five minutes.
+- [x] **M0.6** `README.md`: how to run it from a cold clone in under five minutes.
+      → Written, and every command in it actually run: destroyed the volume, cold-started from empty, and confirmed the fresh database initialised itself (2 extensions, 10 engine schemas). Found and fixed two bugs in `dev.ps1` doing so — the same PS 5.1 encoding trap, and PowerShell treating Docker's ordinary stderr progress lines as fatal.
+
+**M0 complete.** Foundation is real: warnings-as-errors build, Postgres + pgvector, a host with validation and honest error handling, and a gate proven to fail.
 
 ## M1 — The event kernel
 
