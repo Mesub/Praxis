@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M4 — the Compiler (E3) + Scheduler (E4)
-**Last completed task:** M4.4b — the recompile service. PRAXIS now refuses a real learner on the real pack. (33 API tests)
+**Last completed task:** M4.5 — the Scheduler. One card, one action; reps capped so the queue can never become the session. (14 tests)
 
 ---
 
@@ -172,7 +172,10 @@ flowchart TB
       **So what is the nightly pass actually for?** The one thing no request asks about and no event announces: *a learner who was on track yesterday is not on track today, and nobody has opened the app.* Everything they hold decayed overnight; the plan got longer while they slept, and the Decay Wall verdict may have flipped from *"yes, twelve months"* to *"no — you'll hold half of it."* **That is news, and it is precisely the news a product optimising for engagement would never send, because it invites them to leave.**
       Proved end-to-end on the real seed pack: PRAXIS **refuses** a real learner at 10 min/day, offers a narrower objective it actually believes in, and names the pace that would work. Proving a concept removes it from the plan (the cache hit). The nightly pass finds the learner who fell behind and leaves the one who didn't.
       **A test of my own making found a real bug:** a deadline already in the past produced a cheerful "narrower objective" containing **zero concepts**. Now refused with *"PRAXIS cannot compile a plan into the past."* 33 API tests.
-- [ ] **M4.5** E4 Scheduler: given a session length (5/10/15/25 min), merge new-learning vs. due reps vs. open Loops into **one Today card** — one card, one action.
+- [x] **M4.5** E4 Scheduler: given a session length (5/10/15/25 min), merge new-learning vs. due reps vs. open Loops into **one Today card** — one card, one action.
+      → Pure chooser. **The single hardest moment in learning is starting**, and a screen that presents a choice hands that moment straight back to the person who is demonstrably bad at it. So PRAXIS decides, and the learner is owed a *reason* — a scheduler that cannot give one is guessing. **If the card ever becomes a list, PRAXIS has lost.**
+      Three priorities, and the middle one is counterintuitive: **(1) rescue a dissolving foundation** — it is not "due", it is *load-bearing*; everything above it now costs multiples more and the learner will experience that as *impossible*, not harder, and will blame themselves. **(2) Reps are capped at 60% of a session.** Clearing the rep queue first *feels* responsible and is a trap: on a busy day the queue **is** the session, the learner revises for weeks, the graph never moves, and they correctly conclude it is going nowhere. Proved the cap bites by removing it — *"In a 5-minute session the scheduler chose a 5-minute rep. The learner is now revising instead of learning, and will keep doing so forever."* **(3) Move forward.**
+      And **"nothing" is a real answer**: no invented quiz, no streak to protect. *"There is no work worth doing today. PRAXIS will not invent some to keep you here — the point was never the app."* 14 tests.
 - [ ] **M4.6** `CompilerController` + `SchedulerController` + tests, including the Decay Wall test.
 
 ## M5 — The AI plane
