@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M4 — the Compiler (E3) + Scheduler (E4)
-**Last completed task:** M4.4a — the Objective and the recompile trigger policy. Only 3 of 16 events move the plan. (65 tests)
+**Last completed task:** M4.4b — the recompile service. PRAXIS now refuses a real learner on the real pack. (33 API tests)
 
 ---
 
@@ -167,7 +167,11 @@ flowchart TB
       → **Only 3 of 16 events recompile immediately** — accepted evidence, a detected misconception, and reality settling a prediction. Everything else waits. Getting this wrong is expensive in *both* directions: too rarely and you hand someone a plan built on a person they no longer are; too eagerly and *the plan moves under their feet* — and nothing is more corrosive to a roadmap than watching it change for a reason you cannot see.
       The judgement calls, each with a test that says why: **being taught something recompiles nothing** (the thesis, as a scheduling rule). A correct answer doesn't either — it moves belief, not credit, and a learner who got three questions right has finished nothing. And **abandoning a session does not rewrite the plan**: someone who walked away needs the Motivation Engine, not a reshuffled roadmap — rewriting it the instant they quit would be *the product flinching*. Good news changes the plan; the absence of good news does not.
       **Time is the trigger no event will ever fire.** The nightly pass exists because *the most important thing that happens to a learner overnight is nothing* — everything they hold decays, a concept fresh enough to build on yesterday may not be today, and no event announces that. One active objective per learner, enforced in the database: a learner pursuing three objectives is pursuing none. 65 tests.
-- [ ] **M4.4b** The recompile service (assemble the Graph + Twin snapshot, compile, persist) + the nightly job.
+- [x] **M4.4b** The recompile service (assemble the Graph + Twin snapshot, compile, persist) + the nightly job.
+      → **There is no plan table.** CANON calls the Plan *"ephemeral, always regenerable"* and means it: a plan is a pure function of (objective, graph, twin, minutes), so storing it would create a second version of the truth that can drift — and every bug in that class is the same bug, *someone reads a cached plan and acts on a learner who no longer exists*. It is recomputed on demand; Dijkstra over a few hundred nodes is cheaper than the round-trip that would fetch a stale copy.
+      **So what is the nightly pass actually for?** The one thing no request asks about and no event announces: *a learner who was on track yesterday is not on track today, and nobody has opened the app.* Everything they hold decayed overnight; the plan got longer while they slept, and the Decay Wall verdict may have flipped from *"yes, twelve months"* to *"no — you'll hold half of it."* **That is news, and it is precisely the news a product optimising for engagement would never send, because it invites them to leave.**
+      Proved end-to-end on the real seed pack: PRAXIS **refuses** a real learner at 10 min/day, offers a narrower objective it actually believes in, and names the pace that would work. Proving a concept removes it from the plan (the cache hit). The nightly pass finds the learner who fell behind and leaves the one who didn't.
+      **A test of my own making found a real bug:** a deadline already in the past produced a cheerful "narrower objective" containing **zero concepts**. Now refused with *"PRAXIS cannot compile a plan into the past."* 33 API tests.
 - [ ] **M4.5** E4 Scheduler: given a session length (5/10/15/25 min), merge new-learning vs. due reps vs. open Loops into **one Today card** — one card, one action.
 - [ ] **M4.6** `CompilerController` + `SchedulerController` + tests, including the Decay Wall test.
 

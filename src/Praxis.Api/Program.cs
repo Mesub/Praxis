@@ -43,6 +43,10 @@ builder.Services.AddCompiler(connectionString);
 // The seam between the Graph and the Twin: neither module references the other, so the contract
 // crosses as a value and the adapter lives here, where the application is assembled.
 builder.Services.AddScoped<IMasteryContracts, GraphMasteryContracts>();
+
+// The Graph knows the subject; the Twin knows the learner; the Compiler knows neither. This is the
+// only place the three meet.
+builder.Services.AddScoped<ICompilerSnapshot, LiveCompilerSnapshot>();
 builder.Services.AddProjection<TwinProjection>();
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();

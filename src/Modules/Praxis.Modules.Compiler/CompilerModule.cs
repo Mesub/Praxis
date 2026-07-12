@@ -14,6 +14,12 @@ public static class CompilerModule
             options.UseNpgsql(connectionString, npgsql =>
                 npgsql.MigrationsHistoryTable("__migrations", CompilerDbContext.Schema)));
 
+        services.AddScoped<PlanService>();
+
+        // The pass that catches the learner who fell behind while nothing happened.
+        services.AddSingleton<NightlyRecompile>();
+        services.AddHostedService(sp => sp.GetRequiredService<NightlyRecompile>());
+
         return services;
     }
 }
