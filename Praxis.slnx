@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Praxis.Api/Praxis.Api.csproj" />
+    <Project Path="src/Praxis.Infrastructure/Praxis.Infrastructure.csproj" />
+    <Project Path="src/Praxis.Shared/Praxis.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Praxis.Shared.Tests/Praxis.Shared.Tests.csproj" />
+  </Folder>
+</Solution>
