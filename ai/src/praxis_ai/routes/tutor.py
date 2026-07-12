@@ -10,9 +10,11 @@ So the guarantee survives the network hop, which is where most guarantees quietl
 
 from __future__ import annotations
 
+import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from praxis_ai.claude import ClaudeClient, ModelUnavailableError
@@ -88,4 +90,63 @@ async def turn(
     return TutorTurnResponse(
         text=reply.text,
         usd=None if reply.cost.usd is None else float(reply.cost.usd),
+    )
+
+
+@router.post("/turn/stream")
+async def turn_stream(
+    request: TutorTurnRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> StreamingResponse:
+    """The same turn, streamed token by token (SSE).
+
+    **A stream has no schema, and that is the whole danger of it.**
+
+    Every other guarantee in PRAXIS is enforced by a type — the verdict has no field for a sentence,
+    the item has no field for an answer, the contract has no field for a key. A stream has no fields
+    at all. It is a hose of free text pointed at a learner's browser, and nothing downstream can
+    inspect what comes out of it.
+
+    So the guarantee here cannot come from the shape of the *output*. It comes from the shape of the
+    **input**: the context is built by the same ``build_context`` as the non-streaming turn, it has
+    no field an answer could sit in, and a model streaming its whole context verbatim therefore
+    streams no answer.
+
+    That is the only thing standing here — which is exactly why the jailbreak suite is **re-run
+    against the stream** rather than assumed to carry over from the buffered path.
+    """
+    tutor = Tutor(ClaudeClient(settings))
+
+    context = build_context(
+        concept_summary=request.concept_summary,
+        item_stem=request.item_stem,
+        transcript=tuple(Turn(t.who, t.said) for t in request.transcript),
+        rung=request.rung,
+        budget_remaining=request.budget_remaining,
+        known_misconceptions=tuple(request.known_misconceptions),
+    )
+
+    attribution = Attribution(learner_id=request.learner_id, concept_id=request.concept_id)
+
+    try:
+        chunks = tutor.stream(context, attribution)
+    except ModelUnavailableError as unavailable:
+        raise HTTPException(status_code=503, detail=str(unavailable)) from unavailable
+
+    async def events():
+        try:
+            async for chunk in chunks:
+                yield "data: " + json.dumps({"text": chunk}) + "\n\n"
+        except ModelUnavailableError as unavailable:
+            # **PRAXIS does not fill the silence.** If the model becomes unreachable mid-stream the
+            # learner is *told* — not handed a plausible-sounding hint invented to keep the screen
+            # moving. A tutor that improvises when its model dies is a tutor that improvises.
+            yield "data: " + json.dumps({"error": str(unavailable)}) + "\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"cache-control": "no-cache", "x-accel-buffering": "no"},
     )

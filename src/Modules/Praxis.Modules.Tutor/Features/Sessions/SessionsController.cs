@@ -1,5 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Praxis.Shared;
 
@@ -53,6 +55,48 @@ public sealed class SessionsController : ControllerBase
         return (await handler
             .HandleAsync(new TakeHint.Command(sessionId, request.Rung, request.LearnerSaid), ct))
             .ToApiResponse();
+    }
+
+    /// **The same hint, streamed** (M6.5b) — and **every gate fires before a single byte leaves.**
+    ///
+    /// A streaming endpoint is tempting to write as *"open the stream, then work out whether we
+    /// should have"*, because that is what makes the first token arrive quickly, and first-token
+    /// latency is the only thing anybody measures about a stream. It would be a hole straight
+    /// through the product: a learner could get a free hint, or skip a rung, by asking for it fast.
+    ///
+    /// So the ladder, the budget and the event log all say yes **first**. Only then does the
+    /// response become a stream — and if any of them says no, the learner gets an ordinary status
+    /// code and no stream is ever opened.
+    [HttpPost("{sessionId:guid}/hints/stream")]
+    public async Task Stream(
+        Guid sessionId,
+        [FromBody] HintRequest request,
+        [FromServices] StreamHint.Handler handler,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var gated = await handler.HandleAsync(
+            new StreamHint.Command(sessionId, request.Rung, request.LearnerSaid), ct);
+
+        if (!gated.IsSuccess)
+        {
+            // A refusal is an ordinary response. **No stream is opened** — because a stream that
+            // opens and then apologises has already told the browser that everything was fine.
+            Response.StatusCode = gated.Status switch
+            {
+                ResultStatus.NotFound => StatusCodes.Status404NotFound,
+                ResultStatus.Conflict => StatusCodes.Status409Conflict,
+                ResultStatus.Forbidden => StatusCodes.Status403Forbidden,
+                _ => StatusCodes.Status400BadRequest,
+            };
+
+            await Response.WriteAsJsonAsync(ApiResponse<object>.Fail(gated.Message), ct);
+
+            return;
+        }
+
+        await ServerSentEvents.WriteAsync(Response, gated.Value, ct);
     }
 
     /// **They made something.** It earns budget back — including a genuine, reasoned *wrong* attempt,

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +49,59 @@ public sealed partial class AiPlaneClient : IAiPlane
     public Task<Result<TutorTurnResponse>> TutorTurnAsync(
         TutorTurnRequest request, CancellationToken ct = default)
         => PostAsync<TutorTurnRequest, TutorTurnResponse>("tutor/turn", request, ct);
+
+    /// Server-sent events, relayed. **The bytes are not inspected, rewritten, or buffered** — they
+    /// are passed through, because there is nothing in them to filter and pretending otherwise would
+    /// imply that filtering was the guarantee. It is not. The absence of the answer is.
+    public async IAsyncEnumerable<string> TutorTurnStreamAsync(
+        TutorTurnRequest request,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, "tutor/turn/stream")
+        {
+            Content = JsonContent.Create(request, options: Json),
+        };
+
+        using var response = await _http.SendAsync(
+            message, HttpCompletionOption.ResponseHeadersRead, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // **PRAXIS does not fill the silence.** No invented hint to keep the screen moving.
+            yield return "The tutor is unreachable right now. PRAXIS will not invent a hint to fill "
+                         + "the silence — your budget has not been spent on nothing, and your work "
+                         + "is not lost.";
+
+            yield break;
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(stream);
+
+        while (await reader.ReadLineAsync(ct) is { } line)
+        {
+            if (!line.StartsWith("data: ", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var payload = line["data: ".Length..];
+
+            if (payload == "[DONE]")
+            {
+                yield break;
+            }
+
+            var chunk = JsonSerializer.Deserialize<StreamChunk>(payload, Json);
+
+            if (chunk?.Text is { Length: > 0 } text)
+            {
+                yield return text;
+            }
+        }
+    }
+
+    private sealed record StreamChunk(string? Text, string? Error);
 
     private async Task<Result<TOut>> PostAsync<TIn, TOut>(
         string path, TIn body, CancellationToken ct)

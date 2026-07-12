@@ -770,6 +770,46 @@
           "tutor"
         ]
       }
+    },
+    "/tutor/turn/stream": {
+      "post": {
+        "description": "The same turn, streamed token by token (SSE).\n\n**A stream has no schema, and that is the whole danger of it.**\n\nEvery other guarantee in PRAXIS is enforced by a type \u2014 the verdict has no field for a sentence,\nthe item has no field for an answer, the contract has no field for a key. A stream has no fields\nat all. It is a hose of free text pointed at a learner's browser, and nothing downstream can\ninspect what comes out of it.\n\nSo the guarantee here cannot come from the shape of the *output*. It comes from the shape of the\n**input**: the context is built by the same ``build_context`` as the non-streaming turn, it has\nno field an answer could sit in, and a model streaming its whole context verbatim therefore\nstreams no answer.\n\nThat is the only thing standing here \u2014 which is exactly why the jailbreak suite is **re-run\nagainst the stream** rather than assumed to carry over from the buffered path.",
+        "operationId": "turn_stream_tutor_turn_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TutorTurnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Turn Stream",
+        "tags": [
+          "tutor"
+        ]
+      }
     }
   }
 }

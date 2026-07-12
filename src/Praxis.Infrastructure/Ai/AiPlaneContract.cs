@@ -49,6 +49,20 @@ public interface IAiPlane
     /// **That is the guarantee surviving the network hop**, which is where most guarantees quietly
     /// die.
     Task<Result<TutorTurnResponse>> TutorTurnAsync(TutorTurnRequest request, CancellationToken ct = default);
+
+    /// **The same turn, a token at a time — and a stream has no schema.**
+    ///
+    /// Every other guarantee in PRAXIS is enforced by a *type*: the verdict has no field for a
+    /// sentence, the item has no field for an answer, this contract has no field for a key. A stream
+    /// has no fields **at all**. It is free text going straight to a learner's browser, and nothing
+    /// downstream can inspect it.
+    ///
+    /// So the protection cannot come from the shape of the output. It comes from the shape of the
+    /// *input*: the request below is the same `TutorTurnRequest`, with the same absent fields, and a
+    /// model streaming its whole context verbatim streams no answer. That is the **only** thing
+    /// standing here — which is why the jailbreak suite is re-run against the stream rather than
+    /// assumed to carry over.
+    IAsyncEnumerable<string> TutorTurnStreamAsync(TutorTurnRequest request, CancellationToken ct = default);
 }
 
 // ── The tutor ────────────────────────────────────────────────────────────────

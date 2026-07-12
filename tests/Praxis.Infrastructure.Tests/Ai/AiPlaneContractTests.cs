@@ -35,6 +35,7 @@ public sealed class AiPlaneContractTests
         Assert.Contains("/assessment/grade", paths);
         Assert.Contains("/assessment/items", paths);
         Assert.Contains("/tutor/turn", paths);
+        Assert.Contains("/tutor/turn/stream", paths);
 
         // And the client exposes one method per capability, and no more. A fourth method here means
         // somebody added a route without anyone reading this file.
@@ -47,6 +48,7 @@ public sealed class AiPlaneContractTests
                 nameof(IAiPlane.GradeAsync),
                 nameof(IAiPlane.GenerateItemAsync),
                 nameof(IAiPlane.TutorTurnAsync),
+                nameof(IAiPlane.TutorTurnStreamAsync),
             },
             methods);
     }

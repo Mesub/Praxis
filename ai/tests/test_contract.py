@@ -30,7 +30,7 @@ def test_the_committed_contract_matches_the_service() -> None:
     )
 
 
-def test_the_contract_offers_the_core_exactly_four_things() -> None:
+def test_the_contract_offers_the_core_exactly_five_things() -> None:
     """Everything the .NET core is allowed to ask an LLM for. If a fifth appears, it was designed
     somewhere other than here.
 
@@ -46,6 +46,7 @@ def test_the_contract_offers_the_core_exactly_four_things() -> None:
         "/assessment/grade",
         "/assessment/items",
         "/tutor/turn",
+        "/tutor/turn/stream",
     }
 
     # The oracle has one door, and it is the one the tutor knocks on.

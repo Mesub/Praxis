@@ -18,6 +18,7 @@ assembled, and it can be read in full in under a minute.
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -77,6 +78,88 @@ class ClaudeClient:
     @property
     def is_available(self) -> bool:
         return self._client is not None
+
+    async def stream(
+        self,
+        prompt: str,
+        *,
+        task: Task,
+        attribution: Attribution,
+        system: str | None = None,
+        max_tokens: int = 1024,
+    ) -> AsyncIterator[str]:
+        """The same call, delivered a token at a time.
+
+        **A stream has no schema, and that is the whole danger of it.**
+
+        Every other guarantee in this codebase is enforced by a *type*: the verdict has no field for
+        a sentence, the item has no field for an answer, the contract has no field for a key. A
+        stream has no fields at all — it is a hose of free text pointed directly at a learner's
+        browser, and nothing downstream can inspect it.
+
+        So the guarantee cannot come from the shape of the output. It has to come from the shape of
+        the **input**: the answer is not in the tutor's context (M6.3), so a model streaming its
+        entire context verbatim streams no answer. That is the only thing standing here, and it is
+        enough — but it is the *only* thing, which is why the jailbreak suite is re-run against the
+        stream rather than assumed to carry over.
+
+        Note also what is *not* streamed: this is only ever used for `TUTOR_TURN`. A grader does not
+        stream — its output is a structured verdict that is parsed, and streaming a verdict would
+        mean showing a learner a decision about their mind while it was still being made.
+        """
+        if self._client is None:
+            raise ModelUnavailableError(
+                "No ANTHROPIC_API_KEY is configured, so PRAXIS cannot call a model. It will not "
+                "fabricate a response to keep a screen full."
+            )
+
+        model = model_for(task, self._settings)
+
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": True,
+        }
+
+        if system is not None:
+            kwargs["system"] = system
+
+        input_tokens = 0
+        output_tokens = 0
+
+        async for event in await self._client.messages.create(**kwargs):
+            kind = getattr(event, "type", None)
+
+            if kind == "message_start":
+                input_tokens = getattr(getattr(event, "message", None), "usage", None)
+                input_tokens = getattr(input_tokens, "input_tokens", 0) or 0
+
+            elif kind == "content_block_delta":
+                text = getattr(getattr(event, "delta", None), "text", None)
+
+                if text:
+                    yield text
+
+            elif kind == "message_delta":
+                usage = getattr(event, "usage", None)
+                output_tokens = getattr(usage, "output_tokens", 0) or 0
+
+        cost = price_of(model, input_tokens=input_tokens, output_tokens=output_tokens)
+
+        # The learner-minute, logged when the stream closes. A stream abandoned halfway still cost
+        # money, and it is still attributed — PRAXIS does not get to forget a bill because the
+        # browser went away.
+        log.info(
+            "model call (streamed)",
+            extra={
+                "learner_id": attribution.learner_id,
+                "concept_id": attribution.concept_id,
+                "task": task.value,
+                "tier": tier_for(task).value,
+                **cost.as_log_fields(),
+            },
+        )
 
     async def complete(
         self,

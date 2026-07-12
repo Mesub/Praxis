@@ -35,6 +35,7 @@ Three things, and the third is the one people forget.
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Protocol
@@ -217,6 +218,21 @@ class Tutor:
         )
 
         return TutorReply(text=completion.text, cost=completion.cost)
+
+    def stream(self, context: TutorContext, attribution: Attribution) -> AsyncIterator[str]:
+        """The same turn, a token at a time.
+
+        It is the *same* ``render(context)`` — one prompt builder, one place to audit. A streaming
+        path with its own quietly-different context assembly would be a second door into the tutor's
+        head, and the whole point of this module is that there is only one.
+        """
+        return self._client.stream(
+            render(context),
+            task=Task.TUTOR_TURN,
+            attribution=attribution,
+            system=_SYSTEM,
+            max_tokens=800,
+        )
 
     async def check(
         self, item_id: str, claim: str, attribution: Attribution
