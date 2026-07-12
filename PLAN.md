@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M4 — the Compiler (E3) + Scheduler (E4)
-**Last completed task:** M4.1 — the Compiler's cost function. It prices the wall. (16 tests)
+**Last completed task:** M4.2 — the solver. The plan is compiled, not prompted. (34 tests)
 
 ---
 
@@ -156,7 +156,9 @@ flowchart TB
 - [x] **M4.1** Edge cost function over the decay-weighted DAG: cost of a concept = f(estimated minutes, current `p_knows`, decay pressure on its prerequisites, PoM contract strictness).
       → Pure function, no clock, no model — the plan is a solver's output, not a prompt's. Four inputs: the pack's minutes, what the learner already holds (**sublinear** — being 80% there is *not* 80% cheaper, because the last stretch is the never-seen problem and the build that runs, and the Evidence Ceiling means it cannot be crossed by explaining more), the contract's strictness (a concept demanding two applied problems and a passing build is not the same work as one satisfied by recall — pricing them alike is how roadmaps promise twelve weeks and take thirty), and **decay pressure on prerequisites** — the part no other roadmap tool has.
       **The weakest prerequisite governs, not the average.** One dissolved foundation is enough: a learner who has forgotten embeddings cannot do vector retrieval however fresh their tokenisation is. Proved it bites by switching `Min` to `Average` — two tests failed, one saying *"a strong prerequisite is hiding a fatal one."* A learner attempting a concept whose prerequisites are half-forgotten does not experience it as harder; they experience it as **impossible, and they blame themselves.** 16 tests.
-- [ ] **M4.2** **Dijkstra** shortest-path-to-competence: Objective + Graph + Twin + constraints → ordered `Plan`. **A solver, not a prompt.** No LLM anywhere in this path.
+- [x] **M4.2** **Dijkstra** shortest-path-to-competence: Objective + Graph + Twin + constraints → ordered `Plan`. **A solver, not a prompt.** No LLM anywhere in this path.
+      → Greedy frontier over the decay-weighted DAG. Not textbook Dijkstra, and the doc comment says why: every prerequisite is *required* (AND, not OR), so the "path" is the whole transitive closure and the algorithm's job is to **order** it. **Compile the same learner twice, get the same plan** — a roadmap that changes when you ask again is not a roadmap, it is a mood. **Cache invalidation is what makes it a compiler**: a concept the learner "holds" but has let rot goes *back in the plan* as a `Refresh` — cheaper than learning, but not free, because every other tool would tick it off and then let them walk into the wall it creates.
+      **A test-quality catch that mattered.** My ordering test passed even with the prerequisite gate deleted — because in that graph every prerequisite happened to be *pricier* than its dependent, so cheapest-first accidentally produced the right order. The guarantee was resting on a coincidence of the cost function. Wrote the adversarial case (a 5-minute concept on top of a 300-minute one, with alphabetical tie-break also against us) — it now fails the moment the gate is removed. 34 tests.
 - [ ] **M4.3** **The Decay Wall (C-1)**: forward-simulate the plan at the learner's stated minutes/day. If mastery decays faster than it accrues, the Objective is **structurally unreachable** — return `Unreachable` with the largest sub-Objective that *is* reachable, and the minutes/day that would make the original reachable. Test: 20 min/day on a 180-concept objective must return `Unreachable`.
 - [ ] **M4.4** Nightly recompile job + recompile-on-significant-event.
 - [ ] **M4.5** E4 Scheduler: given a session length (5/10/15/25 min), merge new-learning vs. due reps vs. open Loops into **one Today card** — one card, one action.
