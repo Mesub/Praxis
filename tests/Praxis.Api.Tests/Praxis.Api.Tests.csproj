@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\src\Praxis.Api\Praxis.Api.csproj" />
     <ProjectReference Include="..\..\src\Modules\Praxis.Modules.Graph\Praxis.Modules.Graph.csproj" />
     <ProjectReference Include="..\..\src\Modules\Praxis.Modules.Twin\Praxis.Modules.Twin.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Praxis.Modules.Compiler\Praxis.Modules.Compiler.csproj" />
   </ItemGroup>
 
 </Project>

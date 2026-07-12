@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M4 — the Compiler (E3) + Scheduler (E4)
-**Last completed task:** M4.3 — the Decay Wall. Simulating it disproved CANON C-1; CANON amended. (47 tests)
+**Last completed task:** M4.4a — the Objective and the recompile trigger policy. Only 3 of 16 events move the plan. (65 tests)
 
 ---
 
@@ -163,7 +163,11 @@ flowchart TB
       → **CANON C-1 WAS WRONG, and building the simulation proved it.** C-1 claims the wall is a *divergence* — forgetting outrunning learning so the objective never converges. **It does not happen.** Spaced repetition forbids it: each successful retrieval pushes the next exponentially further away, so maintenance grows sub-linearly and *always* converges. That is why real SRS users hold tens of thousands of items on 20 min/day; a model where they couldn't would be a model of despair, not of memory.
       What actually happens is worse in a quieter way: at 20 min/day the learner **does** arrive — *three and a half years later*, treading water most of every session. Against an 18-month horizon they hold **85 of 180 concepts**. So **the wall is a horizon, not a divergence.** The refusal stands, unchanged and just as important; only the reason is now the true one. I did **not** fudge the model until it agreed with the doc — I fixed the doc. **CANON is amended in place** with the simulated table (20 min → no, 85/180; 45 min → yes, 17mo; 90 min → yes, 8mo).
       Also: `MinutesPerDayToMakeReachable` binary-searches the *smallest honest* answer (one minute less provably fails), `ReachablePrefix` offers the narrower objective PRAXIS actually believes in, and a monotonicity test guards against verdicts that are noise. Reps cost a fraction of the *learn* cost — re-demonstrating *"I can beat BM25"* is redoing work, not flipping a card. 47 tests.
-- [ ] **M4.4** Nightly recompile job + recompile-on-significant-event.
+- [x] **M4.4a** The `Objective` (what the learner is trying to become, at what pace) + the **recompile trigger policy**: which events make a plan stale, and which do not. *(Split from M4.4 — the policy is the opinionated half and deserves its own tests; the job that runs it is plumbing.)*
+      → **Only 3 of 16 events recompile immediately** — accepted evidence, a detected misconception, and reality settling a prediction. Everything else waits. Getting this wrong is expensive in *both* directions: too rarely and you hand someone a plan built on a person they no longer are; too eagerly and *the plan moves under their feet* — and nothing is more corrosive to a roadmap than watching it change for a reason you cannot see.
+      The judgement calls, each with a test that says why: **being taught something recompiles nothing** (the thesis, as a scheduling rule). A correct answer doesn't either — it moves belief, not credit, and a learner who got three questions right has finished nothing. And **abandoning a session does not rewrite the plan**: someone who walked away needs the Motivation Engine, not a reshuffled roadmap — rewriting it the instant they quit would be *the product flinching*. Good news changes the plan; the absence of good news does not.
+      **Time is the trigger no event will ever fire.** The nightly pass exists because *the most important thing that happens to a learner overnight is nothing* — everything they hold decays, a concept fresh enough to build on yesterday may not be today, and no event announces that. One active objective per learner, enforced in the database: a learner pursuing three objectives is pursuing none. 65 tests.
+- [ ] **M4.4b** The recompile service (assemble the Graph + Twin snapshot, compile, persist) + the nightly job.
 - [ ] **M4.5** E4 Scheduler: given a session length (5/10/15/25 min), merge new-learning vs. due reps vs. open Loops into **one Today card** — one card, one action.
 - [ ] **M4.6** `CompilerController` + `SchedulerController` + tests, including the Decay Wall test.
 

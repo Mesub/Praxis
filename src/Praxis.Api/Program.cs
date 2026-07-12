@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Praxis.Api.Composition;
 using Praxis.Infrastructure;
 using Praxis.Infrastructure.Web;
+using Praxis.Modules.Compiler;
+using Praxis.Modules.Compiler.Persistence;
 using Praxis.Modules.Graph;
 using Praxis.Modules.Graph.Persistence;
 using Praxis.Modules.Identity;
@@ -36,6 +38,7 @@ builder.Services.AddPraxisInfrastructure(
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
 builder.Services.AddTwin(connectionString);
+builder.Services.AddCompiler(connectionString);
 
 // The seam between the Graph and the Twin: neither module references the other, so the contract
 // crosses as a value and the adapter lives here, where the application is assembled.
@@ -72,6 +75,7 @@ if (args.Contains("--migrate", StringComparer.Ordinal))
     await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<GraphDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<TwinDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<CompilerDbContext>().Database.MigrateAsync();
 
     Log.Information("Migrations applied.");
     return;
