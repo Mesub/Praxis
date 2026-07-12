@@ -4,8 +4,12 @@
     <Project Path="src/Praxis.Infrastructure/Praxis.Infrastructure.csproj" />
     <Project Path="src/Praxis.Shared/Praxis.Shared.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/Praxis.Modules.Kernel/Praxis.Modules.Kernel.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Praxis.Api.Tests/Praxis.Api.Tests.csproj" />
+    <Project Path="tests/Praxis.Modules.Kernel.Tests/Praxis.Modules.Kernel.Tests.csproj" />
     <Project Path="tests/Praxis.Shared.Tests/Praxis.Shared.Tests.csproj" />
   </Folder>
 </Solution>

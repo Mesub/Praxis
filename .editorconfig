@@ -25,6 +25,15 @@ dotnet_diagnostic.CA1716.severity = none
 # of the type. The rule's concern — that callers must name the type argument — is what we want.
 dotnet_diagnostic.CA1000.severity = none
 
+[**/Migrations/*.cs]
+# EF scaffolds these. We hand-edit only the Sql() blocks; the rest is generated, and holding
+# generated code to hand-written style rules just means editing it back after every scaffold.
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA1062.severity = none
+dotnet_diagnostic.IDE0300.severity = none
+dotnet_diagnostic.IDE0161.severity = none
+csharp_style_namespace_declarations = block_scoped:silent
+
 [tests/**/*.cs]
 # Test names are sentences. `Explain_evidence_can_never_cross_the_hold_threshold` is the
 # point of the test; PascalCase would bury it.
