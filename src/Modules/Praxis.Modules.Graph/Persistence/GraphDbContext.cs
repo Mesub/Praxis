@@ -12,6 +12,7 @@ public sealed class GraphDbContext : DbContext
     public DbSet<Concept> Concepts => Set<Concept>();
     public DbSet<ConceptEdge> Edges => Set<ConceptEdge>();
     public DbSet<GraphVersion> Versions => Set<GraphVersion>();
+    public DbSet<PoMContract> Contracts => Set<PoMContract>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -64,6 +65,48 @@ public sealed class GraphDbContext : DbContext
             // The hot paths: "what does this need" and "what needs this".
             e.HasIndex(x => new { x.ToConceptId, x.Kind });
             e.HasIndex(x => new { x.FromConceptId, x.Kind });
+
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasQueryFilter(x => !x.IsDeleted);
+        });
+
+        modelBuilder.Entity<PoMContract>(e =>
+        {
+            e.ToTable("pom_contracts", Schema);
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.HoldThreshold).IsRequired();
+
+            // One contract per concept. Two would mean two different answers to "what would
+            // prove you understand this", and the Twin would have to pick one.
+            e.HasIndex(x => x.ConceptId).IsUnique();
+
+            e.HasOne<Concept>().WithMany()
+             .HasForeignKey(x => x.ConceptId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.Accepted).WithOne()
+             .HasForeignKey(a => a.PoMContractId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.Navigation(x => x.Accepted).AutoInclude();
+
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasQueryFilter(x => !x.IsDeleted);
+        });
+
+        modelBuilder.Entity<AcceptedEvidence>(e =>
+        {
+            e.ToTable("accepted_evidence", Schema);
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Type).HasConversion<int>().IsRequired();
+            e.Property(x => x.MinScore).IsRequired();
+            e.Property(x => x.MaxContribution).IsRequired();
+            e.Property(x => x.RequiredCount).IsRequired();
+
+            // Each evidence type gets one clause per contract.
+            e.HasIndex(x => new { x.PoMContractId, x.Type }).IsUnique();
 
             e.Property(x => x.Version).IsRowVersion();
             e.HasQueryFilter(x => !x.IsDeleted);

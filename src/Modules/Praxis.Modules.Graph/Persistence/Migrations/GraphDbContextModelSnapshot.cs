@@ -23,6 +23,56 @@ namespace Praxis.Modules.Graph.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Praxis.Modules.Graph.Domain.AcceptedEvidence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<double>("MaxContribution")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("MinScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("PoMContractId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RequiredCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PoMContractId", "Type")
+                        .IsUnique();
+
+                    b.ToTable("accepted_evidence", "graph");
+                });
+
             modelBuilder.Entity("Praxis.Modules.Graph.Domain.Concept", b =>
                 {
                     b.Property<Guid>("Id")
@@ -200,6 +250,56 @@ namespace Praxis.Modules.Graph.Persistence.Migrations
                     b.ToTable("graph_versions", "graph");
                 });
 
+            modelBuilder.Entity("Praxis.Modules.Graph.Domain.PoMContract", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConceptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("HoldThreshold")
+                        .HasColumnType("double precision");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConceptId")
+                        .IsUnique();
+
+                    b.ToTable("pom_contracts", "graph");
+                });
+
+            modelBuilder.Entity("Praxis.Modules.Graph.Domain.AcceptedEvidence", b =>
+                {
+                    b.HasOne("Praxis.Modules.Graph.Domain.PoMContract", null)
+                        .WithMany("Accepted")
+                        .HasForeignKey("PoMContractId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Praxis.Modules.Graph.Domain.ConceptEdge", b =>
                 {
                     b.HasOne("Praxis.Modules.Graph.Domain.Concept", null)
@@ -213,6 +313,20 @@ namespace Praxis.Modules.Graph.Persistence.Migrations
                         .HasForeignKey("ToConceptId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Praxis.Modules.Graph.Domain.PoMContract", b =>
+                {
+                    b.HasOne("Praxis.Modules.Graph.Domain.Concept", null)
+                        .WithMany()
+                        .HasForeignKey("ConceptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Praxis.Modules.Graph.Domain.PoMContract", b =>
+                {
+                    b.Navigation("Accepted");
                 });
 #pragma warning restore 612, 618
         }

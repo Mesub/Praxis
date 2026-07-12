@@ -1,5 +1,6 @@
 using Praxis.Modules.Kernel.Domain;
 using Praxis.Modules.Kernel.Events;
+using Praxis.Shared;
 
 namespace Praxis.Modules.Kernel.Tests;
 

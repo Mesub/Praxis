@@ -1,4 +1,5 @@
 using Praxis.Modules.Kernel.Domain;
+using Praxis.Shared;
 
 namespace Praxis.Modules.Kernel.Events;
 
@@ -169,25 +170,8 @@ public sealed record EvidenceAbstained(
     public static LearningEventType EventType => LearningEventType.EvidenceAbstained;
 }
 
-/// The six kinds of proof (I-2). They are not equal, and the Twin knows it.
-public enum EvidenceType
-{
-    Recall = 1,
-
-    /// A never-seen problem. A model cannot fabricate this.
-    Apply = 2,
-
-    /// Feynman teach-back, rubric-graded. The most subjective, and it carries the least weight.
-    Explain = 3,
-
-    /// It ran, or it did not. Objectively graded.
-    Build = 4,
-
-    Critique = 5,
-
-    /// Reality resolved it. The least fakeable evidence there is.
-    Predict = 6,
-}
+// EvidenceType now lives in Praxis.Shared — the Graph names it in its PoM contracts, the Twin
+// weighs it, and the Ledger records it. It is domain language, not the kernel's private business.
 
 // ── Memory ──────────────────────────────────────────────────────────────────
 
