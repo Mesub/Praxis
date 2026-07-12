@@ -29,6 +29,7 @@ from praxis_ai.config import Settings, get_settings
 from praxis_ai.cost import assert_priced
 from praxis_ai.logging import configure_logging, request_id
 from praxis_ai.models import Task, model_for
+from praxis_ai.routes import oracle
 
 log = logging.getLogger("praxis.ai")
 
@@ -70,6 +71,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+app.include_router(oracle.router)
 
 
 @app.middleware("http")
