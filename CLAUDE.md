@@ -39,6 +39,14 @@ If a change would make any of these easier to violate, it is wrong, regardless o
 Secrets live in `ai/.env` and `src/Praxis.Api/appsettings.Development.json` — both gitignored.
 Never commit a key. Never print a key.
 
+**Local Postgres runs on port 5433, not 5432.** Other projects on this machine already own the
+default port, and PRAXIS does not get to evict them.
+Connection string: `Host=localhost;Port=5433;Database=praxis;Username=praxis;Password=praxis_dev_only`
+
+Each engine owns a **schema** (`kernel`, `graph`, `twin`, `compiler`, `tutor`, `assessment`,
+`memory`, `reality`, `ledger`, `identity`), created in `scripts/db/init/01-extensions.sql`.
+No module reads another module's tables.
+
 ## Architecture rules (from ARCHITECTURE_STANDARD.md — non-negotiable)
 
 - **Vertical slice.** One use case = one file = `Command`/`Query` + `Validator` + `Handler` + `Response`.

@@ -1,0 +1,35 @@
+# The whole of PRAXIS's infrastructure, for now.
+#
+# One Postgres. It is the system of record, the event store, and — via pgvector — the
+# embedding store. Graph traversal is recursive SQL, not a graph database.
+#
+# CANON §5.4 also names Redis, Redpanda, ClickHouse and Apache AGE. They arrive when
+# something actually hurts, and not before. Every container here has to earn its keep.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: praxis-postgres
+    environment:
+      POSTGRES_USER: praxis
+      POSTGRES_PASSWORD: praxis_dev_only
+      POSTGRES_DB: praxis
+      # Deterministic ordering, so a query's results don't depend on the host's locale.
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    ports:
+      # 5433, not 5432 — other projects on this machine already own the default port.
+      # PRAXIS does not get to evict them.
+      - "5433:5432"
+    volumes:
+      - praxis-pgdata:/var/lib/postgresql/data
+      - ./scripts/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U praxis -d praxis"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  praxis-pgdata:
