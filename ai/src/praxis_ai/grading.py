@@ -68,7 +68,7 @@ MIN_JUDGES = 2
 JUDGE_COUNT = 3
 
 
-class Outcome(StrEnum):
+class GradeOutcome(StrEnum):
     PASSED = "passed"
     FAILED = "failed"
 
@@ -95,7 +95,7 @@ class JudgeScore:
 
 @dataclass(frozen=True, slots=True)
 class Grade:
-    outcome: Outcome
+    outcome: GradeOutcome
 
     #: The number, when there is one. `None` on a `PENDING` where no score could be formed at all —
     #: because a `PENDING` with a confident-looking score attached is an invitation to use it.
@@ -116,7 +116,7 @@ class Grade:
     usd: Decimal | None
 
     def __post_init__(self) -> None:
-        if self.outcome is Outcome.PASSED and self.escalated_to_human:
+        if self.outcome is GradeOutcome.PASSED and self.escalated_to_human:
             raise ValueError(
                 "A grade cannot be PASSED and awaiting a human at the same time. This is the "
                 "exact coercion the PENDING state exists to prevent: the queue got long, and "
@@ -196,7 +196,7 @@ class Grader:
                 score=score,
             )
 
-        outcome = Outcome.PASSED if score >= rubric.pass_score else Outcome.FAILED
+        outcome = GradeOutcome.PASSED if score >= rubric.pass_score else GradeOutcome.FAILED
 
         log.info(
             "graded",
@@ -324,7 +324,7 @@ def _pre_check(response: str, rubric: Rubric) -> Grade | None:
     """
     if len(response.strip()) < rubric.min_length:
         return Grade(
-            outcome=Outcome.FAILED,
+            outcome=GradeOutcome.FAILED,
             score=0.0,
             misconceptions=(),
             reason="Too short to be an explanation. No judge was spent on it.",
@@ -340,7 +340,7 @@ def _pre_check(response: str, rubric: Rubric) -> Grade | None:
         cap = min(f.cap for f in hit)
 
         return Grade(
-            outcome=Outcome.PASSED if cap >= rubric.pass_score else Outcome.FAILED,
+            outcome=GradeOutcome.PASSED if cap >= rubric.pass_score else GradeOutcome.FAILED,
             score=cap,
             misconceptions=tuple(f.misconception for f in hit),
             reason=(
@@ -419,7 +419,7 @@ def _pending(
     score: float | None = None,
 ) -> Grade:
     return Grade(
-        outcome=Outcome.PENDING,
+        outcome=GradeOutcome.PENDING,
         score=score,
         misconceptions=misconceptions,
         reason=reason,

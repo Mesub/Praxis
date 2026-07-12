@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Praxis.Api.Composition;
 using Praxis.Infrastructure;
+using Praxis.Infrastructure.Ai;
 using Praxis.Infrastructure.Web;
 using Praxis.Modules.Compiler;
 using Praxis.Modules.Compiler.Persistence;
@@ -59,6 +60,12 @@ builder.Services.AddScoped<ICompilerSnapshot, LiveCompilerSnapshot>();
 builder.Services.AddScoped<ISchedulerSnapshot, LiveSchedulerSnapshot>();
 
 builder.Services.AddProjection<TwinProjection>();
+
+// The AI plane. **The only way anything in PRAXIS talks to a language model** — the model is chosen
+// by the task, the call is attributed to a learner, and the answer is never in the tutor's context.
+// A slice that new'd up an HttpClient and called Anthropic directly would bypass all three.
+builder.Services.AddAiPlane(
+    builder.Configuration["AiPlane:BaseUrl"] ?? "http://localhost:8000");
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 builder.Services.AddIdentityModule(connectionString, jwt);

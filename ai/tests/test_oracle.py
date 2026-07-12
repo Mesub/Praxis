@@ -21,10 +21,10 @@ from praxis_ai.config import Settings
 from praxis_ai.cost import Attribution
 from praxis_ai.oracle import (
     AnswerKey,
+    ClaimOutcome,
     InMemoryAnswerKeyStore,
     Oracle,
     OracleUnclearError,
-    Outcome,
     UnknownItemError,
     Verdict,
 )
@@ -86,7 +86,7 @@ async def test_a_correct_claim_is_correct() -> None:
 
     verdict = await oracle.check("item-1", "Because TF saturates.", ALICE)
 
-    assert verdict.outcome is Outcome.CORRECT
+    assert verdict.outcome is ClaimOutcome.CORRECT
     assert verdict.misconception is None
 
 
@@ -95,7 +95,7 @@ async def test_a_wrong_claim_names_the_misconception_it_matched() -> None:
 
     verdict = await oracle.check("item-1", "Ten times as many, ten times the score.", ALICE)
 
-    assert verdict.outcome is Outcome.WRONG
+    assert verdict.outcome is ClaimOutcome.WRONG
     assert verdict.misconception == "thinks-tf-is-linear"
 
 
@@ -146,7 +146,7 @@ async def test_the_answer_cannot_escape_as_prose_around_the_json() -> None:
 
     verdict = await oracle.check("item-1", "no idea", ALICE)
 
-    assert verdict.outcome is Outcome.WRONG
+    assert verdict.outcome is ClaimOutcome.WRONG
     assert THE_ANSWER not in str(verdict)
 
 
@@ -181,7 +181,7 @@ def test_there_is_no_field_on_a_verdict_that_could_hold_an_answer() -> None:
 def test_the_outcome_vocabulary_is_three_words_long() -> None:
     """A richer vocabulary is a wider channel. "You are missing two of the four required elements"
     is a number a patient learner can binary-search against."""
-    assert {o.value for o in Outcome} == {"correct", "partial", "wrong"}
+    assert {o.value for o in ClaimOutcome} == {"correct", "partial", "wrong"}
 
 
 # ── Refusals ─────────────────────────────────────────────────────────────────

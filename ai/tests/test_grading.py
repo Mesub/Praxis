@@ -23,7 +23,7 @@ import pytest
 from praxis_ai.claude import ClaudeClient
 from praxis_ai.config import Settings
 from praxis_ai.cost import Attribution
-from praxis_ai.grading import BOUNDARY, Grade, Grader, Outcome
+from praxis_ai.grading import BOUNDARY, Grade, GradeOutcome, Grader
 from praxis_ai.rubric import Dimension, HardFail, Rubric
 
 ALICE = Attribution(learner_id="alice", concept_id="support-resistance")
@@ -135,7 +135,7 @@ async def test_a_hard_fail_phrase_is_settled_without_asking_a_language_model() -
         ALICE,
     )
 
-    assert grade.outcome is Outcome.FAILED
+    assert grade.outcome is GradeOutcome.FAILED
     assert grade.score == 0.40
     assert "M-SR-004" in grade.misconceptions
 
@@ -150,7 +150,7 @@ async def test_something_too_short_to_be_an_explanation_costs_nothing() -> None:
 
     grade = await grader.grade("dunno", RUBRIC, ALICE)
 
-    assert grade.outcome is Outcome.FAILED
+    assert grade.outcome is GradeOutcome.FAILED
     assert model.calls == []
 
 
@@ -162,7 +162,7 @@ async def test_three_judges_who_agree_produce_a_grade() -> None:
 
     grade = await grader.grade(GOOD, RUBRIC, ALICE)
 
-    assert grade.outcome is Outcome.PASSED
+    assert grade.outcome is GradeOutcome.PASSED
     assert grade.score == 1.0
     assert grade.judges_consulted == 3
     assert len(model.calls) == 3
@@ -217,7 +217,7 @@ async def test_when_the_judges_will_not_band_it_praxis_does_not_either() -> None
 
     grade = await grader.grade(GOOD, RUBRIC, ALICE)
 
-    assert grade.outcome is Outcome.PENDING
+    assert grade.outcome is GradeOutcome.PENDING
     assert grade.escalated_to_human is True
 
     # No score at all. A PENDING with a confident-looking number attached invites someone to use it.
@@ -233,7 +233,7 @@ async def test_a_judge_that_cannot_be_parsed_has_abstained_and_has_not_scored_ze
 
     grade = await grader.grade(GOOD, RUBRIC, ALICE)
 
-    assert grade.outcome is Outcome.PENDING
+    assert grade.outcome is GradeOutcome.PENDING
     assert grade.score != 0.0
 
 
@@ -248,7 +248,7 @@ async def test_a_judge_that_invents_a_band_outside_the_scale_has_abstained() -> 
 
     grade = await grader.grade(GOOD, RUBRIC, ALICE)
 
-    assert grade.outcome is Outcome.PENDING
+    assert grade.outcome is GradeOutcome.PENDING
 
 
 # ── Escalation ───────────────────────────────────────────────────────────────
@@ -272,7 +272,7 @@ async def test_an_adjudicator_that_abstains_sends_it_to_a_human() -> None:
 
     grade = await grader.grade(GOOD, RUBRIC, ALICE)
 
-    assert grade.outcome is Outcome.PENDING
+    assert grade.outcome is GradeOutcome.PENDING
     assert grade.escalated_to_human is True
     assert "declined to break the tie" in grade.reason
 
@@ -294,7 +294,7 @@ async def test_a_score_on_the_threshold_is_pending_and_not_a_pass() -> None:
 
     assert grade.score == pytest.approx(0.75)
 
-    assert grade.outcome is Outcome.PENDING, (
+    assert grade.outcome is GradeOutcome.PENDING, (
         "A score exactly on the contract threshold was resolved by arithmetic. PRAXIS has just "
         "decided somebody's mastery on a rounding rule."
     )
@@ -312,7 +312,7 @@ async def test_a_clear_pass_is_not_sent_to_a_human() -> None:
 
     grade = await grader.grade(GOOD, RUBRIC, ALICE)
 
-    assert grade.outcome is Outcome.PASSED
+    assert grade.outcome is GradeOutcome.PASSED
     assert grade.escalated_to_human is False
 
 
@@ -321,7 +321,7 @@ async def test_a_clear_fail_is_not_sent_to_a_human() -> None:
 
     grade = await grader.grade(GOOD, RUBRIC, ALICE)
 
-    assert grade.outcome is Outcome.FAILED
+    assert grade.outcome is GradeOutcome.FAILED
     assert grade.escalated_to_human is False
 
 
@@ -345,7 +345,7 @@ def test_a_grade_cannot_be_passed_and_awaiting_a_human_at_once() -> None:
     """
     with pytest.raises(ValueError, match="cannot be PASSED and awaiting a human"):
         Grade(
-            outcome=Outcome.PASSED,
+            outcome=GradeOutcome.PASSED,
             score=0.751,
             misconceptions=(),
             reason="the queue was long and it was probably fine",
@@ -358,8 +358,8 @@ def test_a_grade_cannot_be_passed_and_awaiting_a_human_at_once() -> None:
 
 def test_pending_is_its_own_outcome_and_not_a_flavour_of_failed() -> None:
     """A learner whose work is PENDING has not failed. They are waiting on *us*."""
-    assert Outcome.PENDING is not Outcome.FAILED
-    assert {o.value for o in Outcome} == {"passed", "failed", "pending"}
+    assert GradeOutcome.PENDING is not GradeOutcome.FAILED
+    assert {o.value for o in GradeOutcome} == {"passed", "failed", "pending"}
 
 
 # ── Cost ─────────────────────────────────────────────────────────────────────

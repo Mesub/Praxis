@@ -48,7 +48,7 @@ from praxis_ai.models import Task
 log = logging.getLogger("praxis.ai.oracle")
 
 
-class Outcome(StrEnum):
+class ClaimOutcome(StrEnum):
     """The whole vocabulary. Three words, and no room in any of them for a sentence."""
 
     CORRECT = "correct"
@@ -124,7 +124,7 @@ class Verdict:
     free text and it cannot be made into free text.
     """
 
-    outcome: Outcome
+    outcome: ClaimOutcome
     misconception: str | None
     cost: Cost
 
@@ -206,7 +206,7 @@ def _prompt(key: AnswerKey, claim: str) -> str:
     )
 
 
-def _parse(text: str, key: AnswerKey) -> tuple[Outcome, str | None]:
+def _parse(text: str, key: AnswerKey) -> tuple[ClaimOutcome, str | None]:
     """**The airlock.**
 
     Everything the model said arrives here, and only two enumerated values leave. A model that
@@ -227,10 +227,10 @@ def _parse(text: str, key: AnswerKey) -> tuple[Outcome, str | None]:
         raise OracleUnclearError("The oracle's reply was not a verdict object.")
 
     try:
-        outcome = Outcome(str(parsed.get("outcome", "")).strip().lower())
+        outcome = ClaimOutcome(str(parsed.get("outcome", "")).strip().lower())
     except ValueError as bad:
         raise OracleUnclearError(
-            f"{parsed.get('outcome')!r} is not one of {[o.value for o in Outcome]}."
+            f"{parsed.get('outcome')!r} is not one of {[o.value for o in ClaimOutcome]}."
         ) from bad
 
     misconception = parsed.get("misconception")

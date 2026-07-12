@@ -21,10 +21,10 @@ from praxis_ai.config import Settings, get_settings
 from praxis_ai.cost import Attribution
 from praxis_ai.oracle import (
     AnswerKeyStore,
+    ClaimOutcome,
     InMemoryAnswerKeyStore,
     Oracle,
     OracleUnclearError,
-    Outcome,
     UnknownItemError,
 )
 
@@ -57,7 +57,7 @@ class CheckClaimResponse(BaseModel):
     feature is ever built, it must be built somewhere the tutor's context cannot reach.
     """
 
-    outcome: Outcome
+    outcome: ClaimOutcome
     misconception: str | None = None
 
     usd: float | None = None
