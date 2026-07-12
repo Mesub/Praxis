@@ -19,6 +19,9 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <!-- Ed25519 is not in the .NET BCL (which ships MLDsa/SlhDsa but not EdDSA). BouncyCastle is
+         pure-managed — no native libsodium to fail on a CI box the way NSec can. -->
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
   </ItemGroup>
 
 </Project>
