@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Praxis.Infrastructure;
+using Praxis.Modules.Assessment.Persistence;
 using Praxis.Modules.Compiler.Persistence;
 using Praxis.Modules.Graph.Persistence;
 using Praxis.Modules.Identity.Persistence;
@@ -44,6 +45,11 @@ public sealed class ApiFixture : IAsyncLifetime
         await scope.ServiceProvider.GetRequiredService<TwinDbContext>().Database.MigrateAsync();
         await scope.ServiceProvider.GetRequiredService<CompilerDbContext>().Database.MigrateAsync();
         await scope.ServiceProvider.GetRequiredService<TutorDbContext>().Database.MigrateAsync();
+
+        // Assessment's projections are registered with the runner, and the runner catches *every*
+        // projection up on *every* append. A missing `assessment` schema therefore does not fail an
+        // assessment test -- it fails the next tutor session anybody starts.
+        await scope.ServiceProvider.GetRequiredService<AssessmentDbContext>().Database.MigrateAsync();
     }
 
     public async Task DisposeAsync()

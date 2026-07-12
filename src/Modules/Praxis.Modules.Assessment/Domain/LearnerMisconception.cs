@@ -23,10 +23,17 @@ public sealed class LearnerMisconception
     /// world until 25 other people turn out to hold it and a human curator has agreed (M7.5).
     public string? Key { get; private set; }
 
-    /// The wrong **rule**, in the learner's voice. Not *"they said X"* — *"they believe Y"*. The
-    /// first is an error; the second is a bug report on a human mind, and only the second is
-    /// targetable.
-    public string Rule { get; private set; } = string.Empty;
+    /// **What the learner actually wrote that revealed this belief.** Their words, verbatim.
+    ///
+    /// Note what this is *not*: it is not the statement of the wrong rule. **A misconception's
+    /// wording is a fact about the subject, not about this learner** — *"a price level is a physical
+    /// barrier, not a finite pool of liquidity"* is true of everybody who holds it, so it lives once,
+    /// in the concept's declared library, keyed by `Key`. Copying it onto every learner who holds it
+    /// would be storing the same sentence ten thousand times and then having to keep them in step.
+    ///
+    /// What lives *here* is the evidence: the thing this person said, which a human curator can read
+    /// when they are deciding whether the diagnosis was right.
+    public string RevealedBy { get; private set; } = string.Empty;
 
     public MisconceptionStatus Status { get; private set; } = MisconceptionStatus.Suspected;
 
@@ -75,14 +82,14 @@ public sealed class LearnerMisconception
     private LearnerMisconception() { }
 
     internal static LearnerMisconception Suspect(
-        Guid learnerId, Guid conceptId, string? key, string rule, DateTime at)
+        Guid learnerId, Guid conceptId, string? key, string revealedBy, DateTime at)
         => new()
         {
             Id = Guid.NewGuid(),
             LearnerId = learnerId,
             ConceptId = conceptId,
             Key = key,
-            Rule = rule,
+            RevealedBy = revealedBy,
             Status = MisconceptionStatus.Suspected,
             IndependentHits = 1,
             FirstSeenAt = at,

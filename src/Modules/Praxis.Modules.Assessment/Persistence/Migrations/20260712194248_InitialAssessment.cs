@@ -63,7 +63,7 @@ namespace Praxis.Modules.Assessment.Persistence.Migrations
                     LearnerId = table.Column<Guid>(type: "uuid", nullable: false),
                     ConceptId = table.Column<Guid>(type: "uuid", nullable: false),
                     Key = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
-                    Rule = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    RevealedBy = table.Column<string>(type: "character varying(8000)", maxLength: 8000, nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
                     IndependentHits = table.Column<int>(type: "integer", nullable: false),
                     CleanItemsSince = table.Column<int>(type: "integer", nullable: false),

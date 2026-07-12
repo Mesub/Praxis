@@ -12,7 +12,7 @@ using Praxis.Modules.Assessment.Persistence;
 namespace Praxis.Modules.Assessment.Persistence.Migrations
 {
     [DbContext(typeof(AssessmentDbContext))]
-    [Migration("20260712192506_InitialAssessment")]
+    [Migration("20260712194248_InitialAssessment")]
     partial class InitialAssessment
     {
         /// <inheritdoc />
@@ -160,10 +160,10 @@ namespace Praxis.Modules.Assessment.Persistence.Migrations
                     b.Property<DateTime?>("RepairBeganAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Rule")
+                    b.Property<string>("RevealedBy")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");

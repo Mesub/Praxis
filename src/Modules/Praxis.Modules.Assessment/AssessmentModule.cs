@@ -1,8 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Praxis.Modules.Assessment.Persistence;
-using Praxis.Modules.Assessment.Projections;
-using Praxis.Modules.Kernel.Projections;
 
 namespace Praxis.Modules.Assessment;
 
@@ -17,11 +15,15 @@ public static class AssessmentModule
             options.UseNpgsql(connectionString, npgsql =>
                 npgsql.MigrationsHistoryTable("__migrations", AssessmentDbContext.Schema)));
 
-        // Both of these are *derived*. Neither is a place anybody can write a belief about a learner
-        // by hand — the only way in is to append an event saying something happened.
-        services.AddScoped<IProjection, AbilityProjection>();
-        services.AddScoped<IProjection, MisconceptionProjection>();
-
+        // **The projections are NOT registered here**, and that is deliberate rather than an
+        // omission. They are registered in `Program.cs` with `AddProjection<T>()`, alongside every
+        // other module's — because the composition root is the one place a human can read the whole
+        // list of things that derive a belief about a learner, and a projection hidden inside a
+        // module's own registration is a projection nobody audits.
+        //
+        // Registering them in both places is not merely redundant: the `ProjectionRunner` refuses to
+        // start with two projections sharing a name, because the name is the checkpoint key and they
+        // would overwrite each other's place in history. It caught me doing exactly that.
         return services;
     }
 }

@@ -79,7 +79,7 @@ public sealed class AssessmentDbContext : DbContext
 
             mc.HasIndex(m => new { m.LearnerId, m.ConceptId });
 
-            mc.Property(m => m.Rule).IsRequired().HasMaxLength(1_000);
+            mc.Property(m => m.RevealedBy).IsRequired().HasMaxLength(8_000);
             mc.Property(m => m.Key).HasMaxLength(64);
             mc.Property(m => m.Status).IsRequired();
             mc.Property(m => m.IndependentHits).IsRequired();

@@ -5,6 +5,9 @@ using Praxis.Api.Composition;
 using Praxis.Infrastructure;
 using Praxis.Infrastructure.Ai;
 using Praxis.Infrastructure.Web;
+using Praxis.Modules.Assessment;
+using Praxis.Modules.Assessment.Persistence;
+using Praxis.Modules.Assessment.Projections;
 using Praxis.Modules.Compiler;
 using Praxis.Modules.Compiler.Persistence;
 using Praxis.Modules.Graph;
@@ -43,13 +46,15 @@ builder.Services.AddPraxisInfrastructure(
     typeof(TwinModule).Assembly,
     typeof(CompilerModule).Assembly,
     typeof(ISchedulerSnapshot).Assembly,
-    typeof(TutorModule).Assembly);
+    typeof(TutorModule).Assembly,
+    typeof(AssessmentModule).Assembly);
 
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
 builder.Services.AddTwin(connectionString);
 builder.Services.AddCompiler(connectionString);
 builder.Services.AddTutor(connectionString);
+builder.Services.AddAssessment(connectionString);
 
 // The seam between the Graph and the Twin: neither module references the other, so the contract
 // crosses as a value and the adapter lives here, where the application is assembled.
@@ -76,6 +81,12 @@ builder.Services.AddProjection<AnswerBudgetProjection>();
 // And the session. **Nobody leaves empty-handed**: a session in which the learner produced nothing
 // cannot be completed, and the projection re-derives that rather than trusting the tutor's word.
 builder.Services.AddProjection<SessionProjection>();
+
+// What PRAXIS believes about a learner, and what it believes they wrongly believe. **Both derived,
+// neither decided.** There is no endpoint that sets somebody's ability and none that declares a
+// misconception fixed -- the only way in is to append an event saying something happened.
+builder.Services.AddProjection<AbilityProjection>();
+builder.Services.AddProjection<MisconceptionProjection>();
 
 // The AI plane. **The only way anything in PRAXIS talks to a language model** — the model is chosen
 // by the task, the call is attributed to a learner, and the answer is never in the tutor's context.
@@ -126,6 +137,7 @@ if (args.Contains("--migrate", StringComparer.Ordinal))
     await scope.ServiceProvider.GetRequiredService<TwinDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<CompilerDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<TutorDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<AssessmentDbContext>().Database.MigrateAsync();
 
     Log.Information("Migrations applied.");
     return;
