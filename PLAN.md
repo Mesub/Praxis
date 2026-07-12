@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M3 — the Cognitive Twin (E1)
-**Last completed task:** M3.2 — BKT. Found and fixed two model-inverting bugs: the degenerate regime and the absorbing state. (33 tests)
+**Last completed task:** M3.3 — the forgetting curve. Knowledge now bleeds. (59 tests)
 
 ---
 
@@ -133,7 +133,8 @@ flowchart TB
 - [x] **M3.2** **BKT** update on each graded response (`p_transit`, `p_slip`, `p_guess` per concept, seeded from the pack's difficulty prior).
       → Pure function: no clock, no randomness, no model call, so a replay lands byte-identical. Inference and learning are separated — conflating them is the classic BKT bug that lets a *wrong* answer raise belief. Swept 100+ parameter combinations to prove a wrong answer never beats a right one.
       **Two real bugs found by the tests.** (1) **The degenerate regime**: when `slip + guess ≥ 1` the model *inverts* — a correct answer becomes evidence you do **not** know it, and PRAXIS would teach hardest to the people getting things right. Demonstrated numerically (wrong answer → 0.636, right answer → 0.556) and refused at construction. (2) **The absorbing-state trap**: transit drives belief asymptotically to 1 and in floating point it *arrives* — and at exactly 1.0 the Bayesian update dies, so **no evidence can ever move belief again**. The Twin would insist a learner knows something while watching them fail forever. Belief is now clamped strictly inside (0, 1). An unfalsifiable belief about a person is not a model, it is a verdict. 33 tests.
-- [ ] **M3.3** **FSRS-class decay**: retrievability as a function of elapsed time and stability; `p_knows` bleeds continuously. The Graph must be able to show rot in real time.
+- [x] **M3.3** **FSRS-class decay**: retrievability as a function of elapsed time and stability; `p_knows` bleeds continuously. The Graph must be able to show rot in real time.
+      → A **power law, not an exponential** — exponential forgetting claims a memory held for a year is as fragile per-day as one learned yesterday, which is false and builds a scheduler that nags people about things they will never forget. The derived factor comes out to exactly **19/81**, the published FSRS constant — a free check that the curve is the real one. **The spacing effect is the load-bearing line**: the harder it was to recall, the more recalling it helped. Proved it bites by inverting the term — the test failed with *"this is a nagging app, not a scheduler"*. Belief decays **toward the prior, not zero**: forgetting does not leave you knowing less than a stranger, and decaying to zero would have the Twin assert a certainty it never earned about someone who did it perfectly a year ago. Difficulty is *the learner's*, not the concept's, and failure moves it harder than success. Pure function of elapsed days — no clock is read inside, or the projection stops being replayable. 59 tests.
 - [ ] **M3.4** **Calibration**: learner states confidence before every graded item; Brier score accumulates per concept and globally. Confidence-vs-competence gap (Dunning–Kruger delta) is a first-class field.
 - [ ] **M3.5** **The Evidence Ceiling (C-4)** — the single most important function in the Twin. `EXPLAIN`/LLM-graded evidence updates `p_knows` but is **hard-capped below the HOLD threshold**. Only `APPLY` (never-seen item), `BUILD` (it ran), or `PREDICT` (reality resolved it) can cross it. Property-test it: *no sequence of EXPLAIN evidence, of any length, at any score, can ever produce a HELD concept.*
 - [ ] **M3.6** Misconception set: named, specific wrong models attached to the learner, mined in M7.
