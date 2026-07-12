@@ -78,6 +78,64 @@ namespace Praxis.Modules.Tutor.Persistence.Migrations
 
                     b.ToTable("answer_budgets", "tutor");
                 });
+
+            modelBuilder.Entity("Praxis.Modules.Tutor.Domain.Session", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AwaitingLearner")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ConceptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("HintsTaken")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("LearnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Outcome")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlannedMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Produced")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StuckNotes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LearnerId", "ConceptId");
+
+                    b.ToTable("sessions", "tutor");
+                });
 #pragma warning restore 612, 618
         }
     }

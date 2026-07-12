@@ -70,6 +70,10 @@ builder.Services.AddProjection<TwinProjection>();
 // no support tool, and no migration that tops people up after a bad week.
 builder.Services.AddProjection<AnswerBudgetProjection>();
 
+// And the session. **Nobody leaves empty-handed**: a session in which the learner produced nothing
+// cannot be completed, and the projection re-derives that rather than trusting the tutor's word.
+builder.Services.AddProjection<SessionProjection>();
+
 // The AI plane. **The only way anything in PRAXIS talks to a language model** — the model is chosen
 // by the task, the call is attributed to a learner, and the answer is never in the tutor's context.
 // A slice that new'd up an HttpClient and called Anthropic directly would bypass all three.
