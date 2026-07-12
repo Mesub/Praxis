@@ -10,6 +10,7 @@
     <Project Path="src/Modules/Praxis.Modules.Identity/Praxis.Modules.Identity.csproj" />
     <Project Path="src/Modules/Praxis.Modules.Kernel/Praxis.Modules.Kernel.csproj" />
     <Project Path="src/Modules/Praxis.Modules.Scheduler/Praxis.Modules.Scheduler.csproj" />
+    <Project Path="src/Modules/Praxis.Modules.Tutor/Praxis.Modules.Tutor.csproj" />
     <Project Path="src/Modules/Praxis.Modules.Twin/Praxis.Modules.Twin.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -20,6 +21,7 @@
     <Project Path="tests/Praxis.Modules.Kernel.Tests/Praxis.Modules.Kernel.Tests.csproj" />
     <Project Path="tests/Praxis.Modules.Scheduler.Tests/Praxis.Modules.Scheduler.Tests.csproj" />
     <Project Path="tests/Praxis.Infrastructure.Tests/Praxis.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Praxis.Modules.Tutor.Tests/Praxis.Modules.Tutor.Tests.csproj" />
     <Project Path="tests/Praxis.Modules.Twin.Tests/Praxis.Modules.Twin.Tests.csproj" />
     <Project Path="tests/Praxis.Shared.Tests/Praxis.Shared.Tests.csproj" />
   </Folder>

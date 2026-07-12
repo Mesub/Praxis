@@ -12,6 +12,9 @@ using Praxis.Modules.Identity.Auth;
 using Praxis.Modules.Identity.Persistence;
 using Praxis.Modules.Kernel;
 using Praxis.Modules.Scheduler;
+using Praxis.Modules.Tutor;
+using Praxis.Modules.Tutor.Persistence;
+using Praxis.Modules.Tutor.Projections;
 using Praxis.Modules.Twin;
 using Praxis.Modules.Twin.Persistence;
 using Praxis.Modules.Twin.Projections;
@@ -43,6 +46,7 @@ builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
 builder.Services.AddTwin(connectionString);
 builder.Services.AddCompiler(connectionString);
+builder.Services.AddTutor(connectionString);
 
 // The seam between the Graph and the Twin: neither module references the other, so the contract
 // crosses as a value and the adapter lives here, where the application is assembled.
@@ -60,6 +64,11 @@ builder.Services.AddScoped<ICompilerSnapshot, LiveCompilerSnapshot>();
 builder.Services.AddScoped<ISchedulerSnapshot, LiveSchedulerSnapshot>();
 
 builder.Services.AddProjection<TwinProjection>();
+
+// The Answer Budget is a projection too, and that is what makes it honest: the only way to change
+// what a learner has spent is to append an event saying they spent it. There is no admin endpoint,
+// no support tool, and no migration that tops people up after a bad week.
+builder.Services.AddProjection<AnswerBudgetProjection>();
 
 // The AI plane. **The only way anything in PRAXIS talks to a language model** — the model is chosen
 // by the task, the call is attributed to a learner, and the answer is never in the tutor's context.
@@ -98,6 +107,7 @@ if (args.Contains("--migrate", StringComparer.Ordinal))
     await scope.ServiceProvider.GetRequiredService<GraphDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<TwinDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<CompilerDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<TutorDbContext>().Database.MigrateAsync();
 
     Log.Information("Migrations applied.");
     return;

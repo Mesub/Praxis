@@ -9,6 +9,7 @@ using Praxis.Modules.Compiler.Persistence;
 using Praxis.Modules.Graph.Persistence;
 using Praxis.Modules.Identity.Persistence;
 using Praxis.Modules.Kernel.Persistence;
+using Praxis.Modules.Tutor.Persistence;
 using Praxis.Modules.Twin.Persistence;
 using Testcontainers.PostgreSql;
 
@@ -42,6 +43,7 @@ public sealed class ApiFixture : IAsyncLifetime
         await scope.ServiceProvider.GetRequiredService<GraphDbContext>().Database.MigrateAsync();
         await scope.ServiceProvider.GetRequiredService<TwinDbContext>().Database.MigrateAsync();
         await scope.ServiceProvider.GetRequiredService<CompilerDbContext>().Database.MigrateAsync();
+        await scope.ServiceProvider.GetRequiredService<TutorDbContext>().Database.MigrateAsync();
     }
 
     public async Task DisposeAsync()

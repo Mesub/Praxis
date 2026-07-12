@@ -9,7 +9,7 @@
 ## Status
 
 **Current milestone:** M6 — E5 Tutor + the Answer Budget
-**Last completed task:** M5.7 — the typed Core↔AI contract, pinned from both sides so the two languages cannot silently disagree. **M5 is complete.** (112 AI + 18 contract tests)
+**Last completed task:** M6.1 — the Answer Budget. Finite, event-sourced, and **impossible to refill** — because the budget is not a paywall, it is the second lock on the oracle-grinding attack. (13 unit + 5 projection tests)
 
 **⚠️ Open blocker (M13/launch):** two independent experts must double-grade a real golden set. Until then PRAXIS makes **no claim** that its grader marks like an expert.
 
@@ -222,7 +222,11 @@ flowchart TB
 
 ## M6 — E5 Tutor + the Answer Budget
 
-- [ ] **M6.1** `AnswerBudget` domain: per-concept budget, spent, remaining. Persisted, event-sourced.
+- [x] **M6.1** `AnswerBudget` domain: per-concept budget, spent, remaining. Persisted, event-sourced.
+      → **The budget is doing two entirely different jobs, and both need it to be genuinely scarce.** (1) *Pedagogy* (I-5): unlimited hints do not accelerate learning, they **replace** it — a learner who can always get the next nudge for free never sits in the productive discomfort where learning happens; they outsource the struggle, feel like they are progressing, and produce nothing they could reproduce alone. **The friction is the product.** (2) *A security control* (C-5), and this is the one that is easy to miss: the tutor cannot give the answer, but it *can ask the oracle* whether a claim is right — and an oracle is a channel. Given unlimited questions, a patient learner (or a tutor jailbroken into acting as their proxy) can grind guesses and **binary-search the answer out**, while everyone involved says truthfully that the answer was never in the prompt.
+      **Two locks, and they only work together:** items are never repeated (M5.5 — novelty is a hash), so you cannot grind *one* answer; and help on a concept is **finite**, so you cannot grind *around* it either. **Sell a refill and the second lock opens** — which is why there is no `Grant`, no `Refill`, no `AddHints`, no admin override, and a reflection test asserts their absence rather than trusting a comment. Added a `Refill()` to prove it bites.
+      **The budget is a projection**, so the only way to change what a learner has spent is to *append an event saying they spent it* — where the Twin sees it and discounts the credit ("you did not produce that alone"), and the Ledger keeps it forever. No support tool, no quiet `UPDATE` after a bad week. The event carries a `BudgetRemaining` and **the projection does not believe it**: that is the writer's belief, useful for auditing a disagreement, worthless as truth — a buggy tutor claiming 99 hints left cannot make it so (tested; made the projection trust it, and 3 tests failed).
+      The ladder is **not flat-priced**: `Orient` is *free* (orienting yourself is a skill, and charging for it teaches learners not to do it), `Full` costs 3 of 5. Under a flat cost a learner optimising against the price jumps straight to the bottom rung every time — the exact behaviour the ladder exists to prevent. A hint they cannot afford is **refused, not clamped**: silently granting it and recording the budget as empty is the worst of both worlds — they got the help, and the Ledger says they did not. 13 unit + 5 projection tests.
 - [ ] **M6.2** The **hint ladder** as a policy layer: `orient → probe → analogy → partial → full`. Each rung costs from the budget. The final rung is **not** "the answer" — it is the smallest scaffold that still requires the learner to produce it.
 - [ ] **M6.3** **Structural enforcement (C-5)**: the tutor's context is assembled by a server-side builder that *cannot* include the answer key — it is not in the tutor's database, not in its prompt, not in its retrieval index. Write the test that proves it: prompt-inject the tutor with every jailbreak we can think of and assert the answer never appears.
 - [ ] **M6.4** Session loop: turn-by-turn Socratic dialogue, budget shown to the learner in the UI, and **every session ends with the learner having said or built something**.
