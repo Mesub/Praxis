@@ -1,0 +1,149 @@
+import { describe, expect, it } from "vitest";
+import type { AnswerResponse, NextItemResponse } from "./api";
+import {
+  calibrate,
+  calibrationVerdict,
+  INITIAL_DIAGNOSTIC,
+  misconceptions,
+  moveOf,
+  receiveItem,
+  recordAnswer,
+  type DiagnosticState,
+} from "./diagnostic";
+
+function ask(over: Partial<NextItemResponse> = {}): NextItemResponse {
+  return {
+    itemId: "item-1",
+    stem: "What does a candlestick show that a line chart does not?",
+    evidenceType: "Explain",
+    theta: 0,
+    standardError: 1,
+    confidentEnoughToStop: false,
+    stopped: false,
+    says: null,
+    ...over,
+  };
+}
+
+function verdict(over: Partial<AnswerResponse> = {}): AnswerResponse {
+  return { outcome: "Correct", misconception: null, youSaidYouWereSure: true, andYouWere: "right", ...over };
+}
+
+/** Drive one full round: receive an item, answer it, then receive the next (which settles θ-after). */
+function round(
+  state: DiagnosticState,
+  item: NextItemResponse,
+  confidence: number,
+  answer: AnswerResponse,
+  nextTheta: number,
+): DiagnosticState {
+  let s = receiveItem(state, item);
+  s = recordAnswer(s, confidence, answer);
+  return receiveItem(s, ask({ theta: nextTheta }));
+}
+
+describe("receiveItem", () => {
+  it("moves to asking with the item as asked", () => {
+    const s = receiveItem(INITIAL_DIAGNOSTIC, ask({ itemId: "x", theta: 0.4 }));
+    expect(s.phase).toBe("asking");
+    expect(s.current?.itemId).toBe("x");
+    expect(s.current?.theta).toBe(0.4);
+  });
+
+  it("stops honestly, carrying the reason and no item", () => {
+    const s = receiveItem(INITIAL_DIAGNOSTIC, ask({ stopped: true, itemId: null, stem: null, says: "You are tired, and tiredness is not ignorance." }));
+    expect(s.phase).toBe("stopped");
+    expect(s.current).toBeNull();
+    expect(s.stopSays).toContain("tiredness");
+  });
+});
+
+describe("recordAnswer", () => {
+  it("appends the answer with the confidence stated before the verdict, and clears the current item", () => {
+    const asked = receiveItem(INITIAL_DIAGNOSTIC, ask());
+    const s = recordAnswer(asked, 0.9, verdict());
+    expect(s.history).toHaveLength(1);
+    expect(s.history[0].statedConfidence).toBe(0.9);
+    expect(s.current).toBeNull();
+  });
+
+  it("throws rather than invent an entry when there is no current item", () => {
+    expect(() => recordAnswer(INITIAL_DIAGNOSTIC, 0.5, verdict())).toThrow();
+  });
+});
+
+describe("moveOf — the honest difficulty trail", () => {
+  it("reads the estimate as rising, falling, or held from θ-before vs θ-after", () => {
+    let s = round(INITIAL_DIAGNOSTIC, ask({ theta: 0 }), 0.8, verdict(), 0.6);
+    expect(moveOf(s.history[0])).toBe("rose");
+
+    s = round(s, ask({ theta: 0.6 }), 0.4, verdict({ andYouWere: "not", outcome: "Wrong" }), 0.2);
+    expect(moveOf(s.history[1])).toBe("fell");
+  });
+});
+
+describe("misconceptions", () => {
+  it("surfaces the named wrong beliefs, de-duplicated", () => {
+    let s = round(INITIAL_DIAGNOSTIC, ask({ itemId: "a" }), 0.8, verdict({ andYouWere: "not", outcome: "Wrong", misconception: "confuses-price-with-value" }), 0.1);
+    s = round(s, ask({ itemId: "b", theta: 0.1 }), 0.8, verdict({ andYouWere: "not", outcome: "Wrong", misconception: "confuses-price-with-value" }), 0.0);
+    expect(misconceptions(s)).toEqual(["confuses-price-with-value"]);
+  });
+});
+
+describe("calibrate — what you think you know but don't", () => {
+  it("is empty and NaN-free before anything is answered", () => {
+    const c = calibrate(INITIAL_DIAGNOSTIC);
+    expect(c.answered).toBe(0);
+    expect(c.accuracy).toBe(0);
+    expect(c.overconfidencePoints).toBe(0);
+    expect(c.blindspots).toHaveLength(0);
+  });
+
+  it("names the blind spots: sure, and wrong", () => {
+    const asked = receiveItem(INITIAL_DIAGNOSTIC, ask());
+    // Sure and wrong — the definition of a blind spot.
+    const s = recordAnswer(asked, 0.9, verdict({ youSaidYouWereSure: true, andYouWere: "not", outcome: "Wrong" }));
+    const c = calibrate(s);
+    expect(c.blindspots).toHaveLength(1);
+    expect(c.underclaimed).toHaveLength(0);
+  });
+
+  it("separates underclaimed knowledge: right, but not sure", () => {
+    const asked = receiveItem(INITIAL_DIAGNOSTIC, ask());
+    const s = recordAnswer(asked, 0.55, verdict({ youSaidYouWereSure: false, andYouWere: "right", outcome: "Correct" }));
+    const c = calibrate(s);
+    expect(c.underclaimed).toHaveLength(1);
+    expect(c.blindspots).toHaveLength(0);
+  });
+
+  it("computes overconfidence as confidence minus accuracy in points", () => {
+    // Two answers: both stated 0.8 confidence, one right one wrong → accuracy 0.5, confidence 0.8.
+    let s = receiveItem(INITIAL_DIAGNOSTIC, ask({ itemId: "a" }));
+    s = recordAnswer(s, 0.8, verdict({ youSaidYouWereSure: true, andYouWere: "right", outcome: "Correct" }));
+    s = receiveItem(s, ask({ itemId: "b" }));
+    s = recordAnswer(s, 0.8, verdict({ youSaidYouWereSure: true, andYouWere: "not", outcome: "Wrong" }));
+    const c = calibrate(s);
+    expect(c.accuracy).toBeCloseTo(0.5);
+    expect(c.averageConfidence).toBeCloseTo(0.8);
+    expect(c.overconfidencePoints).toBe(30);
+  });
+});
+
+describe("calibrationVerdict", () => {
+  it("leads with the blind spots when there are any", () => {
+    const asked = receiveItem(INITIAL_DIAGNOSTIC, ask());
+    const s = recordAnswer(asked, 0.95, verdict({ youSaidYouWereSure: true, andYouWere: "not", outcome: "Wrong" }));
+    expect(calibrationVerdict(calibrate(s)).toLowerCase()).toContain("blind spot");
+  });
+
+  it("credits genuine calibration when confidence and competence are close", () => {
+    // Sure-and-right at 0.7, not-sure-and-wrong at 0.3 → accuracy 0.5, confidence 0.5, gap 0.
+    let s = receiveItem(INITIAL_DIAGNOSTIC, ask({ itemId: "a" }));
+    s = recordAnswer(s, 0.7, verdict({ youSaidYouWereSure: true, andYouWere: "right", outcome: "Correct" }));
+    s = receiveItem(s, ask({ itemId: "b" }));
+    s = recordAnswer(s, 0.3, verdict({ youSaidYouWereSure: false, andYouWere: "not", outcome: "Wrong" }));
+    const c = calibrate(s);
+    expect(c.overconfidencePoints).toBe(0);
+    expect(calibrationVerdict(c).toLowerCase()).toContain("honesty");
+  });
+});

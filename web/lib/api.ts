@@ -106,3 +106,56 @@ export const ledger = {
   publicKey: () => api.get<PublicKey>("/api/ledger/public-key"),
   verify: (record: unknown) => api.post<VerificationResult>("/api/ledger/verify", record),
 };
+
+// ── The adaptive diagnostic (E6) ──────────────────────────────────────────────
+//
+// Mirrors `NextItemResponse` / `AnswerResponse` exactly — note what is *absent*: no answer, no
+// solution, no explanation. The wire has never carried one, so this type cannot describe one.
+
+/** The next question, or an honest reason PRAXIS has stopped asking. */
+export interface NextItemResponse {
+  itemId: string | null;
+  stem: string | null;
+  evidenceType: string | null;
+  /** What PRAXIS believes about the ability, and how sure it is — always together. */
+  theta: number;
+  standardError: number;
+  confidentEnoughToStop: boolean;
+  /** True when PRAXIS has stopped asking — a 200, never an error. */
+  stopped: boolean;
+  says: string | null;
+}
+
+/** The truth about the learner's *own* answer — right or not, and the belief that produced it. */
+export interface AnswerResponse {
+  outcome: "Correct" | "Partial" | "Wrong";
+  misconception: string | null;
+  /** Confidence was captured *before* the outcome — that ordering is what makes this honest (C-6). */
+  youSaidYouWereSure: boolean;
+  andYouWere: "right" | "not";
+}
+
+export interface AnswerRequest {
+  itemId: string;
+  /** The learner's words — data, sent to the oracle as a claim to check, never as instructions. */
+  claim: string;
+  /** Stated before they are told anything, 0..1. */
+  statedConfidence: number;
+  seconds: number;
+}
+
+export const diagnostics = {
+  nextItem: (sessionId: string, conceptId: string, token?: string, signal?: AbortSignal) =>
+    api.get<NextItemResponse>(
+      `/api/assessment/diagnostics/${sessionId}/next-item?conceptId=${conceptId}`,
+      token,
+      signal,
+    ),
+  submitAnswer: (sessionId: string, body: AnswerRequest, token?: string, signal?: AbortSignal) =>
+    api.post<AnswerResponse>(
+      `/api/assessment/diagnostics/${sessionId}/answers`,
+      body,
+      token,
+      signal,
+    ),
+};

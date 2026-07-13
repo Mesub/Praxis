@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   HARD_TRUTH,
@@ -126,7 +127,10 @@ export default function OnboardingPage() {
             className="mt-5 rounded-md border border-accent-line bg-[color:var(--accent-soft)] px-4 py-3.5 text-[13.5px] text-ink-2"
           >
             <b className="text-ink">Objective locked — {chosen.title}.</b> Next, the Diagnostic finds
-            what you already hold, so PRAXIS compiles from the truth and not from your optimism.
+            what you already hold, so PRAXIS compiles from the truth and not from your optimism.{" "}
+            <Link href="/diagnostic" className="font-medium text-accent underline-offset-4 hover:underline">
+              Begin the Diagnostic →
+            </Link>
           </div>
         ) : null}
       </div>
