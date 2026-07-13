@@ -263,3 +263,66 @@ export const scheduler = {
   today: (minutes: SessionLength, token?: string, signal?: AbortSignal) =>
     api.get<TodayCardResponse>(`/api/scheduler/today?minutes=${minutes}`, token, signal),
 };
+
+// ── The Tutor (E5): the Socratic dialogue and the Answer Budget ────────────────
+//
+// The budget is *shown*, always — a scarcity you cannot see is an ambush, not a lesson. There is no
+// answer anywhere in these types: the .NET core never had one, and there is no `buy` — a budget you
+// can buy is a budget a patient learner uses to grind the oracle until it gives up the answer.
+
+/** The session, budget included and prominent. */
+export interface SessionResponse {
+  sessionId: string;
+  conceptId: string;
+  state: string;
+  outcome: string | null;
+  /** Shown, always. It is their money and they are entitled to watch it. */
+  budgetRemaining: number;
+  /** What the next rung would cost — so the decision is informed, not a gamble. */
+  nextRungCost: number;
+  /** The next rung's name, or null at the bottom of the ladder (nothing is below it). */
+  nextRung: string | null;
+  hintsTaken: number;
+  produced: number;
+  madeSomething: boolean;
+  /** True when the tutor has spoken and it is the learner's move (LR-3). */
+  awaitingYou: boolean;
+}
+
+/** One turn: what the tutor said, the rung it was served at, and what it cost. No silent charges. */
+export interface TurnResponse {
+  tutor: string;
+  rung: string;
+  cost: number;
+  session: SessionResponse;
+}
+
+export interface StartSessionRequest {
+  conceptId: string;
+  plannedMinutes: number;
+}
+
+export interface HintRequest {
+  /** A rung name; the API reads it case-insensitively. */
+  rung: string;
+  /** What the learner said in reply to the last turn. Without it, the ladder does not advance. */
+  learnerSaid?: string;
+}
+
+export const tutor = {
+  start: (body: StartSessionRequest, token?: string, signal?: AbortSignal) =>
+    api.post<SessionResponse>("/api/tutor/sessions", body, token, signal),
+  get: (sessionId: string, token?: string, signal?: AbortSignal) =>
+    api.get<SessionResponse>(`/api/tutor/sessions/${sessionId}`, token, signal),
+  hint: (sessionId: string, body: HintRequest, token?: string, signal?: AbortSignal) =>
+    api.post<TurnResponse>(`/api/tutor/sessions/${sessionId}/hints`, body, token, signal),
+  stuckNote: (sessionId: string, note: string, token?: string, signal?: AbortSignal) =>
+    api.post<SessionResponse>(`/api/tutor/sessions/${sessionId}/stuck-note`, { note }, token, signal),
+  end: (sessionId: string, abandoned: boolean, actualMinutes: number, token?: string, signal?: AbortSignal) =>
+    api.post<SessionResponse>(
+      `/api/tutor/sessions/${sessionId}/end`,
+      { abandoned, actualMinutes },
+      token,
+      signal,
+    ),
+};
