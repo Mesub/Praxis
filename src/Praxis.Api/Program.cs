@@ -51,7 +51,8 @@ builder.Services.AddPraxisInfrastructure(
     typeof(TutorModule).Assembly,
     typeof(AssessmentModule).Assembly,
     typeof(IMemorySnapshot).Assembly,
-    typeof(ILedgerKeys).Assembly);
+    typeof(ILedgerKeys).Assembly,
+    typeof(Praxis.Modules.Reality.Domain.LoopsBoard).Assembly);
 
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);

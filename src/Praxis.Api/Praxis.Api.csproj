@@ -21,6 +21,7 @@
     <ProjectReference Include="..\Modules\Praxis.Modules.Memory\Praxis.Modules.Memory.csproj" />
     <ProjectReference Include="..\Modules\Praxis.Modules.Ledger\Praxis.Modules.Ledger.csproj" />
     <ProjectReference Include="..\Modules\Praxis.Modules.Tutor\Praxis.Modules.Tutor.csproj" />
+    <ProjectReference Include="..\Modules\Praxis.Modules.Reality\Praxis.Modules.Reality.csproj" />
   </ItemGroup>
 
 </Project>
