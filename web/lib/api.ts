@@ -341,6 +341,70 @@ export const memory = {
     api.get<RepsResponse>("/api/memory/reps", token, signal),
 };
 
+// ── Loops (E8 · the Reality Loop): predictions you cannot take back ────────────
+//
+// You say what code will do and how sure you are; the commitment is frozen before it runs. There is
+// no withdraw and no hide — an open loop stays on the board until reality closes it, exactly once.
+
+export interface OpenLoopResponse {
+  loopId: string;
+  claim: string;
+  confidence: number;
+  resolvesAt: string;
+  horizonDays: number;
+  resolvesToday: boolean;
+  isOverdue: boolean;
+}
+
+export interface LoopsBoardResponse {
+  open: OpenLoopResponse[];
+  resolvingToday: OpenLoopResponse[];
+  overdue: OpenLoopResponse[];
+  resolved: number;
+  forfeited: number;
+  /** resolved / (resolved + forfeited) — the anti-cherry-picking metric. Null until something closes. */
+  coverage: number | null;
+  headline: string;
+}
+
+export interface CommitPredictionRequest {
+  /** "Output" or "Raises". */
+  kind: string;
+  /** The program the claim is about — frozen with the commitment so resolution runs *this* code. */
+  code: string;
+  /** What you say the code will do. */
+  answer: string;
+  /** How sure you are, 0..1 — mandatory; a forecast without a probability is unscoreable. */
+  confidence: number;
+}
+
+export interface CommitPredictionResponse {
+  loopId: string;
+  kind: string;
+  answer: string;
+  confidence: number;
+}
+
+export interface ResolveResponse {
+  loopId: string;
+  correct: boolean;
+  /** (confidence − outcome)² — a fact about calibration, not correctness. */
+  brierScore: number;
+  predicted: string;
+  /** What the program actually did — safe to know only now that you have committed. */
+  groundTruth: string;
+  confidence: number;
+}
+
+export const reality = {
+  board: (token?: string, signal?: AbortSignal) =>
+    api.get<LoopsBoardResponse>("/api/reality/loops", token, signal),
+  commit: (body: CommitPredictionRequest, token?: string, signal?: AbortSignal) =>
+    api.post<CommitPredictionResponse>("/api/reality/loops", body, token, signal),
+  resolve: (loopId: string, token?: string, signal?: AbortSignal) =>
+    api.post<ResolveResponse>(`/api/reality/loops/${loopId}/resolve`, {}, token, signal),
+};
+
 // ── The Twin (E1): the learner's own mind, decay and all ──────────────────────
 //
 // There is no `?learnerId=` here and there never will be — the most intimate model of a person ever
