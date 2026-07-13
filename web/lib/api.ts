@@ -309,6 +309,40 @@ export interface HintRequest {
   learnerSaid?: string;
 }
 
+// ── The Twin (E1): the learner's own mind, decay and all ──────────────────────
+//
+// There is no `?learnerId=` here and there never will be — the most intimate model of a person ever
+// built does not get an admin override. A learner's Twin is theirs.
+
+export interface DecayForecastEntry {
+  conceptId: string;
+  pKnows: number;
+  retrievability: number;
+  daysUntilDue: number;
+  alreadyLapsed: boolean;
+}
+
+export interface TwinSummaryResponse {
+  conceptsHeld: number;
+  conceptsInProgress: number;
+  /** Held today, below threshold soon — the number nobody else in the industry shows you. */
+  conceptsDecaying: number;
+  /** Already fallen below. They think they know these. */
+  conceptsLapsed: number;
+  overallBrierScore: number;
+  /** Positive means systematic overconfidence across the whole domain. */
+  overallConfidenceGap: number;
+  calibrationIsMeaningful: boolean;
+  activeMisconceptions: number;
+  /** What is about to rot, soonest first — the rep queue, in effect. */
+  decayForecast: DecayForecastEntry[];
+}
+
+export const twin = {
+  summary: (forecastDays = 30, token?: string, signal?: AbortSignal) =>
+    api.get<TwinSummaryResponse>(`/api/twin?forecastDays=${forecastDays}`, token, signal),
+};
+
 // ── Teach-back (E6 · EXPLAIN evidence) ────────────────────────────────────────
 //
 // You explain it in your own words; a rubric on the far side grades it. Note what does *not* come
