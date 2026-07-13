@@ -32,4 +32,15 @@ public sealed class LoopsController : ControllerBase
         [FromServices] CommitPrediction.Handler handler,
         CancellationToken ct)
         => (await handler.HandleAsync(command, ct)).ToApiResponse();
+
+    /// **Resolve it.** Runs the frozen subject in the sandbox and settles the claim against reality.
+    /// There is no request body — the code and the commitment were fixed when the loop was opened; the
+    /// only input is which loop, and it can be resolved exactly once. A sandbox outage comes back as a
+    /// failure, not a "wrong".
+    [HttpPost("{loopId:guid}/resolve")]
+    public async Task<IActionResult> Resolve(
+        Guid loopId,
+        [FromServices] ResolvePrediction.Handler handler,
+        CancellationToken ct)
+        => (await handler.HandleAsync(new ResolvePrediction.Command(loopId), ct)).ToApiResponse();
 }

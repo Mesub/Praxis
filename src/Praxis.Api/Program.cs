@@ -84,6 +84,12 @@ builder.Services.AddScoped<IMemorySnapshot, LiveMemorySnapshot>();
 // secret loaded here and never exposed; only the public key leaves this service.
 builder.Services.AddSingleton<ILedgerKeys, ConfigLedgerKeys>();
 
+// The sandbox that runs a Reality Loop's code (E8). When Docker is absent it returns a failure, not
+// a verdict — so a missing daemon can never resolve a prediction as "wrong" and poison calibration.
+builder.Services.AddScoped<
+    Praxis.Modules.Reality.Domain.ISandbox,
+    Praxis.Modules.Reality.Infrastructure.DockerSandbox>();
+
 builder.Services.AddProjection<TwinProjection>();
 
 // The Answer Budget is a projection too, and that is what makes it honest: the only way to change
