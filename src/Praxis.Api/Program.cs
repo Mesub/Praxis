@@ -52,7 +52,8 @@ builder.Services.AddPraxisInfrastructure(
     typeof(AssessmentModule).Assembly,
     typeof(IMemorySnapshot).Assembly,
     typeof(ILedgerKeys).Assembly,
-    typeof(Praxis.Modules.Reality.Domain.LoopsBoard).Assembly);
+    typeof(Praxis.Modules.Reality.Domain.LoopsBoard).Assembly,
+    typeof(Praxis.Modules.Analytics.IAnalyticsSnapshot).Assembly);
 
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
@@ -87,6 +88,10 @@ builder.Services.AddSingleton<ILedgerKeys, ConfigLedgerKeys>();
 // What the learner proved (Twin) named by the Graph, turned into signable competencies. No module
 // reads another's tables; this adapter, at the composition root, is where they meet.
 builder.Services.AddScoped<ILedgerSnapshot, LiveLedgerSnapshot>();
+
+// The numerator of Mastery-per-Minute — the Twin's decay-adjusted mastery credit — divided, in the
+// handler, by minutes folded from the event log.
+builder.Services.AddScoped<Praxis.Modules.Analytics.IAnalyticsSnapshot, LiveAnalyticsSnapshot>();
 
 // The sandbox that runs a Reality Loop's code (E8). When Docker is absent it returns a failure, not
 // a verdict — so a missing daemon can never resolve a prediction as "wrong" and poison calibration.
