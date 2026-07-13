@@ -36,6 +36,13 @@ function mpm(over: Partial<AnalyticsResponse> = {}): AnalyticsResponse {
       meanGapDays: null,
       regularity: null,
     },
+    decayDebt: {
+      creditAtRisk: 0,
+      retainedCredit: 0,
+      conceptsDecaying: 0,
+      conceptsLapsed: 0,
+      hasHeldConcepts: false,
+    },
     ...over,
   };
 }
@@ -124,6 +131,35 @@ describe("AnalyticsPage", () => {
 
     expect(await screen.findByText("1.50")).toBeInTheDocument();
     expect(screen.queryByText(/your rhythm/i)).not.toBeInTheDocument();
+  });
+
+  it("shows decay debt with the amount owed and a review link when mastery is slipping", async () => {
+    me.mockResolvedValue(
+      ok(
+        mpm({
+          decayDebt: {
+            creditAtRisk: 0.42,
+            retainedCredit: 2.0,
+            conceptsDecaying: 2,
+            conceptsLapsed: 1,
+            hasHeldConcepts: true,
+          },
+        }),
+      ),
+    );
+    render(<AnalyticsPage />);
+
+    expect(await screen.findByText(/decay debt/i)).toBeInTheDocument();
+    expect(screen.getByText("0.42")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /pay it down with a review/i })).toBeInTheDocument();
+  });
+
+  it("shows no decay-debt section for a learner who has proved nothing yet", async () => {
+    me.mockResolvedValue(ok(mpm())); // decayDebt hasHeldConcepts:false by default
+    render(<AnalyticsPage />);
+
+    expect(await screen.findByText("1.50")).toBeInTheDocument();
+    expect(screen.queryByText(/decay debt/i)).not.toBeInTheDocument();
   });
 
   it("says a gained-nothing stretch out loud and offers the next step", async () => {

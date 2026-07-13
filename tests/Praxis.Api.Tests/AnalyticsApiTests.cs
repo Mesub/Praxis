@@ -36,6 +36,9 @@ public sealed class AnalyticsApiTests
         Assert.Equal("notEnoughData", mpm.Calibration!.Direction);
         // No active days yet → consistency is a blank too, never a zero-day "streak".
         Assert.Equal("notEnoughData", mpm.Consistency!.Pattern);
+        // Nothing held yet → no decay debt: you cannot owe review on what you never proved.
+        Assert.False(mpm.DecayDebt!.HasHeldConcepts);
+        Assert.Equal(0.0, mpm.DecayDebt.CreditAtRisk);
     }
 
     [Fact]
@@ -78,9 +81,11 @@ public sealed class AnalyticsApiTests
 
     private sealed record MpmBody(
         double? Rate, double MasteryCredit, double MinutesInvested, bool HasData, bool GainedNothing,
-        CalibrationTrendBody? Calibration, ConsistencyBody? Consistency);
+        CalibrationTrendBody? Calibration, ConsistencyBody? Consistency, DecayDebtBody? DecayDebt);
 
     private sealed record CalibrationTrendBody(string Direction);
 
     private sealed record ConsistencyBody(string Pattern);
+
+    private sealed record DecayDebtBody(double CreditAtRisk, bool HasHeldConcepts);
 }

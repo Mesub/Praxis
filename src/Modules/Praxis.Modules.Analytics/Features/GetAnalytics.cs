@@ -42,6 +42,10 @@ public static class GetAnalytics
             var calibration = CalibrationTrend.From(stream);
             var consistency = Consistency.From(stream);
 
+            // Decay debt reads the Twin's read-time forgetting curve (through the snapshot) and
+            // aggregates it here — how much of what was proved has bled away and is owed to review.
+            var decayDebt = DecayDebt.From(await _snapshot.HeldConceptDecayAsync(learner, ct));
+
             return Result<AnalyticsResponse>.Success(new AnalyticsResponse(
                 mpm.Rate,
                 mpm.MasteryCreditGained,
@@ -49,7 +53,8 @@ public static class GetAnalytics
                 mpm.HasData,
                 mpm.GainedNothing,
                 calibration,
-                consistency));
+                consistency,
+                decayDebt));
         }
     }
 }
@@ -59,7 +64,8 @@ public static class GetAnalytics
 /// arithmetic of its own. `Rate` is null when no minutes have been invested: there is nothing to
 /// divide yet, and that is said, not faked. `Calibration` carries whether the learner is getting
 /// better at knowing what they know; `Consistency` whether they return at a cadence that makes
-/// learning stick — each a first-class blank when there is not yet enough history to say.
+/// learning stick; `DecayDebt` how much of what they proved has slipped and is owed back to review —
+/// each a first-class blank when there is not yet enough history to say.
 public sealed record AnalyticsResponse(
     double? Rate,
     double MasteryCredit,
@@ -67,4 +73,5 @@ public sealed record AnalyticsResponse(
     bool HasData,
     bool GainedNothing,
     CalibrationTrendReport Calibration,
-    ConsistencyReport Consistency);
+    ConsistencyReport Consistency,
+    DecayDebtReport DecayDebt);

@@ -61,6 +61,22 @@ public sealed class GetAnalyticsTests
         Assert.Equal(CalibrationDirection.Improving, result.Value.Calibration.Direction);
     }
 
+    [Fact]
+    public async Task Decay_debt_from_the_snapshot_folds_through_the_handler()
+    {
+        // One held concept, 20% forgotten: the debt is 0.2 of its 0.5 credit.
+        var held = new[] { new ConceptDecay(0.5, Retrievability: 0.80, IsDecaying: true, HasLapsed: false) };
+
+        var result = await new GetAnalytics.Handler(
+            new FakeEventStore([]), new FakeSnapshot(0.5, held), new FakeUser())
+            .HandleAsync(new GetAnalytics.Query(), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value.DecayDebt.HasDebt);
+        Assert.Equal(0.10, result.Value.DecayDebt.CreditAtRisk, 6);
+        Assert.Equal(1, result.Value.DecayDebt.ConceptsDecaying);
+    }
+
     private static LearningEvent Event(IEventPayload payload)
         => LearningEvent.Create(
             Guid.CreateVersion7(), LearningEventType.SessionCompleted, EventCatalogue.Serialize(payload), Day1, Day1);
@@ -73,10 +89,15 @@ public sealed class GetAnalyticsTests
                 Guid.CreateVersion7(), Guid.CreateVersion7(), EvidenceType.Apply, correct, confidence, 30)),
             Day1, Day1);
 
-    private sealed class FakeSnapshot(double mastery) : IAnalyticsSnapshot
+    private sealed class FakeSnapshot(double mastery, IReadOnlyList<ConceptDecay>? held = null)
+        : IAnalyticsSnapshot
     {
         public Task<double> MasteryCreditByAsync(Guid learnerId, CancellationToken ct = default)
             => Task.FromResult(mastery);
+
+        public Task<IReadOnlyList<ConceptDecay>> HeldConceptDecayAsync(
+            Guid learnerId, CancellationToken ct = default)
+            => Task.FromResult(held ?? []);
     }
 
     private sealed class FakeEventStore(IReadOnlyList<LearningEvent> stream) : IEventStore

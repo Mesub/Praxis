@@ -3,10 +3,12 @@ import type {
   AnalyticsResponse,
   CalibrationTrendReport,
   ConsistencyReport,
+  DecayDebtReport,
 } from "./api";
 import {
   calibrationTrend,
   consistency,
+  decayDebt,
   minutesLabel,
   rateLabel,
   ratePerHour,
@@ -35,6 +37,17 @@ function consistencyReport(over: Partial<ConsistencyReport> = {}): ConsistencyRe
   };
 }
 
+function debtReport(over: Partial<DecayDebtReport> = {}): DecayDebtReport {
+  return {
+    creditAtRisk: 0,
+    retainedCredit: 0,
+    conceptsDecaying: 0,
+    conceptsLapsed: 0,
+    hasHeldConcepts: false,
+    ...over,
+  };
+}
+
 function mpm(over: Partial<AnalyticsResponse> = {}): AnalyticsResponse {
   return {
     rate: 0.05,
@@ -44,6 +57,7 @@ function mpm(over: Partial<AnalyticsResponse> = {}): AnalyticsResponse {
     gainedNothing: false,
     calibration: trendReport(),
     consistency: consistencyReport(),
+    decayDebt: debtReport(),
     ...over,
   };
 }
@@ -136,5 +150,44 @@ describe("consistency", () => {
     const c = consistency(consistencyReport({ pattern: "erratic" }));
     expect(c.sentence?.toLowerCase()).toContain("bursts");
     expect(c.tone).toBe("neutral");
+  });
+});
+
+describe("decayDebt", () => {
+  it("says nothing when the learner has proved nothing yet", () => {
+    const d = decayDebt(debtReport({ hasHeldConcepts: false }));
+    expect(d.headline).toBeNull();
+    expect(d.tone).toBe("none");
+    expect(d.offerReview).toBe(false);
+  });
+
+  it("reassures, without a review nag, when everything held is still fresh", () => {
+    const d = decayDebt(debtReport({ hasHeldConcepts: true, creditAtRisk: 0, retainedCredit: 2 }));
+    expect(d.headline?.toLowerCase()).toContain("nothing you have proved is slipping");
+    expect(d.tone).toBe("good");
+    expect(d.offerReview).toBe(false);
+  });
+
+  it("names the debt, counts what is slipping, and offers the review that pays it down", () => {
+    const d = decayDebt(
+      debtReport({
+        hasHeldConcepts: true,
+        creditAtRisk: 0.37,
+        retainedCredit: 2.1,
+        conceptsDecaying: 2,
+        conceptsLapsed: 1,
+      }),
+    );
+    expect(d.atRisk).toBe("0.37");
+    expect(d.detail).toBe("2 decaying · 1 lapsed");
+    expect(d.tone).toBe("warn");
+    expect(d.offerReview).toBe(true);
+  });
+
+  it("omits a zero count from the detail line", () => {
+    const d = decayDebt(
+      debtReport({ hasHeldConcepts: true, creditAtRisk: 0.2, conceptsDecaying: 3, conceptsLapsed: 0 }),
+    );
+    expect(d.detail).toBe("3 decaying");
   });
 });

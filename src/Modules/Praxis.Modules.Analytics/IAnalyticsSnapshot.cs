@@ -1,3 +1,5 @@
+using Praxis.Modules.Analytics.Domain;
+
 namespace Praxis.Modules.Analytics;
 
 /// **What the learner has actually verified** — the numerator of Mastery-per-Minute, read from the
@@ -6,4 +8,10 @@ namespace Praxis.Modules.Analytics;
 public interface IAnalyticsSnapshot
 {
     Task<double> MasteryCreditByAsync(Guid learnerId, CancellationToken ct = default);
+
+    /// Each concept the learner currently **holds**, with its forgetting-curve retrievability computed
+    /// at read time. Analytics aggregates these into decay debt; the Twin owns the curve. A learner
+    /// who holds nothing returns an empty list, and owes nothing.
+    Task<IReadOnlyList<ConceptDecay>> HeldConceptDecayAsync(
+        Guid learnerId, CancellationToken ct = default);
 }

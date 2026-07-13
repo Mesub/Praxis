@@ -9,7 +9,14 @@ import {
   type AnalyticsResponse,
   type TwinSummaryResponse,
 } from "@/lib/api";
-import { calibrationTrend, consistency, minutesLabel, rateLabel, verdictOf } from "@/lib/analytics";
+import {
+  calibrationTrend,
+  consistency,
+  decayDebt,
+  minutesLabel,
+  rateLabel,
+  verdictOf,
+} from "@/lib/analytics";
 import { calibrationVerdict } from "@/lib/graph";
 
 /*
@@ -83,6 +90,7 @@ function Report({
   const trendTone =
     trend.tone === "good" ? "text-accent" : trend.tone === "bad" ? "text-serious" : "text-ink-2";
   const rhythm = consistency(mpm.consistency);
+  const debt = decayDebt(mpm.decayDebt);
   return (
     <>
       <section className="rounded-lg border border-line bg-surface p-6">
@@ -144,6 +152,40 @@ function Report({
           >
             {rhythm.sentence}
           </p>
+        </section>
+      ) : null}
+
+      {debt.headline ? (
+        <section
+          className={`mt-4 rounded-lg border bg-surface p-5 ${
+            debt.tone === "warn" ? "border-warn/45" : "border-line"
+          }`}
+        >
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Decay debt</h2>
+            {debt.detail ? <span className="mono text-[12px] text-ink-4">{debt.detail}</span> : null}
+          </div>
+          {debt.tone === "warn" ? (
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="mono text-[26px] leading-none text-warn">{debt.atRisk}</span>
+              <span className="text-[12px] text-ink-4">mastery credit owed to review</span>
+            </div>
+          ) : null}
+          <p
+            className={`mt-2 text-[13.5px] leading-relaxed ${
+              debt.tone === "good" ? "text-accent" : "text-ink-2"
+            }`}
+          >
+            {debt.headline}
+          </p>
+          {debt.offerReview ? (
+            <Link
+              href="/reps"
+              className="mt-3 inline-flex rounded-md bg-accent px-4 py-2 text-[13px] font-medium text-accent-ink hover:opacity-95"
+            >
+              Pay it down with a review →
+            </Link>
+          ) : null}
         </section>
       ) : null}
     </>

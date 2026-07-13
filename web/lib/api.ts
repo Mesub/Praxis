@@ -406,6 +406,22 @@ export interface ConsistencyReport {
   regularity: number | null;
 }
 
+/** How much of what a learner proved has slipped down the forgetting curve and is owed back to
+ *  review. `creditAtRisk + retainedCredit` is exactly the total held credit — the debt is a split,
+ *  never an invented number. */
+export interface DecayDebtReport {
+  /** Mastery credit that has bled away and needs review to restore. */
+  creditAtRisk: number;
+  /** Mastery credit still retrievable right now. */
+  retainedCredit: number;
+  /** Held, but slipping (retrievability between the lapse and due thresholds). */
+  conceptsDecaying: number;
+  /** Already fallen below — they think they still know these. */
+  conceptsLapsed: number;
+  /** False for a learner who has proved nothing yet — nothing to owe. */
+  hasHeldConcepts: boolean;
+}
+
 export interface AnalyticsResponse {
   /** Mastery credit gained per minute invested, or null when no time has been invested. */
   rate: number | null;
@@ -419,6 +435,8 @@ export interface AnalyticsResponse {
   calibration: CalibrationTrendReport;
   /** Whether the learner returns at a cadence that makes learning stick. */
   consistency: ConsistencyReport;
+  /** How much proved mastery has slipped and is owed back to review. */
+  decayDebt: DecayDebtReport;
 }
 
 export const analytics = {

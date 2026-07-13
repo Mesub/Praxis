@@ -7,7 +7,12 @@
   that would change it (R-3) — never shame, always a next step.
 */
 
-import type { AnalyticsResponse, CalibrationTrendReport, ConsistencyReport } from "./api";
+import type {
+  AnalyticsResponse,
+  CalibrationTrendReport,
+  ConsistencyReport,
+  DecayDebtReport,
+} from "./api";
 
 /** The raw per-minute rate is tiny; per *hour* is what a person can hold in their head. */
 export function ratePerHour(rate: number): number {
@@ -87,6 +92,50 @@ export function calibrationTrend(trend: CalibrationTrendReport): CalibrationTren
     default:
       return { sentence: null, tone: "none" };
   }
+}
+
+export type DecayDebt = {
+  /** Null when the learner holds nothing yet — the screen shows nothing rather than a hollow zero. */
+  headline: string | null;
+  /** The debt, to two decimals, or null when there is nothing held. */
+  atRisk: string | null;
+  /** A count line ("2 decaying · 1 lapsed"), or null when nothing is slipping. */
+  detail: string | null;
+  tone: "good" | "warn" | "none";
+  /** True when review would actually restore something — the screen offers the reps link. */
+  offerReview: boolean;
+};
+
+/** How much of what you proved has slipped, said as a debt owed to your future self — never as shame,
+ *  always with the review that pays it down. */
+export function decayDebt(report: DecayDebtReport): DecayDebt {
+  if (!report.hasHeldConcepts) {
+    return { headline: null, atRisk: null, detail: null, tone: "none", offerReview: false };
+  }
+
+  const slipping = report.conceptsDecaying + report.conceptsLapsed;
+  if (report.creditAtRisk <= 0 || slipping === 0) {
+    return {
+      headline: "Nothing you have proved is slipping right now — it is all still fresh. Come back before it starts to.",
+      atRisk: report.creditAtRisk.toFixed(2),
+      detail: null,
+      tone: "good",
+      offerReview: false,
+    };
+  }
+
+  const parts: string[] = [];
+  if (report.conceptsDecaying > 0) parts.push(`${report.conceptsDecaying} decaying`);
+  if (report.conceptsLapsed > 0) parts.push(`${report.conceptsLapsed} lapsed`);
+
+  return {
+    headline:
+      "This much of what you proved has quietly slipped down the forgetting curve. It is not gone — a few minutes of review buys it back.",
+    atRisk: report.creditAtRisk.toFixed(2),
+    detail: parts.join(" · "),
+    tone: "warn",
+    offerReview: true,
+  };
 }
 
 export type Consistency = {
