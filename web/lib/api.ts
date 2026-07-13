@@ -309,6 +309,38 @@ export interface HintRequest {
   learnerSaid?: string;
 }
 
+// ── Reps (E7 · Memory): a queue ordered by worth, not by debt ─────────────────
+//
+// Note what is absent: no count of what you are "behind on" (PRAXIS does not show that number, so
+// there is nothing to bury), no skip/snooze, no mark-as-known. An empty queue is a real, good state.
+
+export interface RepResponse {
+  conceptId: string;
+  slug: string;
+  /** Ripe (the best minutes) · Rotting (do this today) · Lost (a re-learn, priced as one). */
+  urgency: string;
+  retrievability: number;
+  expectedMinutes: number;
+  /** Why this is worth your minutes — in plain words, not a due-date. */
+  because: string;
+}
+
+export interface RepsResponse {
+  /** Worth reviewing, ordered by what a rep is *worth* — not by what you owe. */
+  due: RepResponse[];
+  /** Decayed past the point a review would work. Not hidden, and not in the queue. */
+  lost: RepResponse[];
+  /** The *expected* cost of clearing the queue, not the best case. */
+  expectedMinutes: number;
+  nothingWorthDoing: boolean;
+  aboutWhatYouLost: string | null;
+}
+
+export const memory = {
+  reps: (token?: string, signal?: AbortSignal) =>
+    api.get<RepsResponse>("/api/memory/reps", token, signal),
+};
+
 // ── The Twin (E1): the learner's own mind, decay and all ──────────────────────
 //
 // There is no `?learnerId=` here and there never will be — the most intimate model of a person ever
