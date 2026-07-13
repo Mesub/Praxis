@@ -18,7 +18,14 @@ public sealed class FakeOracle : IAiPlane
     private string? _misconception;
     private bool _unreachable;
 
+    private GradeResponse? _grade;
+    private bool _graderDown;
+
     public List<CheckClaimRequest> Asked { get; } = [];
+
+    /// The explanations handed to the grader — captured so a test can prove the speech was stripped
+    /// *before* the rubric ever saw the words.
+    public List<GradeByConceptRequest> Graded { get; } = [];
 
     public void Says(ClaimOutcome outcome, string? misconception = null)
     {
@@ -29,6 +36,16 @@ public sealed class FakeOracle : IAiPlane
 
     /// The oracle is down. **PRAXIS must not guess, and must not default to WRONG.**
     public void Fails() => _unreachable = true;
+
+    /// Script the grader's verdict on the next teach-back.
+    public void Grades(GradeResponse grade)
+    {
+        _grade = grade;
+        _graderDown = false;
+    }
+
+    /// The grader is down. **PRAXIS must not invent a score.**
+    public void GraderFails() => _graderDown = true;
 
     public Task<Result<CheckClaimResponse>> CheckClaimAsync(
         CheckClaimRequest request, CancellationToken ct = default)
@@ -45,7 +62,19 @@ public sealed class FakeOracle : IAiPlane
 
     public Task<Result<GradeResponse>> GradeByConceptAsync(
         GradeByConceptRequest request, CancellationToken ct = default)
-        => throw new NotSupportedException("Not part of this slice.");
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Graded.Add(request);
+
+        if (_graderDown)
+        {
+            return Task.FromResult(Result<GradeResponse>.Invalid("The grader could not be reached."));
+        }
+
+        return Task.FromResult(Result<GradeResponse>.Success(
+            _grade ?? new GradeResponse(GradeOutcome.Passed, 0.9, [], "stub", 1, false, false, 0.0)));
+    }
 
     public Task<Result<ItemResponse>> GenerateItemAsync(
         GenerateItemRequest request, CancellationToken ct = default)
