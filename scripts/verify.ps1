@@ -112,8 +112,14 @@ elseif ($Quick) {
 else {
     Push-Location $webDir
     try {
-        Invoke-Stage 'Web   lint' { npm run lint --silent } | Out-Null
-        Invoke-Stage 'Web   build' { npm run build --silent } | Out-Null
+        # A fresh checkout has no node_modules. Install from the committed lockfile before linting
+        # or building, so the web stage is self-contained rather than assuming a prior `npm install`.
+        if (-not (Test-Path (Join-Path $webDir 'node_modules'))) {
+            Invoke-Stage 'Web   deps' { npm ci --silent } | Out-Null
+        }
+
+        Invoke-Stage 'Web   lint' { npm run lint } | Out-Null
+        Invoke-Stage 'Web   build' { npm run build } | Out-Null
     }
     finally {
         Pop-Location
