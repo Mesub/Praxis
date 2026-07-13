@@ -25,8 +25,18 @@ from praxis_ai.items import EvidenceType, ItemGenerator, ItemRejectedError
 from praxis_ai.oracle import AnswerKeyStore
 from praxis_ai.routes.oracle import get_store
 from praxis_ai.rubric import Dimension, HardFail, Rubric
+from praxis_ai.rubric_store import RubricStore, default_rubric_store
 
 router = APIRouter(prefix="/assessment", tags=["assessment"])
+
+# The rubric library lives here, on the AI plane — answer-adjacent content never crosses back to
+# the core (C-5). A process-wide singleton, seeded at import, mirroring the oracle's answer-key
+# store. The grade-by-concept endpoint that consumes it is the next slice (M11.7b).
+_rubric_store = default_rubric_store()
+
+
+def get_rubric_store() -> RubricStore:
+    return _rubric_store
 
 
 # ── Grading ──────────────────────────────────────────────────────────────────
