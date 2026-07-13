@@ -367,6 +367,27 @@ export const memory = {
     api.get<RepsResponse>("/api/memory/reps", token, signal),
 };
 
+// ── Analytics (E15): the one number PRAXIS is judged by ───────────────────────
+//
+// Mastery-per-Minute (I-10). `rate` is null when no minutes have been invested — there is nothing to
+// divide yet, and PRAXIS says so rather than faking a zero.
+
+export interface AnalyticsResponse {
+  /** Mastery credit gained per minute invested, or null when no time has been invested. */
+  rate: number | null;
+  /** Verified, decay-adjusted mastery credit — the numerator. */
+  masteryCredit: number;
+  minutesInvested: number;
+  hasData: boolean;
+  /** True when time was spent and verified mastery did not move — a real, reportable bad stretch. */
+  gainedNothing: boolean;
+}
+
+export const analytics = {
+  me: (token?: string, signal?: AbortSignal) =>
+    api.get<AnalyticsResponse>("/api/analytics/me", token, signal),
+};
+
 // ── Loops (E8 · the Reality Loop): predictions you cannot take back ────────────
 //
 // You say what code will do and how sure you are; the commitment is frozen before it runs. There is
