@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Praxis.Infrastructure.Ai;
+using Praxis.Modules.Graph.Packs;
+using Praxis.Modules.Graph.Persistence;
 using Praxis.Shared;
 
 namespace Praxis.Api.Tests;
@@ -33,14 +35,31 @@ public sealed class SessionsApiTests : IAsyncLifetime
 
     private WebApplicationFactory<Program> _factory = null!;
 
+    /// A real concept that declares misconceptions in the shipped pack, and one that declares none —
+    /// resolved from the graph so the wiring test can start a session on each.
+    private Guid _conceptWithMisconceptions;
+    private Guid _conceptWithoutMisconceptions;
+
     public SessionsApiTests(ApiFixture api) => _api = api;
 
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         // A host whose AI plane leaks everything it is given.
         _factory = _api.Factory.WithLeakingAiPlane();
 
-        return Task.CompletedTask;
+        // The declared misconception library only reaches the tutor for a concept that actually
+        // exists in the graph, so load the real pack (idempotent — another class may have already
+        // loaded it) and pin two concepts: one with a named wrong belief, one with none.
+        await using var scope = _api.Factory.Services.CreateAsyncScope();
+
+        var loader = scope.ServiceProvider.GetRequiredService<PackLoader>();
+        var result = await loader.LoadAsync(SeedPack());
+        Assert.True(
+            result.IsSuccess || result.Status == ResultStatus.Conflict, string.Join("\n", result.Errors));
+
+        var graph = scope.ServiceProvider.GetRequiredService<GraphDbContext>();
+        _conceptWithMisconceptions = graph.Concepts.Single(c => c.Slug == "embeddings").Id;
+        _conceptWithoutMisconceptions = graph.Concepts.Single(c => c.Slug == "tokenisation").Id;
     }
 
     public Task DisposeAsync()
@@ -459,6 +478,60 @@ public sealed class SessionsApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         return (await Read<SessionBody>(response)).Data!;
+    }
+
+    // ── The misconception library reaches the tutor (M13.2b-ii) ──────────────
+
+    /// **A concept's declared wrong beliefs travel to the tutor — and nothing else does.** The
+    /// LeakingAiPlane echoes the whole request, so if the concept's misconception keys reached it,
+    /// they come back out here. (They are keys, not the answer: naming *how you are likely wrong* is
+    /// the opposite of handing you what is right.)
+    [Fact]
+    public async Task A_concepts_declared_misconceptions_are_handed_to_the_tutor()
+    {
+        var (client, _) = await Learner();
+        var session = await Start(client, _conceptWithMisconceptions);
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri($"/api/tutor/sessions/{session}/hints", UriKind.Relative),
+            new { rung = "orient", learnerSaid = "I am stuck." },
+            Json);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var echoed = (await Read<TurnBody>(response)).Data!.Tutor;
+
+        // The embeddings concept declares this named wrong belief; it must have reached the request.
+        Assert.Contains("embeddings-encode-meaning-not-training", echoed, StringComparison.Ordinal);
+    }
+
+    /// A concept that names no misconceptions hands over an empty set — never null, never a guess.
+    [Fact]
+    public async Task A_concept_without_misconceptions_hands_over_an_empty_set()
+    {
+        var (client, _) = await Learner();
+        var session = await Start(client, _conceptWithoutMisconceptions);
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri($"/api/tutor/sessions/{session}/hints", UriKind.Relative),
+            new { rung = "orient", learnerSaid = "I am stuck." },
+            Json);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var echoed = (await Read<TurnBody>(response)).Data!.Tutor;
+
+        Assert.Contains("\"KnownMisconceptions\":[]", echoed, StringComparison.Ordinal);
+    }
+
+    private static string SeedPack()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "packs")))
+        {
+            root = root.Parent;
+        }
+
+        return File.ReadAllText(Path.Combine(root!.FullName, "packs", "ai-engineering", "pack.yaml"));
     }
 
     private async Task<(HttpClient Client, Guid ConceptId)> Learner()

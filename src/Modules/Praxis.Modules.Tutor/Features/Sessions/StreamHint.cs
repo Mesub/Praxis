@@ -43,6 +43,7 @@ public static class StreamHint
         private readonly IEventStore _events;
         private readonly ProjectionRunner _projections;
         private readonly IAiPlane _ai;
+        private readonly IMisconceptionLibrary _misconceptions;
         private readonly IUserContext _user;
         private readonly IClock _clock;
 
@@ -51,9 +52,11 @@ public static class StreamHint
             IEventStore events,
             ProjectionRunner projections,
             IAiPlane ai,
+            IMisconceptionLibrary misconceptions,
             IUserContext user,
             IClock clock)
-            => (_db, _events, _projections, _ai, _user, _clock) = (db, events, projections, ai, user, clock);
+            => (_db, _events, _projections, _ai, _misconceptions, _user, _clock)
+                = (db, events, projections, ai, misconceptions, user, clock);
 
         /// Returns a **failure** when a gate refuses — and the caller must not have opened a stream
         /// yet. It returns the token source only once everything has said yes.
@@ -139,6 +142,11 @@ public static class StreamHint
 
             await _projections.CatchUpAsync(ct);
 
+            // The concept's declared wrong beliefs — the closed set the tutor may name, never the
+            // answer. Fetched before the stream opens, so a Graph hiccup fails cleanly rather than
+            // mid-token. Empty when the concept declares none.
+            var known = await _misconceptions.KeysForConceptAsync(session.ConceptId, ct);
+
             // ── Only now does anything become a stream ───────────────────────
             var tokens = _ai.TutorTurnStreamAsync(
                 new TutorTurnRequest(
@@ -149,7 +157,7 @@ public static class StreamHint
                         : [new TurnSpec("learner", command.LearnerSaid)],
                     Rung: (Infrastructure.Ai.HintRung)grant.Rung,
                     BudgetRemaining: budget.Remaining - grant.Cost,
-                    KnownMisconceptions: [],
+                    KnownMisconceptions: known,
                     LearnerId: learner.ToString(),
                     ConceptId: session.ConceptId.ToString()),
                 ct);

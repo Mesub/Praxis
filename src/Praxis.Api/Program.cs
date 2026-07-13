@@ -65,6 +65,7 @@ builder.Services.AddAssessment(connectionString);
 // The seam between the Graph and the Twin: neither module references the other, so the contract
 // crosses as a value and the adapter lives here, where the application is assembled.
 builder.Services.AddScoped<IMasteryContracts, GraphMasteryContracts>();
+builder.Services.AddScoped<Praxis.Modules.Tutor.IMisconceptionLibrary, GraphMisconceptionLibrary>();
 
 // The Graph knows the subject; the Twin knows the learner; the Compiler knows neither. This is the
 // only place the three meet.

@@ -56,6 +56,7 @@ public static class TakeHint
         private readonly IEventStore _events;
         private readonly ProjectionRunner _projections;
         private readonly IAiPlane _ai;
+        private readonly IMisconceptionLibrary _misconceptions;
         private readonly IUserContext _user;
         private readonly IClock _clock;
 
@@ -64,9 +65,11 @@ public static class TakeHint
             IEventStore events,
             ProjectionRunner projections,
             IAiPlane ai,
+            IMisconceptionLibrary misconceptions,
             IUserContext user,
             IClock clock)
-            => (_db, _events, _projections, _ai, _user, _clock) = (db, events, projections, ai, user, clock);
+            => (_db, _events, _projections, _ai, _misconceptions, _user, _clock)
+                = (db, events, projections, ai, misconceptions, user, clock);
 
         public async Task<Result<TurnResponse>> HandleAsync(Command command, CancellationToken ct)
         {
@@ -155,6 +158,11 @@ public static class TakeHint
 
             await _projections.CatchUpAsync(ct);
 
+            // The concept's declared wrong beliefs — the closed set the tutor may name. Never the
+            // answer: naming *how a learner is likely wrong* is the opposite of handing them what is
+            // right (C-5). Empty when the concept declares none.
+            var known = await _misconceptions.KeysForConceptAsync(session.ConceptId, ct);
+
             // ── Then ask the tutor, which does not have the answer ───────────
             var reply = await _ai.TutorTurnAsync(
                 new TutorTurnRequest(
@@ -165,7 +173,7 @@ public static class TakeHint
                         : [new TurnSpec("learner", command.LearnerSaid)],
                     Rung: (Infrastructure.Ai.HintRung)grant.Rung,
                     BudgetRemaining: budget.Remaining - grant.Cost,
-                    KnownMisconceptions: [],
+                    KnownMisconceptions: known,
                     LearnerId: learner.ToString(),
                     ConceptId: session.ConceptId.ToString()),
                 ct);
