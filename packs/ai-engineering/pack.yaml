@@ -91,6 +91,11 @@ concepts:
     difficulty: 0.2
     minutes: 60
     requires: [the-inverted-index]
+    misconceptions:
+      - key: bm25-is-obsolete
+        statement: >
+          I think BM25 is old keyword matching that modern embeddings have made obsolete, so I do not
+          really need to tune it or take its scores seriously as a baseline.
     proof:
       hold: 0.80
       evidence:
@@ -107,6 +112,11 @@ concepts:
     minutes: 60
     requires: [tokenisation]
     contrasts: [bm25]
+    misconceptions:
+      - key: embeddings-encode-meaning-not-training
+        statement: >
+          I think an embedding captures what a text *means*, so two things I consider similar will be
+          close in the space — rather than what the model was trained to put close together.
     proof:
       hold: 0.80
       evidence:
@@ -122,6 +132,15 @@ concepts:
     difficulty: 0.4
     minutes: 45
     requires: [embeddings]
+    misconceptions:
+      - key: cosine-ignores-normalisation
+        statement: >
+          I think cosine similarity gives the same ranking whether or not I normalised my vectors,
+          so normalisation is just a tidiness step I can skip.
+      - key: all-distance-metrics-agree
+        statement: >
+          I think cosine, dot product and euclidean are three names for basically the same thing and
+          will rank my results in the same order.
     proof:
       hold: 0.80
       evidence:
@@ -137,6 +156,11 @@ concepts:
     difficulty: 0.8
     minutes: 50
     requires: [vector-similarity]
+    misconceptions:
+      - key: more-dimensions-more-expressive
+        statement: >
+          I think more embedding dimensions always means a more expressive, more accurate model, so
+          bigger vectors are simply better.
     proof:
       hold: 0.75
       evidence:
@@ -169,6 +193,11 @@ concepts:
     minutes: 60
     requires: [exact-nearest-neighbour, the-curse-of-dimensionality]
     contrasts: [exact-nearest-neighbour]
+    misconceptions:
+      - key: ann-returns-true-neighbours
+        statement: >
+          I think an approximate index still returns the true nearest neighbours, just faster — so I
+          do not need to measure how often it misses the right document.
     proof:
       hold: 0.80
       evidence:
@@ -230,6 +259,11 @@ concepts:
     difficulty: 0.4
     minutes: 35
     requires: [chunk-sizing]
+    misconceptions:
+      - key: more-overlap-is-always-better
+        statement: >
+          I think more chunk overlap is always safer, so I should crank it up — rather than paying for
+          it in storage and near-duplicate results with no measured gain.
     proof:
       hold: 0.75
       evidence:
@@ -246,6 +280,12 @@ concepts:
     minutes: 60
     requires: [chunk-overlap]
     contrasts: [chunk-sizing]
+    misconceptions:
+      - key: chunking-is-just-picking-a-size
+        statement: >
+          I think chunking is basically about finding the right character count, so once I have tuned
+          the window size I have solved chunking — headings, tables and sentence boundaries are
+          details.
     proof:
       hold: 0.80
       evidence:
@@ -291,6 +331,15 @@ concepts:
     difficulty: 0.2
     minutes: 40
     requires: [bm25]
+    misconceptions:
+      - key: higher-recall-is-always-better
+        statement: >
+          I think a higher recall always means a better retriever, so I should push recall up even if
+          precision collapses.
+      - key: recall-and-precision-are-interchangeable
+        statement: >
+          I use "recall" and "precision" loosely as if they mean the same thing — roughly "how good
+          the results are" — rather than two opposed questions with opposite fixes.
     proof:
       hold: 0.80
       evidence:
@@ -306,6 +355,11 @@ concepts:
     minutes: 40
     requires: [recall-and-precision]
     contrasts: [recall-and-precision]
+    misconceptions:
+      - key: recall-at-k-measures-answer-quality
+        statement: >
+          I think recall@k tells me how good my system's final answers are, rather than only whether
+          the right passage reached the top k I hand to the model.
     proof:
       hold: 0.80
       evidence:
@@ -350,6 +404,12 @@ concepts:
     minutes: 50
     requires: [building-an-eval-set]
     contrasts: [building-an-eval-set]
+    misconceptions:
+      - key: eval-labels-from-retrieved-docs
+        statement: >
+          I built my eval set by reading the documents my system already retrieves and labelling
+          those as correct — so a high score means my system is good, not that I measured my own
+          assumptions.
     proof:
       hold: 0.80
       evidence:
@@ -382,6 +442,11 @@ concepts:
     minutes: 70
     requires: [index-recall-vs-latency, structure-aware-chunking, embedding-model-choice]
     contrasts: [bm25]
+    misconceptions:
+      - key: dense-always-beats-lexical
+        statement: >
+          I think dense (embedding) retrieval is strictly better than BM25, so a good system should
+          drop lexical search rather than combine the two — even for exact names and rare acronyms.
     proof:
       hold: 0.85
       evidence:
@@ -397,6 +462,11 @@ concepts:
     difficulty: 0.9
     minutes: 70
     requires: [dense-retrieval, the-bm25-baseline-run]
+    misconceptions:
+      - key: fuse-by-adding-scores
+        statement: >
+          I think I can combine lexical and dense results by just adding their similarity scores
+          together — even though the two score ranges are not comparable.
     proof:
       hold: 0.85
       evidence:
@@ -411,6 +481,11 @@ concepts:
     difficulty: 1.2
     minutes: 80
     requires: [hybrid-retrieval, ranking-metrics]
+    misconceptions:
+      - key: reranking-is-just-resorting
+        statement: >
+          I think reranking just re-sorts the candidates by the same similarity score I already have,
+          rather than scoring query and passage together with a model that reads both.
     proof:
       hold: 0.85
       evidence:
@@ -443,6 +518,12 @@ concepts:
     difficulty: 0.8
     minutes: 60
     requires: [reranking]
+    misconceptions:
+      - key: more-context-is-better
+        statement: >
+          I think giving the model more retrieved passages can only help, so I should fill the context
+          window — rather than knowing the model attends badly to the middle and a stuffed window
+          buries the answer.
     proof:
       hold: 0.80
       evidence:
@@ -457,6 +538,15 @@ concepts:
     difficulty: 1.0
     minutes: 70
     requires: [context-assembly]
+    misconceptions:
+      - key: a-citation-means-its-correct
+        statement: >
+          I think that if the answer cites a source, the claim it makes must be supported by that
+          source — so a cited answer is a grounded one.
+      - key: models-should-always-answer
+        statement: >
+          I think the system should always produce an answer, so "I don't know" when the passages do
+          not contain it is a failure rather than the behaviour users actually need.
     proof:
       hold: 0.85
       evidence:
@@ -472,6 +562,11 @@ concepts:
     difficulty: 1.3
     minutes: 80
     requires: [grounded-generation, the-eval-trap]
+    misconceptions:
+      - key: fluent-means-faithful
+        statement: >
+          I judge an answer by whether it reads well and sounds confident, so a fluent answer feels
+          trustworthy — even when nothing in the retrieved passages actually supports it.
     proof:
       hold: 0.85
       evidence:
@@ -486,6 +581,11 @@ concepts:
     difficulty: 1.2
     minutes: 90
     requires: [faithfulness-evaluation, ranking-metrics]
+    misconceptions:
+      - key: retrieval-metrics-measure-answers
+        statement: >
+          I think good retrieval numbers (recall@k, NDCG) mean good answers, so if retrieval improves
+          I do not also need to measure answer quality — they are really one number.
     proof:
       hold: 0.85
       evidence:

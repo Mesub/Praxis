@@ -41,8 +41,30 @@ public sealed class PackConcept
 
     public List<string> AppliesTo { get; set; } = [];
 
+    /// The **named wrong beliefs** a learner might hold about this concept — the concept's declared
+    /// misconception library (I-6). Each is a *bug report on a human mind*, not a restatement of an
+    /// error: not "they got recall and precision mixed up" but "I think a higher recall always means
+    /// a better retriever." A wrong belief you can teach against, build a CRITIQUE item against, and
+    /// watch die.
+    ///
+    /// The AI extractor matches a learner's wrong answer against **this closed set first**, and only
+    /// proposes something new when nothing here fits — which is the one thing that keeps the global
+    /// library from filling with a hundred n=1 rephrasings of the same idea. A concept that declares
+    /// a `contrasts` edge is announcing exactly where these live.
+    public List<PackMisconception> Misconceptions { get; set; } = [];
+
     /// What would prove a learner understands this. Required — see <see cref="PackValidator"/>.
     public PackContract? Proof { get; set; }
+}
+
+/// One named wrong belief, as authored in the pack. Its `Key` is a **stable, global** identifier —
+/// the same wrong idea in two learners must carry the same key, or it cannot be matched, named, or
+/// mined at cohort scale. Its `Statement` is first person, because a misconception a learner does
+/// not recognise as *theirs* is one they keep.
+public sealed class PackMisconception
+{
+    public string Key { get; set; } = string.Empty;
+    public string Statement { get; set; } = string.Empty;
 }
 
 public sealed class PackContract

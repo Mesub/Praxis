@@ -71,6 +71,48 @@ public sealed class SeedPackTests
     }
 
     [Fact]
+    public void Every_concept_that_contrasts_with_another_names_the_wrong_belief_that_lives_there()
+    {
+        // A `contrasts` edge announces "here is where learners get confused". A confusion nobody
+        // named is one the extractor cannot match against and the tutor cannot teach against — so
+        // every contrast in the shipped pack must carry at least one declared misconception.
+        foreach (var concept in Document().Concepts.Where(c => c.Contrasts.Count > 0))
+        {
+            Assert.True(
+                concept.Misconceptions.Count > 0,
+                $"'{concept.Slug}' contrasts with {string.Join(", ", concept.Contrasts)} but names no "
+                + "misconception — the confusion it points at has no bug report the tutor can use.");
+        }
+    }
+
+    [Fact]
+    public void Every_declared_misconception_is_usable_and_recognisable()
+    {
+        // A key you can match on, a statement a learner can read back in their own voice.
+        foreach (var concept in Document().Concepts)
+        {
+            foreach (var m in concept.Misconceptions)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(m.Key), $"'{concept.Slug}' has a keyless misconception.");
+                Assert.False(
+                    string.IsNullOrWhiteSpace(m.Statement),
+                    $"'{concept.Slug}' misconception '{m.Key}' has no statement.");
+                Assert.StartsWith("I ", m.Statement.Trim(), StringComparison.Ordinal);
+            }
+        }
+    }
+
+    [Fact]
+    public void No_two_concepts_claim_the_same_wrong_idea()
+    {
+        // Keys are global: the same wrong belief is one belief, minable across every learner who
+        // holds it. A key declared twice would quietly split or merge beliefs at cohort scale.
+        var keys = Document().Concepts.SelectMany(c => c.Misconceptions).Select(m => m.Key).ToList();
+
+        Assert.Equal(keys.Count, keys.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+    }
+
+    [Fact]
     public async Task It_loads_into_a_real_graph()
     {
         await using var db = _graph.CreateContext();

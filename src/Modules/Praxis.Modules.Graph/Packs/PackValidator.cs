@@ -72,6 +72,8 @@ public static class PackValidator
             ValidateConcept(concept, bySlug, errors);
         }
 
+        ValidateMisconceptionKeysAreGloballyUnique(document, errors);
+
         DetectCycles(bySlug, errors);
         DetectOrphans(bySlug, errors);
 
@@ -143,6 +145,80 @@ public static class PackValidator
         {
             errors.Add($"'{slug}': {ex.Message.Split(" (Parameter")[0]}");
         }
+
+        ValidateMisconceptions(concept, slug, errors);
+    }
+
+    /// A declared misconception is a closed target the AI extractor matches against — so each one
+    /// must actually be usable as a key and recognisable as a belief.
+    private static void ValidateMisconceptions(PackConcept concept, string slug, List<string> errors)
+    {
+        foreach (var m in concept.Misconceptions)
+        {
+            if (string.IsNullOrWhiteSpace(m.Key))
+            {
+                errors.Add(
+                    $"'{slug}' declares a misconception with no key. The key is how the same wrong "
+                    + "idea in two learners is recognised as one — without it, it cannot be mined.");
+                continue;
+            }
+
+            if (!IsWellFormedKey(m.Key))
+            {
+                errors.Add(
+                    $"'{slug}' declares misconception key '{m.Key}', which is not kebab-case "
+                    + "(lowercase letters, digits and hyphens). Keys are identifiers, not prose.");
+            }
+
+            if (string.IsNullOrWhiteSpace(m.Statement))
+            {
+                errors.Add(
+                    $"'{slug}' misconception '{m.Key}' has no statement. A misconception a learner "
+                    + "cannot read back in their own voice is one they will never recognise as theirs.");
+            }
+        }
+    }
+
+    /// Misconception keys are **global** — the same wrong idea, wherever it is declared, is one idea.
+    /// Two concepts declaring the same key would split one belief in two, or claim two beliefs are
+    /// one; either way the cohort-scale mining that keys exist for quietly breaks.
+    private static void ValidateMisconceptionKeysAreGloballyUnique(
+        PackDocument document, List<string> errors)
+    {
+        var seen = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var concept in document.Concepts)
+        {
+            foreach (var m in concept.Misconceptions.Where(x => !string.IsNullOrWhiteSpace(x.Key)))
+            {
+                var key = m.Key.Trim().ToLowerInvariant();
+
+                if (seen.TryGetValue(key, out var firstOwner))
+                {
+                    errors.Add(
+                        $"Misconception key '{key}' is declared on both '{firstOwner}' and "
+                        + $"'{concept.Slug}'. A key names one wrong idea across the whole pack — "
+                        + "declare it once, on the concept it most belongs to.");
+                }
+                else
+                {
+                    seen[key] = concept.Slug;
+                }
+            }
+        }
+    }
+
+    private static bool IsWellFormedKey(string key)
+    {
+        foreach (var c in key)
+        {
+            if (!(c is >= 'a' and <= 'z' or >= '0' and <= '9' or '-'))
+            {
+                return false;
+            }
+        }
+
+        return key.Length > 0 && key[0] != '-' && key[^1] != '-';
     }
 
     /// Depth-first, with an explicit stack, so a deep graph cannot blow the real one.

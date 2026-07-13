@@ -278,6 +278,160 @@ public sealed class PackValidatorTests
     }
 
     [Fact]
+    public void A_misconception_with_no_key_is_refused()
+    {
+        // A misconception the extractor cannot name is one it cannot match across learners, so it
+        // can never be mined — which is the entire reason keys exist.
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: A keyless misconception.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                misconceptions:
+                  - { statement: I believe a wrong thing. }
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("misconception with no key", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_misconception_key_that_is_not_kebab_case_is_refused()
+    {
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: A prose key.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                misconceptions:
+                  - { key: "More Context Is Better", statement: I believe more context is better. }
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("is not kebab-case", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_misconception_with_no_statement_is_refused()
+    {
+        // A misconception a learner cannot read back in their own voice is one they will never
+        // recognise as theirs — and one they do not recognise is one they keep.
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: A statementless misconception.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                misconceptions:
+                  - { key: some-wrong-idea }
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("has no statement", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void The_same_misconception_key_on_two_concepts_is_refused()
+    {
+        // A key names one wrong idea across the whole pack. Declaring it twice would either split one
+        // belief in two or claim two beliefs are one — and the cohort-scale mining quietly breaks.
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: A key declared twice.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                misconceptions:
+                  - { key: shared-wrong-idea, statement: I believe it here. }
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                misconceptions:
+                  - { key: shared-wrong-idea, statement: And I believe it here too. }
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e =>
+            e.Contains("'shared-wrong-idea' is declared on both", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_pack_with_well_formed_misconceptions_passes()
+    {
+        var result = PackValidator.Validate(Parse("""
+            domain: test
+            version: 1
+            note: Honest, with a named wrong belief.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                contrasts: [a]
+                misconceptions:
+                  - { key: b-is-just-a, statement: I think B is really just A with a new name. }
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.True(result.IsSuccess, string.Join(" | ", result.Errors));
+    }
+
+    [Fact]
     public void Broken_yaml_is_reported_with_a_line_number()
     {
         var result = PackLoader.Parse("domain: test\nconcepts:\n  - slug: a\n   bad indent here");
