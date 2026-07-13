@@ -36,7 +36,8 @@ public sealed class FakeOracle : IAiPlane
             ? Result<CheckClaimResponse>.Invalid("The oracle could not be reached.")
             : Result<CheckClaimResponse>.Success(new CheckClaimResponse(_outcome, null, 0.0004)));
 
-    public Task<Result<GradeResponse>> GradeAsync(GradeRequest request, CancellationToken ct = default)
+    public Task<Result<GradeResponse>> GradeByConceptAsync(
+        GradeByConceptRequest request, CancellationToken ct = default)
         => throw new NotSupportedException("Not part of this slice.");
 
     public Task<Result<ItemResponse>> GenerateItemAsync(GenerateItemRequest request, CancellationToken ct = default)

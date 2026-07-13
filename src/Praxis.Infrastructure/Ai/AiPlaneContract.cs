@@ -31,9 +31,14 @@ public interface IAiPlane
     /// answer, because there is no field for one.
     Task<Result<CheckClaimResponse>> CheckClaimAsync(CheckClaimRequest request, CancellationToken ct = default);
 
-    /// Grade an open response. **May return `Pending`, and the caller must handle it as a real
-    /// outcome** — it is not a slow `Passed` (R-1).
-    Task<Result<GradeResponse>> GradeAsync(GradeRequest request, CancellationToken ct = default);
+    /// Grade an open response **by naming the concept**. The rubric is *not* sent: it is
+    /// answer-adjacent and lives on the AI plane (M11.7a), and the grader resolves it there. The core
+    /// never holds a rubric, so there is no answer-adjacent thing here for the tutor to reach.
+    ///
+    /// **May return `Pending`, and the caller must handle it as a real outcome** — it is not a slow
+    /// `Passed` (R-1).
+    Task<Result<GradeResponse>> GradeByConceptAsync(
+        GradeByConceptRequest request, CancellationToken ct = default);
 
     /// A never-seen item. The answer key goes to the oracle's store on the far side and is never
     /// returned here.
@@ -134,34 +139,16 @@ public enum ClaimOutcome
 
 // ── Grading ──────────────────────────────────────────────────────────────────
 
-public sealed record GradeRequest(
+/// **What crosses the wire to grade a teach-back: the words, the learner, and the concept.**
+///
+/// Note what is *not* here — a rubric. The rubric's bands are, in practice, the answer, so they live
+/// on the AI plane (M11.7a) and the grader resolves them from the concept. The core cannot send a
+/// rubric because it does not have one, which is the same reason the tutor cannot leak an answer:
+/// it is absent, not withheld.
+public sealed record GradeByConceptRequest(
     string Response,
-    RubricSpec Rubric,
     string LearnerId,
     string ConceptId);
-
-/// The rubric travels *to* the grader on every call, because the AI plane remembers nothing.
-///
-/// It is answer-adjacent — a band description is, in practice, the answer — which is exactly why it
-/// goes to the grader and never to the tutor.
-public sealed record RubricSpec(
-    string Id,
-    string ConceptId,
-    string Audience,
-    IReadOnlyList<DimensionSpec> Dimensions,
-    double PassScore = 0.75,
-    int MinLength = 40,
-    IReadOnlyList<HardFailSpec>? HardFails = null);
-
-public sealed record DimensionSpec(
-    string Id,
-    double Weight,
-    string Probe,
-    IReadOnlyDictionary<int, string> Bands,
-    int? AutoFlagAtOrBelow = null,
-    string? AutoFlagMisconception = null);
-
-public sealed record HardFailSpec(string Pattern, string Misconception, double Cap);
 
 public sealed record GradeResponse(
     GradeOutcome Outcome,

@@ -38,9 +38,9 @@ public sealed partial class AiPlaneClient : IAiPlane
         CheckClaimRequest request, CancellationToken ct = default)
         => PostAsync<CheckClaimRequest, CheckClaimResponse>("oracle/check-claim", request, ct);
 
-    public Task<Result<GradeResponse>> GradeAsync(
-        GradeRequest request, CancellationToken ct = default)
-        => PostAsync<GradeRequest, GradeResponse>("assessment/grade", request, ct);
+    public Task<Result<GradeResponse>> GradeByConceptAsync(
+        GradeByConceptRequest request, CancellationToken ct = default)
+        => PostAsync<GradeByConceptRequest, GradeResponse>("assessment/grade-by-concept", request, ct);
 
     public Task<Result<ItemResponse>> GenerateItemAsync(
         GenerateItemRequest request, CancellationToken ct = default)

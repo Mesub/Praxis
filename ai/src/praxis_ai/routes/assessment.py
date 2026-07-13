@@ -3,11 +3,11 @@
 The other two things the .NET core asks this service to do. Note what crosses the wire and what does
 not:
 
-* **In:** the learner's response, the rubric, the concept. And ``learner_id`` + ``concept_id``, on
-  *every* call — because the AI plane is stateless and has no idea who is talking to it, and because
-  nothing is spent anonymously (M5.2).
-* **Out:** a verdict, or an item. Never an answer, never a rubric band the caller did not already
-  have, never the model's free text.
+* **In:** the learner's response and *which concept* — never a rubric, which is answer-adjacent and
+  lives here, resolved from the concept (M11.7b). And ``learner_id`` + ``concept_id`` on *every*
+  call — because the AI plane is stateless and has no idea who is talking to it, and because nothing
+  is spent anonymously (M5.2).
+* **Out:** a verdict, or an item. Never an answer, never a rubric band, never the model's free text.
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ from praxis_ai.grading import GradeOutcome, Grader
 from praxis_ai.items import EvidenceType, ItemGenerator, ItemRejectedError
 from praxis_ai.oracle import AnswerKeyStore
 from praxis_ai.routes.oracle import get_store
-from praxis_ai.rubric import Dimension, HardFail, Rubric
 from praxis_ai.rubric_store import (
     RubricStore,
     UnknownRubricError,
@@ -45,73 +44,10 @@ def get_rubric_store() -> RubricStore:
 
 
 # ── Grading ──────────────────────────────────────────────────────────────────
-
-
-class DimensionSpec(BaseModel):
-    id: str = Field(min_length=1)
-    weight: float = Field(gt=0, le=1)
-    probe: str
-    bands: dict[int, str]
-    auto_flag_at_or_below: int | None = None
-    auto_flag_misconception: str | None = None
-
-
-class HardFailSpec(BaseModel):
-    pattern: str
-    misconception: str
-    cap: float = Field(ge=0, le=1)
-
-
-class RubricSpec(BaseModel):
-    """The rubric travels *to* the grader on every call, because the AI plane remembers nothing.
-
-    It is answer-adjacent (a band description is, in effect, the answer), which is exactly why it
-    goes to the **grader** and never to the **tutor**, and why the tutor's endpoint takes no rubric.
-    """
-
-    id: str
-    concept_id: str
-    audience: str
-    pass_score: float = Field(default=0.75, ge=0, le=1)
-    min_length: int = 40
-    dimensions: list[DimensionSpec] = Field(min_length=1)
-    hard_fails: list[HardFailSpec] = Field(default_factory=list)
-
-    def to_domain(self) -> Rubric:
-        return Rubric(
-            id=self.id,
-            concept_id=self.concept_id,
-            audience=self.audience,
-            pass_score=self.pass_score,
-            min_length=self.min_length,
-            dimensions=tuple(
-                Dimension(
-                    id=d.id,
-                    weight=d.weight,
-                    probe=d.probe,
-                    bands=d.bands,
-                    auto_flag=(
-                        (d.auto_flag_at_or_below, d.auto_flag_misconception)
-                        if d.auto_flag_at_or_below is not None
-                        and d.auto_flag_misconception is not None
-                        else None
-                    ),
-                )
-                for d in self.dimensions
-            ),
-            hard_fails=tuple(
-                HardFail(pattern=h.pattern, misconception=h.misconception, cap=h.cap)
-                for h in self.hard_fails
-            ),
-        )
-
-
-class GradeRequest(BaseModel):
-    response: str = Field(min_length=1, max_length=40_000)
-    rubric: RubricSpec
-
-    learner_id: str = Field(min_length=1)
-    concept_id: str = Field(min_length=1)
+#
+# There is one grade door and the caller does not bring the standard to it. The old ``/grade``,
+# which took a full rubric over the wire, has been retired (M11.7b): a rubric is answer-adjacent, so
+# it lives on this side and the core names the concept instead. One door, and no rubric crosses it.
 
 
 class GradeResponse(BaseModel):
@@ -131,34 +67,6 @@ class GradeResponse(BaseModel):
     escalated_to_human: bool
 
     usd: float | None = None
-
-
-@router.post("/grade", response_model=GradeResponse)
-async def grade(
-    request: GradeRequest,
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> GradeResponse:
-    grader = Grader(ClaudeClient(settings))
-
-    try:
-        result = await grader.grade(
-            request.response,
-            request.rubric.to_domain(),
-            Attribution(learner_id=request.learner_id, concept_id=request.concept_id),
-        )
-    except ModelUnavailableError as unavailable:
-        raise HTTPException(status_code=503, detail=str(unavailable)) from unavailable
-
-    return GradeResponse(
-        outcome=result.outcome,
-        score=result.score,
-        misconceptions=list(result.misconceptions),
-        reason=result.reason,
-        judges_consulted=result.judges_consulted,
-        escalated_to_adjudicator=result.escalated_to_adjudicator,
-        escalated_to_human=result.escalated_to_human,
-        usd=None if result.usd is None else float(result.usd),
-    )
 
 
 # ── Grading a concept, with the rubric resolved here ──────────────────────────

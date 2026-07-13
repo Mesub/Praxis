@@ -43,7 +43,8 @@ public sealed class FakeOracle : IAiPlane
                 new CheckClaimResponse(_outcome, _misconception, Usd: 0.0004)));
     }
 
-    public Task<Result<GradeResponse>> GradeAsync(GradeRequest request, CancellationToken ct = default)
+    public Task<Result<GradeResponse>> GradeByConceptAsync(
+        GradeByConceptRequest request, CancellationToken ct = default)
         => throw new NotSupportedException("Not part of this slice.");
 
     public Task<Result<ItemResponse>> GenerateItemAsync(

@@ -32,10 +32,13 @@ public sealed class AiPlaneContractTests
             .ToHashSet(StringComparer.Ordinal);
 
         Assert.Contains("/oracle/check-claim", paths);
-        Assert.Contains("/assessment/grade", paths);
+        Assert.Contains("/assessment/grade-by-concept", paths);
         Assert.Contains("/assessment/items", paths);
         Assert.Contains("/tutor/turn", paths);
         Assert.Contains("/tutor/turn/stream", paths);
+
+        // The superseded rubric-carrying door is gone: the core no longer holds a rubric to send.
+        Assert.DoesNotContain("/assessment/grade", paths);
 
         // And the client exposes one method per capability, and no more. A fourth method here means
         // somebody added a route without anyone reading this file.
@@ -45,7 +48,7 @@ public sealed class AiPlaneContractTests
             new HashSet<string>(StringComparer.Ordinal)
             {
                 nameof(IAiPlane.CheckClaimAsync),
-                nameof(IAiPlane.GradeAsync),
+                nameof(IAiPlane.GradeByConceptAsync),
                 nameof(IAiPlane.GenerateItemAsync),
                 nameof(IAiPlane.TutorTurnAsync),
                 nameof(IAiPlane.TutorTurnStreamAsync),
@@ -58,13 +61,10 @@ public sealed class AiPlaneContractTests
     [Theory]
     [InlineData(typeof(CheckClaimRequest), "CheckClaimRequest")]
     [InlineData(typeof(CheckClaimResponse), "CheckClaimResponse")]
-    [InlineData(typeof(GradeRequest), "GradeRequest")]
+    [InlineData(typeof(GradeByConceptRequest), "GradeByConceptRequest")]
     [InlineData(typeof(GradeResponse), "GradeResponse")]
     [InlineData(typeof(GenerateItemRequest), "GenerateItemRequest")]
     [InlineData(typeof(ItemResponse), "ItemResponse")]
-    [InlineData(typeof(RubricSpec), "RubricSpec")]
-    [InlineData(typeof(DimensionSpec), "DimensionSpec")]
-    [InlineData(typeof(HardFailSpec), "HardFailSpec")]
     [InlineData(typeof(TutorTurnRequest), "TutorTurnRequest")]
     [InlineData(typeof(TutorTurnResponse), "TutorTurnResponse")]
     [InlineData(typeof(TurnSpec), "TurnSpec")]
@@ -168,7 +168,7 @@ public sealed class AiPlaneContractTests
     /// nothing is spent anonymously.
     [Theory]
     [InlineData("CheckClaimRequest")]
-    [InlineData("GradeRequest")]
+    [InlineData("GradeByConceptRequest")]
     [InlineData("GenerateItemRequest")]
     [InlineData("TutorTurnRequest")]
     public void Every_request_names_the_learner_it_is_spending_on(string schema)

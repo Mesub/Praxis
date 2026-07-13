@@ -79,62 +79,6 @@
         "title": "ClaimOutcome",
         "type": "string"
       },
-      "DimensionSpec": {
-        "properties": {
-          "auto_flag_at_or_below": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Auto Flag At Or Below"
-          },
-          "auto_flag_misconception": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Auto Flag Misconception"
-          },
-          "bands": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Bands",
-            "type": "object"
-          },
-          "id": {
-            "minLength": 1,
-            "title": "Id",
-            "type": "string"
-          },
-          "probe": {
-            "title": "Probe",
-            "type": "string"
-          },
-          "weight": {
-            "exclusiveMinimum": 0.0,
-            "maximum": 1.0,
-            "title": "Weight",
-            "type": "number"
-          }
-        },
-        "required": [
-          "id",
-          "weight",
-          "probe",
-          "bands"
-        ],
-        "title": "DimensionSpec",
-        "type": "object"
-      },
       "EvidenceType": {
         "description": "The six kinds of proof (I-2). Mirrors ``Praxis.Shared.EvidenceType`` exactly.\n\n**They are not equal, and the difference is the product.**",
         "enum": [
@@ -228,37 +172,6 @@
         "title": "GradeOutcome",
         "type": "string"
       },
-      "GradeRequest": {
-        "properties": {
-          "concept_id": {
-            "minLength": 1,
-            "title": "Concept Id",
-            "type": "string"
-          },
-          "learner_id": {
-            "minLength": 1,
-            "title": "Learner Id",
-            "type": "string"
-          },
-          "response": {
-            "maxLength": 40000,
-            "minLength": 1,
-            "title": "Response",
-            "type": "string"
-          },
-          "rubric": {
-            "$ref": "#/components/schemas/RubricSpec"
-          }
-        },
-        "required": [
-          "response",
-          "rubric",
-          "learner_id",
-          "concept_id"
-        ],
-        "title": "GradeRequest",
-        "type": "object"
-      },
       "GradeResponse": {
         "description": "**`pending` is a real outcome and the core must handle it as one** (R-1).\n\nIt is not a slow `passed`. The .NET side writes it as `PENDING` evidence, which cannot move\nmastery, and a human decides. There is no field here that lets the caller resolve it themselves.",
         "properties": {
@@ -334,31 +247,6 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
-      "HardFailSpec": {
-        "properties": {
-          "cap": {
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Cap",
-            "type": "number"
-          },
-          "misconception": {
-            "title": "Misconception",
-            "type": "string"
-          },
-          "pattern": {
-            "title": "Pattern",
-            "type": "string"
-          }
-        },
-        "required": [
-          "pattern",
-          "misconception",
-          "cap"
-        ],
-        "title": "HardFailSpec",
-        "type": "object"
-      },
       "HintRung": {
         "description": "Mirrors ``Praxis.Modules.Kernel.Events.HintRung`` exactly (M6.2).\n\nFive rungs, and **there is no sixth**. CANON lists an `L5 FULL_REVEAL` and marks it *\"in LEARN\nmode this rung does not exist\"* \u2014 so it does not exist here either. Not gated, not flagged,\nabsent. There is no enum value to reach for, so there is no code path to write.",
         "enum": [
@@ -407,58 +295,6 @@
           "fingerprint"
         ],
         "title": "ItemResponse",
-        "type": "object"
-      },
-      "RubricSpec": {
-        "description": "The rubric travels *to* the grader on every call, because the AI plane remembers nothing.\n\nIt is answer-adjacent (a band description is, in effect, the answer), which is exactly why it\ngoes to the **grader** and never to the **tutor**, and why the tutor's endpoint takes no rubric.",
-        "properties": {
-          "audience": {
-            "title": "Audience",
-            "type": "string"
-          },
-          "concept_id": {
-            "title": "Concept Id",
-            "type": "string"
-          },
-          "dimensions": {
-            "items": {
-              "$ref": "#/components/schemas/DimensionSpec"
-            },
-            "minItems": 1,
-            "title": "Dimensions",
-            "type": "array"
-          },
-          "hard_fails": {
-            "items": {
-              "$ref": "#/components/schemas/HardFailSpec"
-            },
-            "title": "Hard Fails",
-            "type": "array"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "min_length": {
-            "default": 40,
-            "title": "Min Length",
-            "type": "integer"
-          },
-          "pass_score": {
-            "default": 0.75,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Pass Score",
-            "type": "number"
-          }
-        },
-        "required": [
-          "id",
-          "concept_id",
-          "audience",
-          "dimensions"
-        ],
-        "title": "RubricSpec",
         "type": "object"
       },
       "TurnSpec": {
@@ -613,47 +449,6 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/assessment/grade": {
-      "post": {
-        "operationId": "grade_assessment_grade_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GradeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GradeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Grade",
-        "tags": [
-          "assessment"
-        ]
-      }
-    },
     "/assessment/grade-by-concept": {
       "post": {
         "operationId": "grade_by_concept_assessment_grade_by_concept_post",

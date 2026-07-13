@@ -34,10 +34,11 @@ def test_the_contract_offers_the_core_exactly_five_things() -> None:
     """Everything the .NET core is allowed to ask an LLM for. If a new door appears, it was designed
     somewhere other than here — this test forces the change to be deliberate.
 
-    `/assessment/grade-by-concept` was added deliberately (M11.7b): the teach-back grade path, where
-    the core sends only the learner's words and *which concept*, and the rubric is resolved on this
-    side of the wire. It is answer-*free* by construction — the sweep below proves it carries no
-    answer field — which is exactly why adding it here is allowed and adding an oracle door is not.
+    There is **one grade door**, and the caller does not bring the standard to it.
+    `/assessment/grade-by-concept` (M11.7b) takes only the learner's words and *which concept*; the
+    rubric is resolved on this side of the wire. The older `/assessment/grade`, which took a full
+    rubric over the wire, has been **retired** — a rubric is answer-adjacent, and the core no longer
+    holds one to send. The sweep below proves the surviving door carries no answer field.
 
     Note there is exactly **one** door to the oracle. An earlier draft of the tutor route grew its
     own `/tutor/check` — a second way to reach the answer key. Two doors to one secret is one door
@@ -48,7 +49,6 @@ def test_the_contract_offers_the_core_exactly_five_things() -> None:
     assert set(committed["paths"]) == {
         "/health",
         "/oracle/check-claim",
-        "/assessment/grade",
         "/assessment/grade-by-concept",
         "/assessment/items",
         "/tutor/turn",
@@ -86,7 +86,7 @@ def test_every_call_names_the_learner_it_is_spending_on() -> None:
     money."""
     committed = json.loads(CONTRACT.read_text(encoding="utf-8"))
 
-    for name in ("CheckClaimRequest", "GradeRequest", "GenerateItemRequest"):
+    for name in ("CheckClaimRequest", "GradeByConceptRequest", "GenerateItemRequest"):
         schema = committed["components"]["schemas"][name]
 
         assert "learner_id" in schema["properties"], f"{name} spends money anonymously."

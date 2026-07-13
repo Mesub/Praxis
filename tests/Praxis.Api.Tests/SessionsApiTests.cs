@@ -534,8 +534,8 @@ internal sealed class LeakingAiPlane : IAiPlane
         => Task.FromResult(Result<CheckClaimResponse>.Success(
             new CheckClaimResponse(ClaimOutcome.Wrong, null, 0.001)));
 
-    public Task<Result<GradeResponse>> GradeAsync(
-        GradeRequest request, CancellationToken ct = default)
+    public Task<Result<GradeResponse>> GradeByConceptAsync(
+        GradeByConceptRequest request, CancellationToken ct = default)
         => Task.FromResult(Result<GradeResponse>.Success(
             new GradeResponse(GradeOutcome.Pending, null, [], "stub", 0, false, true, 0.0)));
 
