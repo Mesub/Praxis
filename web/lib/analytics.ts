@@ -60,6 +60,62 @@ export function verdictOf(a: AnalyticsResponse): Verdict {
   };
 }
 
+export type RateLever = {
+  /** The single biggest thing holding the rate down, named from real signals. */
+  why: string;
+  /** The one action that would lift it, or null when the lever is just "space your practice out". */
+  fix: { label: string; href: string } | null;
+};
+
+/**
+ * **Why is the rate what it is — and the one lever that would lift it.**
+ *
+ * The honest dashboard does not just show a number and a pile of disconnected cards; it connects the
+ * headline to its biggest drag. This reads only *real, categorical* signals the engines already
+ * computed — lapsed concepts, an erratic cadence, concepts slipping — never an arbitrary "you're low"
+ * bar, because there is no honest absolute threshold for mastery-per-hour. It returns null when
+ * nothing is dragging the rate: then the number is simply what it honestly is, and the screen says
+ * nothing rather than inventing a problem.
+ *
+ * The blank-page and gained-nothing states own their own headline (and their own next step), so this
+ * stays quiet for them.
+ */
+export function rateLever(a: AnalyticsResponse): RateLever | null {
+  if (!a.hasData || a.gainedNothing) {
+    return null;
+  }
+
+  const debt = a.decayDebt;
+
+  // Lapsed mastery is the heaviest drag: hours spent re-earning what you already had never compound
+  // into the rate. This is the first thing to fix.
+  if (debt.hasHeldConcepts && debt.conceptsLapsed > 0) {
+    const n = debt.conceptsLapsed;
+    return {
+      why: `${n} ${n === 1 ? "concept has" : "concepts have"} lapsed — some of your hours are going to re-earning mastery you already had, which never lifts the rate. Spacing your reviews keeps it from slipping.`,
+      fix: { label: "Review what has lapsed", href: "/reps" },
+    };
+  }
+
+  // Cramming: the same minutes, spread out, buy more. No single link fixes it — it is a habit.
+  if (a.consistency.pattern === "erratic") {
+    return {
+      why: "Your practice comes in bursts. The same minutes, spread out, buy more mastery per hour — spacing beats cramming, and it does not ask for more of your time.",
+      fix: null,
+    };
+  }
+
+  // Concepts slipping but not yet lapsed: a smaller, cheaper-to-fix drag.
+  if (debt.hasHeldConcepts && debt.conceptsDecaying > 0) {
+    return {
+      why: "A few concepts are starting to slip. A short review now keeps them from costing you re-learning time — and dragging this number down — later.",
+      fix: { label: "Review what is slipping", href: "/reps" },
+    };
+  }
+
+  return null;
+}
+
 export type CalibrationTrend = {
   /** Null when there is not enough graded history to say anything — the screen then shows nothing,
    *  rather than a reassuring flat line. */

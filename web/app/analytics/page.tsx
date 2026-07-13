@@ -15,6 +15,7 @@ import {
   decayDebt,
   minutesLabel,
   rateLabel,
+  rateLever,
   verdictOf,
 } from "@/lib/analytics";
 import { calibrationVerdict } from "@/lib/graph";
@@ -86,6 +87,7 @@ function Report({
   calibration: TwinSummaryResponse | null;
 }) {
   const verdict = verdictOf(mpm);
+  const lever = rateLever(mpm);
   const trend = calibrationTrend(mpm.calibration);
   const trendTone =
     trend.tone === "good" ? "text-accent" : trend.tone === "bad" ? "text-serious" : "text-ink-2";
@@ -111,6 +113,22 @@ function Report({
           >
             The single smallest next step →
           </Link>
+        ) : null}
+        {lever ? (
+          <div className="mt-4 border-t border-line-soft pt-3">
+            <p className="text-[10.5px] uppercase tracking-[0.14em] text-ink-4">
+              What would lift it
+            </p>
+            <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-2">{lever.why}</p>
+            {lever.fix ? (
+              <Link
+                href={lever.fix.href}
+                className="mt-2 inline-block text-[12.5px] text-accent underline-offset-4 hover:underline"
+              >
+                {lever.fix.label} →
+              </Link>
+            ) : null}
+          </div>
         ) : null}
       </section>
 

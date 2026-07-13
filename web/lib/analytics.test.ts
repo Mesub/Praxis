@@ -11,6 +11,7 @@ import {
   decayDebt,
   minutesLabel,
   rateLabel,
+  rateLever,
   ratePerHour,
   verdictOf,
 } from "./analytics";
@@ -98,6 +99,56 @@ describe("verdictOf", () => {
     const v = verdictOf(mpm());
     expect(v.headline.toLowerCase()).toContain("honest");
     expect(v.needsNextStep).toBe(false);
+  });
+});
+
+describe("rateLever — why the rate is what it is", () => {
+  it("stays quiet on the blank page and the gained-nothing stretch (they own their own headline)", () => {
+    expect(rateLever(mpm({ hasData: false }))).toBeNull();
+    expect(rateLever(mpm({ gainedNothing: true }))).toBeNull();
+  });
+
+  it("says nothing when nothing is dragging the rate — the number is honestly what it is", () => {
+    expect(rateLever(mpm())).toBeNull();
+  });
+
+  it("names lapsed mastery as the heaviest drag and links to review", () => {
+    const lever = rateLever(
+      mpm({ decayDebt: debtReport({ hasHeldConcepts: true, conceptsLapsed: 2, conceptsDecaying: 1 }) }),
+    );
+    expect(lever?.why.toLowerCase()).toContain("lapsed");
+    expect(lever?.fix?.href).toBe("/reps");
+  });
+
+  it("uses the singular when exactly one concept has lapsed", () => {
+    const lever = rateLever(
+      mpm({ decayDebt: debtReport({ hasHeldConcepts: true, conceptsLapsed: 1 }) }),
+    );
+    expect(lever?.why).toContain("1 concept has lapsed");
+  });
+
+  it("blames an erratic cadence next, with no single link to fix a habit", () => {
+    const lever = rateLever(mpm({ consistency: consistencyReport({ pattern: "erratic" }) }));
+    expect(lever?.why.toLowerCase()).toContain("bursts");
+    expect(lever?.fix).toBeNull();
+  });
+
+  it("prioritises lapsed mastery over an erratic cadence when both are present", () => {
+    const lever = rateLever(
+      mpm({
+        decayDebt: debtReport({ hasHeldConcepts: true, conceptsLapsed: 1 }),
+        consistency: consistencyReport({ pattern: "erratic" }),
+      }),
+    );
+    expect(lever?.why.toLowerCase()).toContain("lapsed");
+  });
+
+  it("falls back to slipping concepts as a smaller, cheaper drag", () => {
+    const lever = rateLever(
+      mpm({ decayDebt: debtReport({ hasHeldConcepts: true, conceptsDecaying: 2 }) }),
+    );
+    expect(lever?.why.toLowerCase()).toContain("slip");
+    expect(lever?.fix?.href).toBe("/reps");
   });
 });
 

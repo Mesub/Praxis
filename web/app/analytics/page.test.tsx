@@ -162,6 +162,35 @@ describe("AnalyticsPage", () => {
     expect(screen.queryByText(/decay debt/i)).not.toBeInTheDocument();
   });
 
+  it("explains what would lift a positive rate, drawn from the real drag", async () => {
+    me.mockResolvedValue(
+      ok(
+        mpm({
+          decayDebt: {
+            creditAtRisk: 0.5,
+            retainedCredit: 2,
+            conceptsDecaying: 1,
+            conceptsLapsed: 2,
+            hasHeldConcepts: true,
+          },
+        }),
+      ),
+    );
+    render(<AnalyticsPage />);
+
+    expect(await screen.findByText(/what would lift it/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 concepts have lapsed/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /review what has lapsed/i })).toBeInTheDocument();
+  });
+
+  it("shows no 'what would lift it' line when nothing is dragging the rate", async () => {
+    me.mockResolvedValue(ok(mpm())); // clean decayDebt + consistency by default
+    render(<AnalyticsPage />);
+
+    expect(await screen.findByText("1.50")).toBeInTheDocument();
+    expect(screen.queryByText(/what would lift it/i)).not.toBeInTheDocument();
+  });
+
   it("says a gained-nothing stretch out loud and offers the next step", async () => {
     me.mockResolvedValue(ok(mpm({ rate: 0, masteryCredit: 0, minutesInvested: 90, gainedNothing: true })));
     render(<AnalyticsPage />);
