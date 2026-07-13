@@ -80,6 +80,10 @@ public sealed class PraxisApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Audience", "praxis-test");
         builder.UseSetting("Jwt:SigningKey", "test-only-signing-key-at-least-32-bytes-long");
 
+        // A fixed Ledger signing seed so verification tests can issue records that check out against
+        // the server's public key. In production this comes from a secret store.
+        builder.UseSetting("Ledger:PrivateKeySeed", LedgerTestKey.PrivateSeedBase64);
+
         builder.ConfigureTestServices(services =>
         {
             // Register the probe slice the way a real engine's assembly is registered — by

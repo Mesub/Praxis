@@ -16,6 +16,7 @@ using Praxis.Modules.Identity;
 using Praxis.Modules.Identity.Auth;
 using Praxis.Modules.Identity.Persistence;
 using Praxis.Modules.Kernel;
+using Praxis.Modules.Ledger;
 using Praxis.Modules.Memory;
 using Praxis.Modules.Scheduler;
 using Praxis.Modules.Tutor;
@@ -49,7 +50,8 @@ builder.Services.AddPraxisInfrastructure(
     typeof(ISchedulerSnapshot).Assembly,
     typeof(TutorModule).Assembly,
     typeof(AssessmentModule).Assembly,
-    typeof(IMemorySnapshot).Assembly);
+    typeof(IMemorySnapshot).Assembly,
+    typeof(ILedgerKeys).Assembly);
 
 builder.Services.AddKernel(connectionString);
 builder.Services.AddGraph(connectionString);
@@ -76,6 +78,10 @@ builder.Services.AddScoped<ISchedulerSnapshot, LiveSchedulerSnapshot>();
 // E7 knows what forgetting does; the Twin knows what was proved. Neither knows the other exists, so
 // the adapter lives here -- and it is what keeps the rep queue a pure function of plain values.
 builder.Services.AddScoped<IMemorySnapshot, LiveMemorySnapshot>();
+
+// The Ledger's public key is the trust root of a Verified Competency Record. The private half is a
+// secret loaded here and never exposed; only the public key leaves this service.
+builder.Services.AddSingleton<ILedgerKeys, ConfigLedgerKeys>();
 
 builder.Services.AddProjection<TwinProjection>();
 

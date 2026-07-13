@@ -99,4 +99,13 @@ public static class LedgerSigning
 
         return (privateKey.GetEncoded(), publicKey.GetEncoded());
     }
+
+    /// Derive the public key from a private seed — how the server publishes the matching public half
+    /// of the key it loads from its secret store.
+    public static byte[] PublicKeyFor(byte[] privateKeySeed)
+    {
+        ArgumentNullException.ThrowIfNull(privateKeySeed);
+
+        return new Ed25519PrivateKeyParameters(privateKeySeed, 0).GeneratePublicKey().GetEncoded();
+    }
 }
