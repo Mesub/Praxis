@@ -228,3 +228,38 @@ export const compiler = {
   plan: (token?: string, signal?: AbortSignal) =>
     api.get<PlanResponse>("/api/compiler/plan", token, signal),
 };
+
+// ── The Scheduler (E4): one card, one action ──────────────────────────────────
+//
+// There is one endpoint and it returns one card. `alsoDue` is the audit trail — what lost, and why —
+// so the decision is *inspectable*, never a menu handed to someone at the hardest moment (starting).
+
+/** The kinds of card, mirroring `CardKind`. `Nothing` is a real state PRAXIS says out loud. */
+export type CardKind = "Rescue" | "Rep" | "Learn" | "Refresh" | "Nothing";
+
+export interface DeferredResponse {
+  conceptId: string;
+  slug: string;
+  reason: string;
+  minutes: number;
+}
+
+export interface TodayCardResponse {
+  kind: CardKind;
+  conceptId: string;
+  slug: string;
+  headline: string;
+  because: string;
+  minutes: number;
+  /** What was due and did not make the cut — for "why this and not that", not for picking. */
+  alsoDue: DeferredResponse[];
+}
+
+/** The only choice PRAXIS asks for, and it is a small one. */
+export const SESSION_LENGTHS = [5, 10, 15, 25] as const;
+export type SessionLength = (typeof SESSION_LENGTHS)[number];
+
+export const scheduler = {
+  today: (minutes: SessionLength, token?: string, signal?: AbortSignal) =>
+    api.get<TodayCardResponse>(`/api/scheduler/today?minutes=${minutes}`, token, signal),
+};

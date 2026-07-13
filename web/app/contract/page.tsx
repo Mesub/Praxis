@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { compiler, type PlanResponse } from "@/lib/api";
 import {
@@ -310,6 +311,12 @@ function BelievedBody({ plan }: { plan: PlanResponse }) {
         <Tile label="Days to objective" value={String(w.daysToObjective)} />
         <Tile label="Peak maintenance" value={`${maintenanceSharePercent(w)}%`} />
       </div>
+      <Link
+        href="/"
+        className="mt-5 inline-flex items-center justify-center rounded-md bg-accent px-5 py-2.5 text-[13.5px] font-medium text-accent-ink hover:opacity-95"
+      >
+        Enter the console — what do I do first? →
+      </Link>
     </>
   );
 }
