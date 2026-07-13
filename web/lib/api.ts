@@ -102,9 +102,35 @@ export interface VerificationResult {
   reason: string | null;
 }
 
+// A single proved competency, and the honesty that travels with it.
+export interface VerifiedCompetencyResponse {
+  conceptId: string;
+  conceptName: string;
+  /** How it was demonstrated: "recall" | "apply" | "explain" | "build". */
+  type: string;
+  /** How it was graded: "execution" | "reality" | "keyMatch" | "rubric". */
+  gradingMethod: string;
+  score: number;
+  /** Straight from the evidence — a rubric-graded competency shows its capped trust, not certainty. */
+  assurance: number;
+  evidenceHash: string;
+}
+
+/** A Verified Competency Record — the signed export a learner hands to an employer. */
+export interface CompetencyRecordResponse {
+  subject: string;
+  competencies: VerifiedCompetencyResponse[];
+  signature: string;
+  publicKey: string;
+  issuedAt: string;
+}
+
 export const ledger = {
   publicKey: () => api.get<PublicKey>("/api/ledger/public-key"),
   verify: (record: unknown) => api.post<VerificationResult>("/api/ledger/verify", record),
+  /** Issue *your* record — everything you currently hold, signed by PRAXIS. */
+  me: (token?: string, signal?: AbortSignal) =>
+    api.get<CompetencyRecordResponse>("/api/ledger/me", token, signal),
 };
 
 // ── The adaptive diagnostic (E6) ──────────────────────────────────────────────
