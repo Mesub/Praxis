@@ -82,7 +82,15 @@ public static class CommitPrediction
             var appended = await _events.AppendAsync(
                 learner,
                 new PredictionMade(
-                    loopId, committed.Value.Answer, committed.Value.Confidence, _clock.UtcNow),
+                    loopId,
+                    committed.Value.Answer,
+                    committed.Value.Confidence,
+                    _clock.UtcNow,
+                    // The subject is frozen with the claim, so resolution runs *this* code, not a
+                    // substitute a learner wrote to make their own prediction come true (which would
+                    // manufacture mastery — a resolution moves pKnows).
+                    Kind: committed.Value.Kind.ToString(),
+                    Subject: command.Code),
                 _clock.UtcNow,
                 conceptId: null,
                 ct);

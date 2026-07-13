@@ -176,11 +176,27 @@ public sealed record ArtifactSubmitted(
 }
 
 /// A falsifiable claim about the world, made before the world settled it (I-3).
+///
+/// **The subject is frozen with the claim.** For a code Loop, the program (`Subject`) and the shape
+/// of the question (`Kind`) are stored here, alongside the claim and the confidence — because
+/// resolution *moves mastery* (the Twin updates `pKnows` from `PredictionResolved`), so if the code
+/// were supplied fresh at resolution a learner could resolve against a program they wrote to make
+/// their own prediction true, and manufacture mastery. The commitment must therefore fix *what it is
+/// about*, not just what it claims. What is **not** here is what the program does — that is computed
+/// by running `Subject` at resolution and is never stored, which is the whole point (I-3).
 public sealed record PredictionMade(
     Guid LoopId,
     string Claim,
     double StatedConfidence,
-    DateTime ResolvesAt)
+    DateTime ResolvesAt,
+
+    /// The shape of the question, e.g. `"Output"` or `"Raises"` (a `PredictionKind` name; kept a
+    /// string so the kernel stays free of any one engine's enums).
+    string Kind = "",
+
+    /// The program the claim is about, frozen so resolution runs *this* code and not a substitute.
+    /// Not a secret — the learner read it — and empty for a non-code Loop.
+    string Subject = "")
     : IEventPayload
 {
     public static LearningEventType EventType => LearningEventType.PredictionMade;

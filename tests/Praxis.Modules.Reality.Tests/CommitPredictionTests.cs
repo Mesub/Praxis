@@ -31,6 +31,11 @@ public sealed class CommitPredictionTests
         var made = Assert.IsType<PredictionMade>(Assert.Single(store.Appended).Payload);
         Assert.Equal("4", made.Claim);
         Assert.Equal(0.8, made.StatedConfidence);
+        // The subject is frozen with the claim: resolution will run *this* code, not a substitute —
+        // otherwise a learner could resolve against a program they wrote to make their prediction
+        // true, and manufacture mastery (a resolution moves pKnows).
+        Assert.Equal("print(2+2)", made.Subject);
+        Assert.Equal("Output", made.Kind);
     }
 
     [Fact]
