@@ -84,6 +84,10 @@ builder.Services.AddScoped<IMemorySnapshot, LiveMemorySnapshot>();
 // secret loaded here and never exposed; only the public key leaves this service.
 builder.Services.AddSingleton<ILedgerKeys, ConfigLedgerKeys>();
 
+// What the learner proved (Twin) named by the Graph, turned into signable competencies. No module
+// reads another's tables; this adapter, at the composition root, is where they meet.
+builder.Services.AddScoped<ILedgerSnapshot, LiveLedgerSnapshot>();
+
 // The sandbox that runs a Reality Loop's code (E8). When Docker is absent it returns a failure, not
 // a verdict — so a missing daemon can never resolve a prediction as "wrong" and poison calibration.
 builder.Services.AddScoped<

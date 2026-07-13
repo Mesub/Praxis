@@ -10,9 +10,10 @@ namespace Praxis.Api.Composition;
 /// the API keys — see CLAUDE.md), and in production in a secret store. The domain knows nothing about
 /// any of this; it is handed a public key to verify against, and that is all.
 ///
-/// **The private seed is never exposed past this class.** It is used once, here, to derive the public
-/// key, and then only the public half leaves — because a service that hands out the private key is a
-/// service that has published the thing that must never be published.
+/// **The private seed is never exposed past this class.** It is held in a private field, used to
+/// derive the public key and to `Sign`, and it is returned by no property and no method — because a
+/// service that hands out the private key is a service that has published the thing that must never
+/// be published. Signing happens *inside* here; only the signature leaves.
 ///
 /// ## The dev fallback, and why it is loud
 ///
@@ -23,19 +24,23 @@ namespace Praxis.Api.Composition;
 /// default that quietly invalidates every record issued before the last deploy.
 public sealed class ConfigLedgerKeys : ILedgerKeys
 {
+    private readonly byte[] _privateSeed;
+
     public ConfigLedgerKeys(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
         var configured = configuration["Ledger:PrivateKeySeed"];
 
-        var privateSeed = string.IsNullOrWhiteSpace(configured)
+        _privateSeed = string.IsNullOrWhiteSpace(configured)
             ? LedgerSigning.GenerateKeyPair().PrivateKeySeed   // dev-only, per-process
             : Convert.FromBase64String(configured);
 
-        // Derive the public half and keep only that. The seed is not stored on this object.
-        PublicKey = LedgerSigning.PublicKeyFor(privateSeed);
+        PublicKey = LedgerSigning.PublicKeyFor(_privateSeed);
     }
 
     public byte[] PublicKey { get; }
+
+    /// Signs inside this object. The seed is never returned — only the signature.
+    public byte[] Sign(string payload) => LedgerSigning.Sign(payload, _privateSeed);
 }
