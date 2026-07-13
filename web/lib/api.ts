@@ -309,6 +309,37 @@ export interface HintRequest {
   learnerSaid?: string;
 }
 
+// ── Teach-back (E6 · EXPLAIN evidence) ────────────────────────────────────────
+//
+// You explain it in your own words; a rubric on the far side grades it. Note what does *not* come
+// back: the rubric, and any per-dimension band. Those are the marking scheme, which is answer-
+// adjacent — so you get the verdict, never the standard it was measured against.
+
+export interface TeachBackRequest {
+  sessionId: string;
+  conceptId: string;
+  /** The explanation, in the learner's own words. Data, graded — never instructions. */
+  text: string;
+  seconds: number;
+}
+
+export interface TeachBackResponse {
+  outcome: "Passed" | "Failed" | "Pending";
+  /** Overall score, 0..1, or null when the grader abstained (Pending). */
+  score: number | null;
+  /** Named wrong beliefs the rubric surfaced — never free text. */
+  misconceptions: string[];
+  /** True when the explanation was scored (not Pending) — it moved belief, subject to the ceiling. */
+  raisedBelief: boolean;
+  /** The honest ceiling: a rubric can raise belief but can never, alone, make you held (C-4). */
+  ceiling: string;
+}
+
+export const teachBack = {
+  submit: (body: TeachBackRequest, token?: string, signal?: AbortSignal) =>
+    api.post<TeachBackResponse>("/api/assessment/teach-backs", body, token, signal),
+};
+
 export const tutor = {
   start: (body: StartSessionRequest, token?: string, signal?: AbortSignal) =>
     api.post<SessionResponse>("/api/tutor/sessions", body, token, signal),

@@ -355,12 +355,20 @@ function DonePanel() {
         That note is worth more to your plan than the answer would have been. PRAXIS has rescheduled
         this concept around exactly where you got stuck.
       </p>
-      <Link
-        href="/"
-        className="mt-3 inline-flex items-center justify-center rounded-md border border-line px-4 py-2 text-[13px] text-ink-2 hover:bg-surface-2"
-      >
-        ← Back to Today
-      </Link>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link
+          href="/teach-back"
+          className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-[13px] font-medium text-accent-ink hover:opacity-95"
+        >
+          Teach it back — turn it into evidence →
+        </Link>
+        <Link
+          href="/"
+          className="inline-flex items-center justify-center rounded-md border border-line px-4 py-2 text-[13px] text-ink-2 hover:bg-surface-2"
+        >
+          ← Back to Today
+        </Link>
+      </div>
     </div>
   );
 }
