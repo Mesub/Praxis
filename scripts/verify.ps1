@@ -103,10 +103,12 @@ $webDir = Join-Path $root 'web'
 
 if (-not (Test-Path (Join-Path $webDir 'package.json'))) {
     Add-Result -Stage 'Web   lint' -Status 'SKIP' -Detail 'web/ not built yet (M11.1)'
+    Add-Result -Stage 'Web   test' -Status 'SKIP' -Detail 'web/ not built yet (M11.1)'
     Add-Result -Stage 'Web   build' -Status 'SKIP' -Detail 'web/ not built yet (M11.1)'
 }
 elseif ($Quick) {
     Add-Result -Stage 'Web   lint' -Status 'SKIP' -Detail '-Quick'
+    Add-Result -Stage 'Web   test' -Status 'SKIP' -Detail '-Quick'
     Add-Result -Stage 'Web   build' -Status 'SKIP' -Detail '-Quick'
 }
 else {
@@ -119,6 +121,7 @@ else {
         }
 
         Invoke-Stage 'Web   lint' { npm run lint } | Out-Null
+        Invoke-Stage 'Web   test' { npm run test } | Out-Null
         Invoke-Stage 'Web   build' { npm run build } | Out-Null
     }
     finally {

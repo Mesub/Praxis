@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 
 export default function Home() {
@@ -8,6 +9,14 @@ export default function Home() {
         <h1 className="serif mt-2 text-3xl leading-tight text-ink">
           PRAXIS will tell you when you are failing.
         </h1>
+        <p className="mt-4">
+          <Link
+            href="/onboarding"
+            className="text-[13.5px] font-medium text-accent underline-offset-4 hover:underline"
+          >
+            Start onboarding — choose what you want to become →
+          </Link>
+        </p>
         <p className="mt-4 max-w-prose text-ink-2">
           This is the Phase&nbsp;0 shell. The design system is in place — the brass accent, the
           serif display, the tabular figures — and the pages land next: the Diagnostic, the
