@@ -7,7 +7,7 @@
   that would change it (R-3) — never shame, always a next step.
 */
 
-import type { AnalyticsResponse, CalibrationTrendReport } from "./api";
+import type { AnalyticsResponse, CalibrationTrendReport, ConsistencyReport } from "./api";
 
 /** The raw per-minute rate is tiny; per *hour* is what a person can hold in their head. */
 export function ratePerHour(rate: number): number {
@@ -81,6 +81,42 @@ export function calibrationTrend(trend: CalibrationTrendReport): CalibrationTren
     case "holdingSteady":
       return {
         sentence: "Your calibration is holding steady — no meaningful drift either way.",
+        tone: "neutral",
+      };
+    case "notEnoughData":
+    default:
+      return { sentence: null, tone: "none" };
+  }
+}
+
+export type Consistency = {
+  /** Null when there are too few active days to describe a cadence — the screen then shows nothing. */
+  sentence: string | null;
+  tone: "good" | "neutral" | "none";
+};
+
+/** "About every N days" — rounded to something a person says out loud. */
+function cadencePhrase(meanGapDays: number): string {
+  const g = Math.round(meanGapDays);
+  if (g <= 1) return "most days";
+  return `about every ${g} days`;
+}
+
+/** Whether the learner returns at a cadence that makes learning stick — said plainly, never as a
+ *  streak, and never shaming a gap. */
+export function consistency(report: ConsistencyReport): Consistency {
+  switch (report.pattern) {
+    case "regular":
+      return {
+        sentence: `You come back ${cadencePhrase(
+          report.meanGapDays ?? 0,
+        )} — a steady cadence. Spaced practice like this is what makes learning stick, far more than cramming.`,
+        tone: "good",
+      };
+    case "erratic":
+      return {
+        sentence:
+          "Your practice comes in bursts with long silent gaps. Cramming feels productive but fades fast — a steadier cadence would hold more, without asking for more of your time.",
         tone: "neutral",
       };
     case "notEnoughData":

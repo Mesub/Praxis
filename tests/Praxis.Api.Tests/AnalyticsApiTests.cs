@@ -34,6 +34,8 @@ public sealed class AnalyticsApiTests
         Assert.Equal(0.0, mpm.MinutesInvested);
         // No graded items yet → the calibration trend comes back as a blank, not a flat line.
         Assert.Equal("notEnoughData", mpm.Calibration!.Direction);
+        // No active days yet → consistency is a blank too, never a zero-day "streak".
+        Assert.Equal("notEnoughData", mpm.Consistency!.Pattern);
     }
 
     [Fact]
@@ -76,7 +78,9 @@ public sealed class AnalyticsApiTests
 
     private sealed record MpmBody(
         double? Rate, double MasteryCredit, double MinutesInvested, bool HasData, bool GainedNothing,
-        CalibrationTrendBody? Calibration);
+        CalibrationTrendBody? Calibration, ConsistencyBody? Consistency);
 
     private sealed record CalibrationTrendBody(string Direction);
+
+    private sealed record ConsistencyBody(string Pattern);
 }

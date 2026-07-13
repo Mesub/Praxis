@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
-import type { AnalyticsResponse, CalibrationTrendReport } from "./api";
-import { calibrationTrend, minutesLabel, rateLabel, ratePerHour, verdictOf } from "./analytics";
+import type {
+  AnalyticsResponse,
+  CalibrationTrendReport,
+  ConsistencyReport,
+} from "./api";
+import {
+  calibrationTrend,
+  consistency,
+  minutesLabel,
+  rateLabel,
+  ratePerHour,
+  verdictOf,
+} from "./analytics";
 
 function trendReport(over: Partial<CalibrationTrendReport> = {}): CalibrationTrendReport {
   return {
@@ -13,6 +24,17 @@ function trendReport(over: Partial<CalibrationTrendReport> = {}): CalibrationTre
   };
 }
 
+function consistencyReport(over: Partial<ConsistencyReport> = {}): ConsistencyReport {
+  return {
+    pattern: "notEnoughData",
+    activeDays: 0,
+    spanDays: 0,
+    meanGapDays: null,
+    regularity: null,
+    ...over,
+  };
+}
+
 function mpm(over: Partial<AnalyticsResponse> = {}): AnalyticsResponse {
   return {
     rate: 0.05,
@@ -21,6 +43,7 @@ function mpm(over: Partial<AnalyticsResponse> = {}): AnalyticsResponse {
     hasData: true,
     gainedNothing: false,
     calibration: trendReport(),
+    consistency: consistencyReport(),
     ...over,
   };
 }
@@ -87,5 +110,31 @@ describe("calibrationTrend", () => {
     const t = calibrationTrend(trendReport({ direction: "holdingSteady" }));
     expect(t.sentence?.toLowerCase()).toContain("holding steady");
     expect(t.tone).toBe("neutral");
+  });
+});
+
+describe("consistency", () => {
+  it("says nothing when there are too few active days", () => {
+    const c = consistency(consistencyReport({ pattern: "notEnoughData" }));
+    expect(c.sentence).toBeNull();
+    expect(c.tone).toBe("none");
+  });
+
+  it("praises a steady cadence and names the spacing in plain words", () => {
+    const c = consistency(consistencyReport({ pattern: "regular", meanGapDays: 2 }));
+    expect(c.sentence?.toLowerCase()).toContain("about every 2 days");
+    expect(c.sentence?.toLowerCase()).toContain("stick");
+    expect(c.tone).toBe("good");
+  });
+
+  it("collapses a near-daily cadence to 'most days', not 'every 1 days'", () => {
+    const c = consistency(consistencyReport({ pattern: "regular", meanGapDays: 1 }));
+    expect(c.sentence?.toLowerCase()).toContain("most days");
+  });
+
+  it("flags cram-then-vanish without shaming a gap", () => {
+    const c = consistency(consistencyReport({ pattern: "erratic" }));
+    expect(c.sentence?.toLowerCase()).toContain("bursts");
+    expect(c.tone).toBe("neutral");
   });
 });

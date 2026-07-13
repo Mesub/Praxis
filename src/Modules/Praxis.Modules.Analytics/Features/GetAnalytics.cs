@@ -36,9 +36,11 @@ public static class GetAnalytics
 
             var mpm = MasteryPerMinute.Compute(mastery, minutes);
 
-            // Both fold the same stream in one read: the rate says whether the time paid off, the
-            // trend says whether the learner is getting better at knowing what they know.
+            // All fold the same stream in one read: the rate says whether the time paid off, the
+            // trend says whether the learner is getting better at knowing what they know, and the
+            // cadence says whether they return at a spacing that makes it stick.
             var calibration = CalibrationTrend.From(stream);
+            var consistency = Consistency.From(stream);
 
             return Result<AnalyticsResponse>.Success(new AnalyticsResponse(
                 mpm.Rate,
@@ -46,7 +48,8 @@ public static class GetAnalytics
                 mpm.MinutesInvested,
                 mpm.HasData,
                 mpm.GainedNothing,
-                calibration));
+                calibration,
+                consistency));
         }
     }
 }
@@ -55,11 +58,13 @@ public static class GetAnalytics
 /// can be honest (a low rate is shown as a low rate, and a zero is shown as a zero) without doing any
 /// arithmetic of its own. `Rate` is null when no minutes have been invested: there is nothing to
 /// divide yet, and that is said, not faked. `Calibration` carries whether the learner is getting
-/// better at knowing what they know, or has not yet done enough graded work to say.
+/// better at knowing what they know; `Consistency` whether they return at a cadence that makes
+/// learning stick — each a first-class blank when there is not yet enough history to say.
 public sealed record AnalyticsResponse(
     double? Rate,
     double MasteryCredit,
     double MinutesInvested,
     bool HasData,
     bool GainedNothing,
-    CalibrationTrendReport Calibration);
+    CalibrationTrendReport Calibration,
+    ConsistencyReport Consistency);

@@ -9,7 +9,7 @@ import {
   type AnalyticsResponse,
   type TwinSummaryResponse,
 } from "@/lib/api";
-import { calibrationTrend, minutesLabel, rateLabel, verdictOf } from "@/lib/analytics";
+import { calibrationTrend, consistency, minutesLabel, rateLabel, verdictOf } from "@/lib/analytics";
 import { calibrationVerdict } from "@/lib/graph";
 
 /*
@@ -82,6 +82,7 @@ function Report({
   const trend = calibrationTrend(mpm.calibration);
   const trendTone =
     trend.tone === "good" ? "text-accent" : trend.tone === "bad" ? "text-serious" : "text-ink-2";
+  const rhythm = consistency(mpm.consistency);
   return (
     <>
       <section className="rounded-lg border border-line bg-surface p-6">
@@ -130,6 +131,19 @@ function Report({
           >
             See what is decaying →
           </Link>
+        </section>
+      ) : null}
+
+      {rhythm.sentence ? (
+        <section className="mt-4 rounded-lg border border-line bg-surface p-5">
+          <h2 className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Your rhythm</h2>
+          <p
+            className={`mt-2 text-[13.5px] leading-relaxed ${
+              rhythm.tone === "good" ? "text-accent" : "text-ink-2"
+            }`}
+          >
+            {rhythm.sentence}
+          </p>
         </section>
       ) : null}
     </>

@@ -29,6 +29,13 @@ function mpm(over: Partial<AnalyticsResponse> = {}): AnalyticsResponse {
       earlierSamples: 0,
       recentSamples: 0,
     },
+    consistency: {
+      pattern: "notEnoughData",
+      activeDays: 0,
+      spanDays: 0,
+      meanGapDays: null,
+      regularity: null,
+    },
     ...over,
   };
 }
@@ -89,6 +96,34 @@ describe("AnalyticsPage", () => {
 
     expect(await screen.findByText("1.50")).toBeInTheDocument();
     expect(screen.queryByText(/calibration is improving|calibration is sliding|holding steady/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the return-cadence rhythm when there is a pattern", async () => {
+    me.mockResolvedValue(
+      ok(
+        mpm({
+          consistency: {
+            pattern: "regular",
+            activeDays: 4,
+            spanDays: 7,
+            meanGapDays: 2,
+            regularity: 1,
+          },
+        }),
+      ),
+    );
+    render(<AnalyticsPage />);
+
+    expect(await screen.findByText(/your rhythm/i)).toBeInTheDocument();
+    expect(screen.getByText(/about every 2 days/i)).toBeInTheDocument();
+  });
+
+  it("shows no rhythm section without enough active days", async () => {
+    me.mockResolvedValue(ok(mpm())); // consistency notEnoughData by default
+    render(<AnalyticsPage />);
+
+    expect(await screen.findByText("1.50")).toBeInTheDocument();
+    expect(screen.queryByText(/your rhythm/i)).not.toBeInTheDocument();
   });
 
   it("says a gained-nothing stretch out loud and offers the next step", async () => {

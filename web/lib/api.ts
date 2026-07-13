@@ -390,6 +390,22 @@ export interface CalibrationTrendReport {
   recentSamples: number;
 }
 
+/** The shape of a learner's return cadence. `notEnoughData` is a real answer: fewer than three active
+ *  days, so there is no pattern yet. Never a streak. */
+export type ConsistencyPattern = "notEnoughData" | "regular" | "erratic";
+
+export interface ConsistencyReport {
+  pattern: ConsistencyPattern;
+  /** Distinct calendar days with real engagement. */
+  activeDays: number;
+  /** First active day to last, inclusive. */
+  spanDays: number;
+  /** Average days between consecutive active days, or null when there is no pattern yet. */
+  meanGapDays: number | null;
+  /** 1 − coefficient of variation of the gaps; 1 is perfectly even. Null when no pattern yet. */
+  regularity: number | null;
+}
+
 export interface AnalyticsResponse {
   /** Mastery credit gained per minute invested, or null when no time has been invested. */
   rate: number | null;
@@ -401,6 +417,8 @@ export interface AnalyticsResponse {
   gainedNothing: boolean;
   /** Whether the learner is getting better at knowing what they know, over their graded history. */
   calibration: CalibrationTrendReport;
+  /** Whether the learner returns at a cadence that makes learning stick. */
+  consistency: ConsistencyReport;
 }
 
 export const analytics = {
