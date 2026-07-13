@@ -58,13 +58,18 @@ public static class LedgerChain
     /// entire history behind it, so you cannot lift a valid entry out of one ledger and drop it into
     /// another.
     public static string Hash(Evidence e, string previousHash)
+        => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Preimage(e, previousHash))));
+
+    /// **The exact bytes the hash commits to** — every field, in a fixed order, with fixed formats and
+    /// a delimiter (`\x1e`, ASCII record separator) that cannot occur in a GUID, a number, or an enum
+    /// name. *The serialisation **is** the commitment*: change it and every previously-published hash
+    /// breaks. Exposed so the byte-mutation suite (M10.5) can prove there is no byte in here a forger
+    /// could flip without changing the hash — that nothing committed is un-covered.
+    internal static string Preimage(Evidence e, string previousHash)
     {
         ArgumentNullException.ThrowIfNull(e);
 
-        // Fixed order, fixed formats, a delimiter (\x1e, ASCII record separator) that cannot occur in
-        // a GUID, a number, or an enum name. Change this and every previously-published hash breaks —
-        // which is correct: the serialisation *is* the commitment.
-        var payload = string.Join('\x1e',
+        return string.Join('\x1e',
             e.Id.ToString("N"),
             e.LearnerId.ToString("N"),
             e.ConceptId.ToString("N"),
@@ -75,10 +80,6 @@ public static class LedgerChain
             e.SourceSequence.ToString(CultureInfo.InvariantCulture),
             e.ProducedAt.ToUniversalTime().Ticks.ToString(CultureInfo.InvariantCulture),
             previousHash);
-
-        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
-
-        return Convert.ToHexStringLower(digest);
     }
 
     /// **Walk the chain and prove it has not been tampered with — or name the first link that fails.**
