@@ -25,7 +25,12 @@ from praxis_ai.items import EvidenceType, ItemGenerator, ItemRejectedError
 from praxis_ai.oracle import AnswerKeyStore
 from praxis_ai.routes.oracle import get_store
 from praxis_ai.rubric import Dimension, HardFail, Rubric
-from praxis_ai.rubric_store import RubricStore, default_rubric_store
+from praxis_ai.rubric_store import (
+    RubricStore,
+    UnknownRubricError,
+    default_rubric_store,
+    require,
+)
 
 router = APIRouter(prefix="/assessment", tags=["assessment"])
 
@@ -139,6 +144,55 @@ async def grade(
         result = await grader.grade(
             request.response,
             request.rubric.to_domain(),
+            Attribution(learner_id=request.learner_id, concept_id=request.concept_id),
+        )
+    except ModelUnavailableError as unavailable:
+        raise HTTPException(status_code=503, detail=str(unavailable)) from unavailable
+
+    return GradeResponse(
+        outcome=result.outcome,
+        score=result.score,
+        misconceptions=list(result.misconceptions),
+        reason=result.reason,
+        judges_consulted=result.judges_consulted,
+        escalated_to_adjudicator=result.escalated_to_adjudicator,
+        escalated_to_human=result.escalated_to_human,
+        usd=None if result.usd is None else float(result.usd),
+    )
+
+
+# ── Grading a concept, with the rubric resolved here ──────────────────────────
+#
+# The teach-back path (M11.7b). The core sends only the learner's words and *which concept* — never
+# a rubric, because the rubric is answer-adjacent and lives on this side of the wire (M11.7a). The
+# grader looks it up and grades against it; the rubric never crosses back. If no rubric is authored
+# for the concept, PRAXIS declines (422) rather than inventing a standard on the spot.
+
+
+class GradeByConceptRequest(BaseModel):
+    response: str = Field(min_length=1, max_length=40_000)
+
+    learner_id: str = Field(min_length=1)
+    concept_id: str = Field(min_length=1)
+
+
+@router.post("/grade-by-concept", response_model=GradeResponse)
+async def grade_by_concept(
+    request: GradeByConceptRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+    rubrics: Annotated[RubricStore, Depends(get_rubric_store)],
+) -> GradeResponse:
+    try:
+        rubric = require(rubrics, request.concept_id)
+    except UnknownRubricError as unknown:
+        raise HTTPException(status_code=422, detail=str(unknown)) from unknown
+
+    grader = Grader(ClaudeClient(settings))
+
+    try:
+        result = await grader.grade(
+            request.response,
+            rubric,
             Attribution(learner_id=request.learner_id, concept_id=request.concept_id),
         )
     except ModelUnavailableError as unavailable:

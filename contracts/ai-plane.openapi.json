@@ -192,6 +192,33 @@
         "title": "GenerateItemRequest",
         "type": "object"
       },
+      "GradeByConceptRequest": {
+        "properties": {
+          "concept_id": {
+            "minLength": 1,
+            "title": "Concept Id",
+            "type": "string"
+          },
+          "learner_id": {
+            "minLength": 1,
+            "title": "Learner Id",
+            "type": "string"
+          },
+          "response": {
+            "maxLength": 40000,
+            "minLength": 1,
+            "title": "Response",
+            "type": "string"
+          }
+        },
+        "required": [
+          "response",
+          "learner_id",
+          "concept_id"
+        ],
+        "title": "GradeByConceptRequest",
+        "type": "object"
+      },
       "GradeOutcome": {
         "enum": [
           "passed",
@@ -622,6 +649,47 @@
           }
         },
         "summary": "Grade",
+        "tags": [
+          "assessment"
+        ]
+      }
+    },
+    "/assessment/grade-by-concept": {
+      "post": {
+        "operationId": "grade_by_concept_assessment_grade_by_concept_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GradeByConceptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Grade By Concept",
         "tags": [
           "assessment"
         ]

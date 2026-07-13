@@ -31,8 +31,13 @@ def test_the_committed_contract_matches_the_service() -> None:
 
 
 def test_the_contract_offers_the_core_exactly_five_things() -> None:
-    """Everything the .NET core is allowed to ask an LLM for. If a fifth appears, it was designed
-    somewhere other than here.
+    """Everything the .NET core is allowed to ask an LLM for. If a new door appears, it was designed
+    somewhere other than here — this test forces the change to be deliberate.
+
+    `/assessment/grade-by-concept` was added deliberately (M11.7b): the teach-back grade path, where
+    the core sends only the learner's words and *which concept*, and the rubric is resolved on this
+    side of the wire. It is answer-*free* by construction — the sweep below proves it carries no
+    answer field — which is exactly why adding it here is allowed and adding an oracle door is not.
 
     Note there is exactly **one** door to the oracle. An earlier draft of the tutor route grew its
     own `/tutor/check` — a second way to reach the answer key. Two doors to one secret is one door
@@ -44,12 +49,14 @@ def test_the_contract_offers_the_core_exactly_five_things() -> None:
         "/health",
         "/oracle/check-claim",
         "/assessment/grade",
+        "/assessment/grade-by-concept",
         "/assessment/items",
         "/tutor/turn",
         "/tutor/turn/stream",
     }
 
-    # The oracle has one door, and it is the one the tutor knocks on.
+    # The oracle still has exactly one door, and it is the one the tutor knocks on. Adding a grade
+    # path did not add a way to reach the answer key.
     assert len([p for p in committed["paths"] if "check" in p]) == 1
 
 
