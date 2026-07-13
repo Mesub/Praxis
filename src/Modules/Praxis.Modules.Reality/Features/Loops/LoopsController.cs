@@ -22,4 +22,14 @@ public sealed class LoopsController : ControllerBase
         [FromServices] GetLoopsBoard.Handler handler,
         CancellationToken ct)
         => (await handler.HandleAsync(new GetLoopsBoard.Query(), ct)).ToApiResponse();
+
+    /// **Commit a prediction** — the claim and the confidence, frozen before the code runs (C-6). The
+    /// `Command` is bound directly so its validator is the one that runs (M6.5b). It goes on the board
+    /// and it cannot be taken back; resolution is a separate act.
+    [HttpPost]
+    public async Task<IActionResult> Commit(
+        [FromBody] CommitPrediction.Command command,
+        [FromServices] CommitPrediction.Handler handler,
+        CancellationToken ct)
+        => (await handler.HandleAsync(command, ct)).ToApiResponse();
 }

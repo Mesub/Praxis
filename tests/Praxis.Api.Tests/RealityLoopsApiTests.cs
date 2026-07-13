@@ -45,6 +45,49 @@ public sealed class RealityLoopsApiTests
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task A_committed_prediction_lands_on_the_board_and_cannot_be_taken_back()
+    {
+        var client = await Learner();
+
+        using var committed = await client.PostAsJsonAsync(
+            new Uri("/api/reality/loops", UriKind.Relative),
+            new
+            {
+                kind = "output",
+                code = "print(2 + 2)",
+                answer = "4",
+                confidence = 0.8,
+            },
+            Json);
+
+        Assert.Equal(HttpStatusCode.OK, committed.StatusCode);
+        var receipt = (await Read<CommitBody>(committed)).Data!;
+        Assert.NotEqual(Guid.Empty, receipt.LoopId);
+
+        // It is now on the board, and there is no endpoint that could remove it.
+        using var boardResponse = await client.GetAsync(new Uri("/api/reality/loops", UriKind.Relative));
+        var board = (await Read<BoardBody>(boardResponse)).Data!;
+
+        Assert.Single(board.Open);
+        Assert.Equal("4", board.Open[0].Claim);
+        // A code Loop resolves on demand — its horizon is now, so it is what resolves today.
+        Assert.Single(board.ResolvingToday);
+    }
+
+    [Fact]
+    public async Task A_prediction_without_a_valid_confidence_is_refused()
+    {
+        var client = await Learner();
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri("/api/reality/loops", UriKind.Relative),
+            new { kind = "output", code = "print(1)", answer = "1", confidence = 1.5 },
+            Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private async Task<HttpClient> Learner()
     {
         var client = _api.Factory.CreateClient();
@@ -72,6 +115,8 @@ public sealed class RealityLoopsApiTests
 
     private sealed record AuthBody(
         Guid LearnerId, string Email, string DisplayName, string AccessToken, DateTime ExpiresAt);
+
+    private sealed record CommitBody(Guid LoopId, string Kind, string Answer, double Confidence);
 
     private sealed record OpenLoopBody(Guid LoopId, string Claim, double Confidence);
 
