@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { diagnostics } from "@/lib/api";
 import {
@@ -379,6 +380,15 @@ function CalibrationScreen({ state }: { state: DiagnosticState }) {
           </p>
         </section>
       ) : null}
+
+      <div className="mt-8 border-t border-line pt-6">
+        <Link
+          href="/contract"
+          className="inline-flex items-center justify-center rounded-md bg-accent px-5 py-2.5 text-[13.5px] font-medium text-accent-ink hover:opacity-95"
+        >
+          Now the Contract — what your minutes actually buy →
+        </Link>
+      </div>
     </div>
   );
 }

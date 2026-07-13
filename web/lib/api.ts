@@ -159,3 +159,72 @@ export const diagnostics = {
       signal,
     ),
 };
+
+// ── The Compiler (E3): the Objective, and the plan it does or does not believe in ─────────────
+
+export interface SetObjectiveRequest {
+  conceptId: string;
+  /** Taken literally — the Decay Wall is run against this number, not against optimism. */
+  minutesPerDay: number;
+  /** ISO date, or null for "no deadline". */
+  deadline: string | null;
+}
+
+export interface ObjectiveResponse {
+  id: string;
+  conceptId: string;
+  minutesPerDay: number;
+  deadline: string | null;
+  replaced: number;
+}
+
+export interface PlanStepResponse {
+  conceptId: string;
+  slug: string;
+  position: number;
+  minutes: number;
+  cumulativeMinutes: number;
+  dayReached: number;
+  kind: string;
+}
+
+/** The forward simulation — shown to the learner, never hidden behind the verdict. */
+export interface WallResponse {
+  reachable: boolean;
+  conceptsReached: number;
+  conceptsInPlan: number;
+  daysToObjective: number;
+  horizonDays: number;
+  peakMaintenanceMinutesPerDay: number;
+  /** At the worst point, this share of the daily minutes goes on keeping what you already have. */
+  maintenanceShareOfDay: number;
+}
+
+/** What PRAXIS offers instead when it does not believe — the narrower Objective it *does* believe in. */
+export interface AlternativeResponse {
+  steps: PlanStepResponse[];
+  /** The minutes/day that would actually reach the full Objective. Null when no day is enough. */
+  minutesPerDayThatWouldWork: number | null;
+  conceptsReachable: number;
+  conceptsInObjective: number;
+}
+
+export interface PlanResponse {
+  objective: string;
+  steps: PlanStepResponse[];
+  totalMinutes: number;
+  conceptsAlreadyHeld: number;
+  conceptsNeedingRefresh: number;
+  daysAtStatedPace: number;
+  /** False means PRAXIS does not believe you get there at the pace you gave (C-1). The plan is still yours. */
+  believable: boolean;
+  wall: WallResponse;
+  alternative: AlternativeResponse | null;
+}
+
+export const compiler = {
+  setObjective: (body: SetObjectiveRequest, token?: string, signal?: AbortSignal) =>
+    api.post<ObjectiveResponse>("/api/compiler/objectives", body, token, signal),
+  plan: (token?: string, signal?: AbortSignal) =>
+    api.get<PlanResponse>("/api/compiler/plan", token, signal),
+};
