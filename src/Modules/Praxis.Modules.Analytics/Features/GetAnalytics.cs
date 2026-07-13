@@ -36,12 +36,17 @@ public static class GetAnalytics
 
             var mpm = MasteryPerMinute.Compute(mastery, minutes);
 
+            // Both fold the same stream in one read: the rate says whether the time paid off, the
+            // trend says whether the learner is getting better at knowing what they know.
+            var calibration = CalibrationTrend.From(stream);
+
             return Result<AnalyticsResponse>.Success(new AnalyticsResponse(
                 mpm.Rate,
                 mpm.MasteryCreditGained,
                 mpm.MinutesInvested,
                 mpm.HasData,
-                mpm.GainedNothing));
+                mpm.GainedNothing,
+                calibration));
         }
     }
 }
@@ -49,10 +54,12 @@ public static class GetAnalytics
 /// **The whole truth about the trade** — the rate, and the two numbers it is made of, so the screen
 /// can be honest (a low rate is shown as a low rate, and a zero is shown as a zero) without doing any
 /// arithmetic of its own. `Rate` is null when no minutes have been invested: there is nothing to
-/// divide yet, and that is said, not faked.
+/// divide yet, and that is said, not faked. `Calibration` carries whether the learner is getting
+/// better at knowing what they know, or has not yet done enough graded work to say.
 public sealed record AnalyticsResponse(
     double? Rate,
     double MasteryCredit,
     double MinutesInvested,
     bool HasData,
-    bool GainedNothing);
+    bool GainedNothing,
+    CalibrationTrendReport Calibration);

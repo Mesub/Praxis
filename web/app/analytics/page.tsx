@@ -9,7 +9,7 @@ import {
   type AnalyticsResponse,
   type TwinSummaryResponse,
 } from "@/lib/api";
-import { minutesLabel, rateLabel, verdictOf } from "@/lib/analytics";
+import { calibrationTrend, minutesLabel, rateLabel, verdictOf } from "@/lib/analytics";
 import { calibrationVerdict } from "@/lib/graph";
 
 /*
@@ -79,6 +79,9 @@ function Report({
   calibration: TwinSummaryResponse | null;
 }) {
   const verdict = verdictOf(mpm);
+  const trend = calibrationTrend(mpm.calibration);
+  const trendTone =
+    trend.tone === "good" ? "text-accent" : trend.tone === "bad" ? "text-serious" : "text-ink-2";
   return (
     <>
       <section className="rounded-lg border border-line bg-surface p-6">
@@ -118,6 +121,9 @@ function Report({
           <p className="mt-2 text-[13.5px] leading-relaxed text-ink-2">
             {calibrationVerdict(calibration)}
           </p>
+          {trend.sentence ? (
+            <p className={`mt-2 text-[13px] leading-relaxed ${trendTone}`}>{trend.sentence}</p>
+          ) : null}
           <Link
             href="/graph"
             className="mt-2 inline-block text-[12.5px] text-accent underline-offset-4 hover:underline"

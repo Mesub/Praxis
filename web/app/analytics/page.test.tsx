@@ -16,7 +16,21 @@ function ok<T>(data: T): ApiResult<T> {
 }
 function mpm(over: Partial<AnalyticsResponse> = {}): AnalyticsResponse {
   // 0.025/min → 1.50/hour; mastery 3.00 over 2 h — kept distinct so each renders uniquely.
-  return { rate: 0.025, masteryCredit: 3, minutesInvested: 120, hasData: true, gainedNothing: false, ...over };
+  return {
+    rate: 0.025,
+    masteryCredit: 3,
+    minutesInvested: 120,
+    hasData: true,
+    gainedNothing: false,
+    calibration: {
+      direction: "notEnoughData",
+      earlierBrier: null,
+      recentBrier: null,
+      earlierSamples: 0,
+      recentSamples: 0,
+    },
+    ...over,
+  };
 }
 function twinSummary(): TwinSummaryResponse {
   return {
@@ -48,6 +62,33 @@ describe("AnalyticsPage", () => {
     expect(screen.getByText(/that is the number that matters/i)).toBeInTheDocument();
     // Calibration reused from the Twin.
     expect(screen.getByText(/12 points ahead/i)).toBeInTheDocument();
+  });
+
+  it("shows the calibration trend alongside, when there is enough history", async () => {
+    me.mockResolvedValue(
+      ok(
+        mpm({
+          calibration: {
+            direction: "improving",
+            earlierBrier: 0.4,
+            recentBrier: 0.1,
+            earlierSamples: 6,
+            recentSamples: 6,
+          },
+        }),
+      ),
+    );
+    render(<AnalyticsPage />);
+
+    expect(await screen.findByText(/getting better at knowing what you actually know/i)).toBeInTheDocument();
+  });
+
+  it("says nothing about the trend when there is not enough graded history", async () => {
+    me.mockResolvedValue(ok(mpm())); // notEnoughData by default
+    render(<AnalyticsPage />);
+
+    expect(await screen.findByText("1.50")).toBeInTheDocument();
+    expect(screen.queryByText(/calibration is improving|calibration is sliding|holding steady/i)).not.toBeInTheDocument();
   });
 
   it("says a gained-nothing stretch out loud and offers the next step", async () => {

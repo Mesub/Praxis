@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
-import type { AnalyticsResponse } from "./api";
-import { minutesLabel, rateLabel, ratePerHour, verdictOf } from "./analytics";
+import type { AnalyticsResponse, CalibrationTrendReport } from "./api";
+import { calibrationTrend, minutesLabel, rateLabel, ratePerHour, verdictOf } from "./analytics";
+
+function trendReport(over: Partial<CalibrationTrendReport> = {}): CalibrationTrendReport {
+  return {
+    direction: "notEnoughData",
+    earlierBrier: null,
+    recentBrier: null,
+    earlierSamples: 0,
+    recentSamples: 0,
+    ...over,
+  };
+}
 
 function mpm(over: Partial<AnalyticsResponse> = {}): AnalyticsResponse {
   return {
@@ -9,6 +20,7 @@ function mpm(over: Partial<AnalyticsResponse> = {}): AnalyticsResponse {
     minutesInvested: 60,
     hasData: true,
     gainedNothing: false,
+    calibration: trendReport(),
     ...over,
   };
 }
@@ -49,5 +61,31 @@ describe("verdictOf", () => {
     const v = verdictOf(mpm());
     expect(v.headline.toLowerCase()).toContain("honest");
     expect(v.needsNextStep).toBe(false);
+  });
+});
+
+describe("calibrationTrend", () => {
+  it("says nothing at all when there is not enough graded history", () => {
+    const t = calibrationTrend(trendReport({ direction: "notEnoughData" }));
+    expect(t.sentence).toBeNull();
+    expect(t.tone).toBe("none");
+  });
+
+  it("celebrates an improving calibration", () => {
+    const t = calibrationTrend(trendReport({ direction: "improving" }));
+    expect(t.sentence?.toLowerCase()).toContain("improving");
+    expect(t.tone).toBe("good");
+  });
+
+  it("flags a sliding calibration as the thing worth catching early", () => {
+    const t = calibrationTrend(trendReport({ direction: "declining" }));
+    expect(t.sentence?.toLowerCase()).toContain("sliding");
+    expect(t.tone).toBe("bad");
+  });
+
+  it("calls a steady calibration steady, without drama", () => {
+    const t = calibrationTrend(trendReport({ direction: "holdingSteady" }));
+    expect(t.sentence?.toLowerCase()).toContain("holding steady");
+    expect(t.tone).toBe("neutral");
   });
 });

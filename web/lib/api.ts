@@ -372,6 +372,24 @@ export const memory = {
 // Mastery-per-Minute (I-10). `rate` is null when no minutes have been invested — there is nothing to
 // divide yet, and PRAXIS says so rather than faking a zero.
 
+/** Which way a learner's calibration is moving — whether they are getting better at knowing what they
+ *  know. `notEnoughData` is a real answer: not enough graded items yet to compare. */
+export type CalibrationDirection =
+  | "notEnoughData"
+  | "improving"
+  | "holdingSteady"
+  | "declining";
+
+export interface CalibrationTrendReport {
+  direction: CalibrationDirection;
+  /** Mean Brier over the earlier half of graded history, or null when there is not enough to compare. */
+  earlierBrier: number | null;
+  /** Mean Brier over the recent half — lower than earlier means calibration improved. */
+  recentBrier: number | null;
+  earlierSamples: number;
+  recentSamples: number;
+}
+
 export interface AnalyticsResponse {
   /** Mastery credit gained per minute invested, or null when no time has been invested. */
   rate: number | null;
@@ -381,6 +399,8 @@ export interface AnalyticsResponse {
   hasData: boolean;
   /** True when time was spent and verified mastery did not move — a real, reportable bad stretch. */
   gainedNothing: boolean;
+  /** Whether the learner is getting better at knowing what they know, over their graded history. */
+  calibration: CalibrationTrendReport;
 }
 
 export const analytics = {

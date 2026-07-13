@@ -1,3 +1,4 @@
+using Praxis.Modules.Analytics.Domain;
 using Praxis.Modules.Analytics.Features;
 using Praxis.Modules.Kernel;
 using Praxis.Modules.Kernel.Domain;
@@ -40,11 +41,37 @@ public sealed class GetAnalyticsTests
         Assert.True(result.IsSuccess);
         Assert.Null(result.Value.Rate);
         Assert.False(result.Value.HasData);
+        // No graded items → no trend, said as a blank, not a flat line.
+        Assert.Equal(CalibrationDirection.NotEnoughData, result.Value.Calibration.Direction);
+    }
+
+    [Fact]
+    public async Task The_calibration_trend_folds_through_the_handler()
+    {
+        // Confident-and-wrong early, confident-and-right recently: calibration improving.
+        var stream = new List<LearningEvent>();
+        for (var i = 0; i < 5; i++) stream.Add(Answer(1.0, correct: false));
+        for (var i = 0; i < 5; i++) stream.Add(Answer(1.0, correct: true));
+
+        var result = await new GetAnalytics.Handler(
+            new FakeEventStore(stream), new FakeSnapshot(2.0), new FakeUser())
+            .HandleAsync(new GetAnalytics.Query(), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(CalibrationDirection.Improving, result.Value.Calibration.Direction);
     }
 
     private static LearningEvent Event(IEventPayload payload)
         => LearningEvent.Create(
             Guid.CreateVersion7(), LearningEventType.SessionCompleted, EventCatalogue.Serialize(payload), Day1, Day1);
+
+    private static LearningEvent Answer(double confidence, bool correct)
+        => LearningEvent.Create(
+            Guid.CreateVersion7(),
+            LearningEventType.AnswerGiven,
+            EventCatalogue.Serialize(new AnswerGiven(
+                Guid.CreateVersion7(), Guid.CreateVersion7(), EvidenceType.Apply, correct, confidence, 30)),
+            Day1, Day1);
 
     private sealed class FakeSnapshot(double mastery) : IAnalyticsSnapshot
     {

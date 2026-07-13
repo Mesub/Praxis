@@ -32,6 +32,8 @@ public sealed class AnalyticsApiTests
         Assert.Null(mpm.Rate);
         Assert.False(mpm.HasData);
         Assert.Equal(0.0, mpm.MinutesInvested);
+        // No graded items yet → the calibration trend comes back as a blank, not a flat line.
+        Assert.Equal("notEnoughData", mpm.Calibration!.Direction);
     }
 
     [Fact]
@@ -73,5 +75,8 @@ public sealed class AnalyticsApiTests
         Guid LearnerId, string Email, string DisplayName, string AccessToken, DateTime ExpiresAt);
 
     private sealed record MpmBody(
-        double? Rate, double MasteryCredit, double MinutesInvested, bool HasData, bool GainedNothing);
+        double? Rate, double MasteryCredit, double MinutesInvested, bool HasData, bool GainedNothing,
+        CalibrationTrendBody? Calibration);
+
+    private sealed record CalibrationTrendBody(string Direction);
 }

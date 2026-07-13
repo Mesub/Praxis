@@ -7,7 +7,7 @@
   that would change it (R-3) — never shame, always a next step.
 */
 
-import type { AnalyticsResponse } from "./api";
+import type { AnalyticsResponse, CalibrationTrendReport } from "./api";
 
 /** The raw per-minute rate is tiny; per *hour* is what a person can hold in their head. */
 export function ratePerHour(rate: number): number {
@@ -53,4 +53,38 @@ export function verdictOf(a: AnalyticsResponse): Verdict {
     headline: `Every hour you invested bought about ${ratePerHour(a.rate as number).toFixed(2)} of verified, decay-adjusted mastery. That is the number that matters, and it is honest.`,
     needsNextStep: false,
   };
+}
+
+export type CalibrationTrend = {
+  /** Null when there is not enough graded history to say anything — the screen then shows nothing,
+   *  rather than a reassuring flat line. */
+  sentence: string | null;
+  /** For styling: a worsening trend is the one worth flagging. */
+  tone: "good" | "neutral" | "bad" | "none";
+};
+
+/** Whether the learner is getting better at knowing what they know — said plainly, or not at all. */
+export function calibrationTrend(trend: CalibrationTrendReport): CalibrationTrend {
+  switch (trend.direction) {
+    case "improving":
+      return {
+        sentence:
+          "Your calibration is improving — you are getting better at knowing what you actually know. That is the meta-skill that matters most.",
+        tone: "good",
+      };
+    case "declining":
+      return {
+        sentence:
+          "Your calibration is sliding — lately you have been more sure than you should be. That is worth catching early, before it becomes a habit.",
+        tone: "bad",
+      };
+    case "holdingSteady":
+      return {
+        sentence: "Your calibration is holding steady — no meaningful drift either way.",
+        tone: "neutral",
+      };
+    case "notEnoughData":
+    default:
+      return { sentence: null, tone: "none" };
+  }
 }
