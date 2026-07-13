@@ -193,6 +193,56 @@ namespace Praxis.Modules.Graph.Persistence.Migrations
                     b.ToTable("concept_edges", "graph");
                 });
 
+            modelBuilder.Entity("Praxis.Modules.Graph.Domain.ConceptMisconception", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConceptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Statement")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConceptId");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("concept_misconceptions", "graph");
+                });
+
             modelBuilder.Entity("Praxis.Modules.Graph.Domain.GraphVersion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -312,6 +362,15 @@ namespace Praxis.Modules.Graph.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ToConceptId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Praxis.Modules.Graph.Domain.ConceptMisconception", b =>
+                {
+                    b.HasOne("Praxis.Modules.Graph.Domain.Concept", null)
+                        .WithMany()
+                        .HasForeignKey("ConceptId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

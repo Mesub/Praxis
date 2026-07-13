@@ -126,6 +126,48 @@ public sealed class SeedPackTests
     }
 
     [Fact]
+    public async Task The_declared_misconceptions_land_in_the_graph_and_are_queryable_by_concept()
+    {
+        // The whole point of M13.2b: the pack's declared wrong beliefs become rows the assessment
+        // engine can hand to the extractor as a closed match set. A library that loaded but could
+        // not be read back per concept would be decoration.
+        await using var db = _graph.CreateContext();
+        await new PackLoader(db, new SystemClock()).LoadAsync(Yaml());
+
+        var queries = new GraphQueries(db);
+        var embeddings = db.Concepts.Single(c => c.Slug == "embeddings");
+
+        var declared = await queries.MisconceptionsOfAsync(embeddings.Id);
+
+        Assert.NotEmpty(declared);
+        Assert.All(declared, m => Assert.Equal(embeddings.Id, m.ConceptId));
+        Assert.Contains(declared, m => m.Key == "embeddings-encode-meaning-not-training");
+        Assert.All(declared, m => Assert.False(string.IsNullOrWhiteSpace(m.Statement)));
+
+        // And a concept that declares none returns an empty library, not an error.
+        var tokenisation = db.Concepts.Single(c => c.Slug == "tokenisation");
+        Assert.Empty(await queries.MisconceptionsOfAsync(tokenisation.Id));
+    }
+
+    [Fact]
+    public async Task Reloading_the_pack_replaces_misconceptions_wholesale_rather_than_duplicating()
+    {
+        // A pack is a complete statement of the domain. Loading v1 then v2 must leave exactly one
+        // copy of each belief — a lingering duplicate would break the global-uniqueness the whole
+        // library depends on.
+        await using var db = _graph.CreateContext();
+        var loader = new PackLoader(db, new SystemClock());
+
+        await loader.LoadAsync(Yaml());
+        await loader.LoadAsync(Yaml().Replace("version: 1", "version: 2", StringComparison.Ordinal));
+
+        var embeddings = db.Concepts.Single(c => c.Slug == "embeddings");
+        var declared = await new GraphQueries(db).MisconceptionsOfAsync(embeddings.Id);
+
+        Assert.Single(declared, m => m.Key == "embeddings-encode-meaning-not-training");
+    }
+
+    [Fact]
     public async Task A_learner_who_knows_nothing_has_exactly_one_place_to_start()
     {
         // The graph has one root: tokenisation. Two roots would mean the pack quietly offers a

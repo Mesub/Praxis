@@ -13,6 +13,7 @@ public sealed class GraphDbContext : DbContext
     public DbSet<ConceptEdge> Edges => Set<ConceptEdge>();
     public DbSet<GraphVersion> Versions => Set<GraphVersion>();
     public DbSet<PoMContract> Contracts => Set<PoMContract>();
+    public DbSet<ConceptMisconception> Misconceptions => Set<ConceptMisconception>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,6 +108,27 @@ public sealed class GraphDbContext : DbContext
 
             // Each evidence type gets one clause per contract.
             e.HasIndex(x => new { x.PoMContractId, x.Type }).IsUnique();
+
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasQueryFilter(x => !x.IsDeleted);
+        });
+
+        modelBuilder.Entity<ConceptMisconception>(e =>
+        {
+            e.ToTable("concept_misconceptions", Schema);
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Key).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Statement).HasMaxLength(2000).IsRequired();
+
+            e.HasOne<Concept>().WithMany()
+             .HasForeignKey(x => x.ConceptId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // The key names one wrong idea across the whole graph — the same uniqueness the pack
+            // validator enforces at author time, now enforced by the database at load time.
+            e.HasIndex(x => x.Key).IsUnique();
+            e.HasIndex(x => x.ConceptId);
 
             e.Property(x => x.Version).IsRowVersion();
             e.HasQueryFilter(x => !x.IsDeleted);

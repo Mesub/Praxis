@@ -18,6 +18,17 @@ public sealed class GraphQueries
 
     public GraphQueries(GraphDbContext db) => _db = db;
 
+    /// The concept's **declared misconception library** — the named wrong beliefs a learner might
+    /// hold about it. Handed to the AI extractor as its closed match set (I-6), so a wrong answer is
+    /// matched against these before anything new is ever invented.
+    public async Task<IReadOnlyList<ConceptMisconception>> MisconceptionsOfAsync(
+        Guid conceptId, CancellationToken ct = default)
+        => await _db.Misconceptions
+            .AsNoTracking()
+            .Where(m => m.ConceptId == conceptId)
+            .OrderBy(m => m.Key)
+            .ToListAsync(ct);
+
     /// Everything this concept transitively depends on. What you must already hold to hold it.
     public async Task<IReadOnlyList<Concept>> PrerequisitesOfAsync(
         Guid conceptId, CancellationToken ct = default)

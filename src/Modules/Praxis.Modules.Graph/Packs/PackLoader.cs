@@ -115,6 +115,14 @@ public sealed class PackLoader
             .ToListAsync(ct);
 
         _db.Contracts.RemoveRange(staleContracts);
+
+        // Misconceptions go the same way: a pack is a complete statement of the domain's declared
+        // wrong beliefs, so a belief the author has since deleted must not linger in the graph.
+        var staleMisconceptions = await _db.Misconceptions
+            .Where(m => conceptIds.Contains(m.ConceptId))
+            .ToListAsync(ct);
+
+        _db.Misconceptions.RemoveRange(staleMisconceptions);
         await _db.SaveChangesAsync(ct);
 
         var edgeCount = 0;
@@ -134,6 +142,11 @@ public sealed class PackLoader
                 from.Id,
                 proof.Hold,
                 [.. proof.Evidence.Select(e => AcceptedEvidence.Of(e.Type, e.MinScore, e.Max, e.Count))]));
+
+            foreach (var m in source.Misconceptions)
+            {
+                _db.Misconceptions.Add(ConceptMisconception.Create(from.Id, m.Key, m.Statement));
+            }
         }
 
         _db.Versions.Add(GraphVersion.Publish(
