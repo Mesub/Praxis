@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Praxis.Modules.Graph.Packs;
 using Praxis.Modules.Graph.Persistence;
@@ -39,13 +40,25 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
 
     private readonly ApiFixture _api;
 
+    // A host whose AI plane is a stub — the tutor turn has no real Claude to call in a test, and the
+    // point here is the *journey* wiring, not the model. It shares the fixture's database, so evidence
+    // written through a scope and state read over HTTP are the same learner.
+    private WebApplicationFactory<Program> _factory = null!;
+
     private Guid _objective;      // beating-the-baseline — the pack's one build target
     private Guid _frontier;       // tokenisation — the single place a learner can start
+    // Three concepts whose contract a single unaided APPLY satisfies on its own (Apply max ≥ hold,
+    // count 1) — so one accepted APPLY carries each to HELD, as the Evidence Ceiling's floor promises.
+    private Guid _held1;          // the-inverted-index (0.75 / 0.75)
+    private Guid _held2;          // vector-similarity (0.80 / 0.80)
+    private Guid _held3;          // ranking-metrics (0.80 / 0.80)
 
     public EndToEndJourneyTests(ApiFixture api) => _api = api;
 
     public async Task InitializeAsync()
     {
+        _factory = _api.Factory.WithLeakingAiPlane();
+
         await using var scope = _api.Factory.Services.CreateAsyncScope();
 
         // Idempotent: another class in this collection may already have loaded the real pack.
@@ -58,9 +71,16 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
         var graph = scope.ServiceProvider.GetRequiredService<GraphDbContext>();
         _objective = graph.Concepts.Single(c => c.Slug == "beating-the-baseline").Id;
         _frontier = graph.Concepts.Single(c => c.Slug == "tokenisation").Id;
+        _held1 = graph.Concepts.Single(c => c.Slug == "the-inverted-index").Id;
+        _held2 = graph.Concepts.Single(c => c.Slug == "vector-similarity").Id;
+        _held3 = graph.Concepts.Single(c => c.Slug == "ranking-metrics").Id;
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public Task DisposeAsync()
+    {
+        _factory?.Dispose();
+        return Task.CompletedTask;
+    }
 
     [Fact]
     public async Task From_registration_to_a_believable_plan_that_recompiles_around_proven_evidence()
@@ -113,11 +133,115 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
         Assert.Equal("beating-the-baseline", recompiled.Steps[^1].Slug);
     }
 
+    [Fact]
+    public async Task The_middle_the_plan_is_worked_a_session_runs_and_reps_reflect_what_is_due()
+    {
+        var (client, learner) = await Register();
+        await SetObjective(client, minutesPerDay: 90);
+
+        var start = await GetPlan(client);
+        Assert.Equal(0, start.ConceptsAlreadyHeld);
+
+        // ── Work the plan: prove three concepts, for real, now ───────────────
+        await ProveConcept(learner, _held1);
+        await ProveConcept(learner, _held2);
+        await ProveConcept(learner, _held3);
+
+        // The Twin holds all three, and the plan shrinks by exactly three — the Compiler is reading
+        // the Twin, not a checklist of its own.
+        foreach (var c in new[] { _held1, _held2, _held3 })
+        {
+            Assert.True((await GetConcept(client, c)).IsHeld);
+        }
+
+        var worked = await GetPlan(client);
+        Assert.True(worked.ConceptsAlreadyHeld >= 3, $"Held {worked.ConceptsAlreadyHeld}, expected ≥ 3.");
+        Assert.Equal(start.Steps.Count - 3, worked.Steps.Count);
+        Assert.True(worked.Believable);
+
+        // Freshly proved, nothing is due yet — a rep queue that nagged you the day you learned it
+        // would be a streak counter wearing a lab coat.
+        var fresh = await Reps(client);
+        Assert.DoesNotContain(fresh.Due.Concat(fresh.Lost), r => r.ConceptId == _held1);
+
+        // ── A tutor session runs, start to finish ────────────────────────────
+        // Start, take the free rung (the tutor, which has no answer), then *make something* — a
+        // session cannot be completed on hints alone (that would mistake fluency for knowledge), so
+        // producing is what earns the right to finish.
+        var session = await StartSession(client, _frontier);
+        await TakeHint(client, session);
+        await Produce(client, session, "selfExplanation");
+        await EndSession(client, session, actualMinutes: 12);
+
+        // ── Time passes on one concept, and reps says so ─────────────────────
+        // The same concept, proved long enough ago that the forgetting curve has pulled it under.
+        // The Memory engine reads the Twin's decay, so the rep queue must surface it — as a review if
+        // it is merely slipping, or as a loss if it has fallen too far to be a review at all.
+        await ProveConcept(learner, _frontier, DateTime.UtcNow.AddDays(-120));
+
+        var later = await Reps(client);
+        Assert.Contains(
+            later.Due.Concat(later.Lost),
+            r => r.ConceptId == _frontier);
+    }
+
     // ── The script's steps, each a real HTTP call a learner would make ───────
+
+    private static async Task<RepsBody> Reps(HttpClient client)
+    {
+        using var response = await client.GetAsync(new Uri("/api/memory/reps", UriKind.Relative));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        return (await Read<RepsBody>(response)).Data!;
+    }
+
+    private async Task<Guid> StartSession(HttpClient client, Guid concept)
+    {
+        using var response = await client.PostAsJsonAsync(
+            new Uri("/api/tutor/sessions", UriKind.Relative),
+            new { conceptId = concept, plannedMinutes = 15 },
+            Json);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        return (await Read<SessionBody>(response)).Data!.SessionId;
+    }
+
+    private static async Task TakeHint(HttpClient client, Guid session)
+    {
+        using var response = await client.PostAsJsonAsync(
+            new Uri($"/api/tutor/sessions/{session}/hints", UriKind.Relative),
+            new { rung = "orient", learnerSaid = "I am not sure where to begin." },
+            Json);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    private static async Task Produce(HttpClient client, Guid session, string kind)
+    {
+        using var response = await client.PostAsJsonAsync(
+            new Uri($"/api/tutor/sessions/{session}/productions", UriKind.Relative),
+            new { kind },
+            Json);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    private static async Task EndSession(HttpClient client, Guid session, int actualMinutes)
+    {
+        using var response = await client.PostAsJsonAsync(
+            new Uri($"/api/tutor/sessions/{session}/end", UriKind.Relative),
+            new { abandoned = false, actualMinutes },
+            Json);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
 
     private async Task<(HttpClient Client, Guid Learner)> Register()
     {
-        var client = _api.Factory.CreateClient();
+        var client = _factory.CreateClient();
 
         using var registered = await client.PostAsJsonAsync(
             new Uri("/api/identity/auth/register", UriKind.Relative),
@@ -157,8 +281,9 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
         return (await Read<PlanBody>(response)).Data!;
     }
 
-    /// Accepted, unaided APPLY evidence, on the log, now — the fact the diagnostic would have produced.
-    private async Task ProveConcept(Guid learner, Guid concept)
+    /// Accepted, unaided APPLY evidence, on the log — the fact the diagnostic would have produced.
+    /// `at` defaults to now; pass a past date to let the forgetting curve run against it.
+    private async Task ProveConcept(Guid learner, Guid concept, DateTime? at = null)
     {
         await using var scope = _api.Factory.Services.CreateAsyncScope();
 
@@ -166,7 +291,7 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
         var appended = await store.AppendAsync(
             learner,
             new EvidenceAccepted(Guid.CreateVersion7(), EvidenceType.Apply, Score: 1.0, Assurance: 1.0),
-            DateTime.UtcNow,
+            at ?? DateTime.UtcNow,
             concept);
 
         Assert.True(appended.IsSuccess, appended.Message);
@@ -228,4 +353,20 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
         bool IsHeld,
         double Retrievability,
         double? DaysUntilDue);
+
+    private sealed record SessionBody(
+        Guid SessionId, Guid ConceptId, string State, string? Outcome,
+        int BudgetRemaining, int NextRungCost, string? NextRung,
+        int HintsTaken, int Produced, bool MadeSomething, bool AwaitingYou);
+
+    private sealed record RepsBody(
+        IReadOnlyList<RepBody> Due,
+        IReadOnlyList<RepBody> Lost,
+        double ExpectedMinutes,
+        bool NothingWorthDoing,
+        string? AboutWhatYouLost);
+
+    private sealed record RepBody(
+        Guid ConceptId, string Slug, string Urgency,
+        double Retrievability, double ExpectedMinutes, string Because);
 }
