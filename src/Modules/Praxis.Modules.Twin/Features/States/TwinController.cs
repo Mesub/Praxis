@@ -22,6 +22,15 @@ public sealed class TwinController : ControllerBase
         CancellationToken ct)
         => (await handler.HandleAsync(query, ct)).ToApiResponse();
 
+    /// **Every concept they have touched, with its state** — the per-node belief the Graph map shades
+    /// with. Concepts never touched are absent (there is no belief to report); the map draws them
+    /// unseen.
+    [HttpGet("states")]
+    public async Task<IActionResult> States(
+        [FromServices] GetTwinStates.Handler handler,
+        CancellationToken ct)
+        => (await handler.HandleAsync(new GetTwinStates.Query(), ct)).ToApiResponse();
+
     /// One concept: what we believe, how fast it is going, what they are wrong about, and how much
     /// of it rests on work a model could not have faked.
     [HttpGet("concepts/{conceptId:guid}")]

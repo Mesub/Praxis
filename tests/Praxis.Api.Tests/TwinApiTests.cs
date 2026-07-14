@@ -209,6 +209,54 @@ public sealed class TwinApiTests : IAsyncLifetime
         return (await Read<StateBody>(response)).Data!;
     }
 
+    [Fact]
+    public async Task The_states_endpoint_shades_every_touched_concept_and_omits_the_untouched()
+    {
+        var (client, learner) = await Learner();
+
+        // Prove hnsw fresh — a BUILD that ran, held right now.
+        await ProveFreshAsync(learner, _concept);
+
+        using var response = await client.GetAsync(new Uri("/api/twin/states", UriKind.Relative));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var states = (await Read<ConceptShadeBody[]>(response)).Data!;
+
+        // Exactly one concept has any belief attached — the one they touched. Every other concept in
+        // the pack is *absent*, which is how the map draws "unseen": the honest day-zero claim, not a
+        // fabricated "knows nothing".
+        var shade = Assert.Single(states);
+        Assert.Equal(_concept, shade.ConceptId);
+        Assert.Equal("held", shade.State);
+        Assert.True(shade.Retrievability > 0.90, $"Freshly proved, not {shade.Retrievability:P0}.");
+    }
+
+    [Fact]
+    public async Task The_states_endpoint_is_yours_alone()
+    {
+        using var anonymous = _api.Factory.CreateClient();
+
+        using var response = await anonymous.GetAsync(new Uri("/api/twin/states", UriKind.Relative));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    /// Accepted BUILD evidence at *now*, so the concept is held and fresh when the map reads it.
+    private async Task ProveFreshAsync(Guid learner, Guid concept)
+    {
+        await using var scope = _api.Factory.Services.CreateAsyncScope();
+
+        var store = scope.ServiceProvider.GetRequiredService<IEventStore>();
+        var appended = await store.AppendAsync(
+            learner,
+            new EvidenceAccepted(Guid.CreateVersion7(), EvidenceType.Build, Score: 1.0, Assurance: 1.0),
+            DateTime.UtcNow,
+            concept);
+        Assert.True(appended.IsSuccess, appended.Message);
+
+        await scope.ServiceProvider.GetRequiredService<ProjectionRunner>().CatchUpAsync();
+    }
+
     private async Task<(HttpClient Client, Guid LearnerId)> Learner()
     {
         var client = _api.Factory.CreateClient();
@@ -258,4 +306,6 @@ public sealed class TwinApiTests : IAsyncLifetime
         int ConceptsHeld, int ConceptsInProgress, int ConceptsDecaying, int ConceptsLapsed,
         double OverallBrierScore, double OverallConfidenceGap, bool CalibrationIsMeaningful,
         int ActiveMisconceptions);
+
+    private sealed record ConceptShadeBody(Guid ConceptId, string State, double PKnows, double Retrievability);
 }
