@@ -178,6 +178,49 @@ public sealed class ConceptSliceTests
         Assert.Equal(before, db.Concepts.Count());
     }
 
+    [Fact]
+    public async Task The_whole_graph_comes_back_in_one_read_as_nodes_and_prerequisite_edges()
+    {
+        var db = await SeedAsync();
+
+        var result = await new GetGraphStructure.Handler(db)
+            .HandleAsync(new GetGraphStructure.Query(Domain), CancellationToken.None);
+
+        Assert.True(result.IsSuccess, result.Message);
+        var graph = result.Value;
+
+        // Every concept is a node; the graph is dense enough to be a real dependency map.
+        Assert.Equal(30, graph.Nodes.Count);
+        Assert.True(graph.Edges.Count >= 30, $"Only {graph.Edges.Count} edges — too sparse to be real.");
+
+        // Every edge connects two nodes that exist — no arrow points into the void.
+        var ids = graph.Nodes.Select(n => n.ConceptId).ToHashSet();
+        Assert.All(graph.Edges, e =>
+        {
+            Assert.Contains(e.From, ids);
+            Assert.Contains(e.To, ids);
+        });
+
+        // The map has one true source and one true sink, exactly as the pack promises: nothing is a
+        // prerequisite of `tokenisation` (no edge points *to* it), and `beating-the-baseline` unlocks
+        // nothing (no edge points *from* it).
+        var tokenisation = graph.Nodes.Single(n => n.Slug == "tokenisation").ConceptId;
+        var objective = graph.Nodes.Single(n => n.Slug == "beating-the-baseline").ConceptId;
+        Assert.DoesNotContain(graph.Edges, e => e.To == tokenisation);
+        Assert.DoesNotContain(graph.Edges, e => e.From == objective);
+    }
+
+    [Fact]
+    public async Task A_domain_with_no_graph_is_a_not_found_not_an_empty_map()
+    {
+        var db = await SeedAsync();
+
+        var result = await new GetGraphStructure.Handler(db)
+            .HandleAsync(new GetGraphStructure.Query("no-such-domain"), CancellationToken.None);
+
+        Assert.Equal(ResultStatus.NotFound, result.Status);
+    }
+
     private async Task<GraphDbContext> SeedAsync()
     {
         var db = _graph.CreateContext();

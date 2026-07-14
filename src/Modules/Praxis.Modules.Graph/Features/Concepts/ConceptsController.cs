@@ -16,6 +16,16 @@ public sealed class ConceptsController : ControllerBase
         CancellationToken ct)
         => (await handler.HandleAsync(query, ct)).ToApiResponse();
 
+    /// **The whole graph in one read** — every concept and every prerequisite edge for a domain, so a
+    /// client can draw the map. Pure structure; the learner's position is the Twin's to overlay. The
+    /// literal `structure` segment wins over the `{slug}` route below, so it is not read as a slug.
+    [HttpGet("structure")]
+    public async Task<IActionResult> Structure(
+        [FromQuery] GetGraphStructure.Query query,
+        [FromServices] GetGraphStructure.Handler handler,
+        CancellationToken ct)
+        => (await handler.HandleAsync(query, ct)).ToApiResponse();
+
     /// By slug, not id. A slug is what a pack, an item bank and a piece of Evidence all use to
     /// name the same idea — it is the concept's actual name.
     [HttpGet("{slug}")]

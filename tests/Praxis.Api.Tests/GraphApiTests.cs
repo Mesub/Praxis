@@ -68,6 +68,26 @@ public sealed class GraphApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_whole_graph_structure_comes_back_from_one_endpoint()
+    {
+        using var client = await AuthenticatedClient();
+
+        // The literal `structure` segment must win over the `{slug}` route — if it lost, this would
+        // 404 as a lookup for a concept named "structure".
+        using var response = await client.GetAsync(
+            new Uri("/api/graph/concepts/structure?domain=ai-engineering", UriKind.Relative));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await Read<GraphStructureBody>(response);
+
+        Assert.True(body.Success);
+        Assert.Equal(30, body.Data!.Nodes.Length);
+        Assert.True(body.Data.Edges.Length >= 30);
+        Assert.Contains(body.Data.Nodes, n => n.Slug == "tokenisation");
+    }
+
+    [Fact]
     public async Task A_concept_shows_the_standard_it_will_be_held_to()
     {
         using var client = await AuthenticatedClient();
@@ -166,5 +186,8 @@ public sealed class GraphApiTests : IAsyncLifetime
     private sealed record ProofBody(double HoldThreshold, EvidenceClauseBody[] Accepted, double ModelGradedCeiling);
     private sealed record EvidenceClauseBody(EvidenceType Type, double MinScore, double MaxContribution, int RequiredCount, bool ModelGraded);
     private sealed record FrontierBody(ConceptBody[] Ready, BlockedBody[] Blocked);
+    private sealed record GraphStructureBody(NodeBody[] Nodes, EdgeBody[] Edges);
+    private sealed record NodeBody(Guid ConceptId, string Slug, string Title, double Difficulty);
+    private sealed record EdgeBody(Guid From, Guid To);
     private sealed record BlockedBody(Guid ConceptId, string Slug, int MissingPrerequisites);
 }
