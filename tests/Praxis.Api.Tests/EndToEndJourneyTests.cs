@@ -3,12 +3,16 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Praxis.Infrastructure.Ai;
 using Praxis.Modules.Graph.Packs;
 using Praxis.Modules.Graph.Persistence;
 using Praxis.Modules.Kernel;
 using Praxis.Modules.Kernel.Events;
 using Praxis.Modules.Kernel.Projections;
+using Praxis.Modules.Reality.Domain;
 using Praxis.Shared;
 
 namespace Praxis.Api.Tests;
@@ -40,9 +44,11 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
 
     private readonly ApiFixture _api;
 
-    // A host whose AI plane is a stub — the tutor turn has no real Claude to call in a test, and the
-    // point here is the *journey* wiring, not the model. It shares the fixture's database, so evidence
-    // written through a scope and state read over HTTP are the same learner.
+    // A host with two stubs — the AI plane (the tutor turn has no real Claude to call in a test) and
+    // the sandbox (a code Loop resolves by *running* code; the stub prints "4" deterministically, so
+    // the test needs no Docker). The point here is the *journey* wiring, not the model or the runtime.
+    // It shares the fixture's database, so evidence written through a scope and state read over HTTP
+    // are the same learner.
     private WebApplicationFactory<Program> _factory = null!;
 
     private Guid _objective;      // beating-the-baseline — the pack's one build target
@@ -57,7 +63,16 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _factory = _api.Factory.WithLeakingAiPlane();
+        _factory = _api.Factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiPlane>();
+                services.AddScoped<IAiPlane, LeakingAiPlane>();
+                services.RemoveAll<ISandbox>();
+                services.AddScoped<ISandbox>(_ => new StubSandbox(
+                    Result<ExecutionResult>.Success(
+                        new ExecutionResult(ExecutionOutcome.Passed, 0, "4\n", "", 5))));
+            }));
 
         await using var scope = _api.Factory.Services.CreateAsyncScope();
 
@@ -185,7 +200,74 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
             r => r.ConceptId == _frontier);
     }
 
+    [Fact]
+    public async Task The_back_a_reality_loop_resolves_and_the_ledger_signs_what_was_proved()
+    {
+        var (client, learner) = await Register();
+
+        // Something proved, so the record has a competency to carry — unaided APPLY, full assurance.
+        await ProveConcept(learner, _held1);
+
+        // ── A Reality Loop: a falsifiable claim, committed before the world settles it ─
+        var loop = await CommitLoop(client, code: "print(2 + 2)", answer: "4", confidence: 0.8);
+
+        // Reality answers. The sandbox runs the code, prints 4, and the claim was right — so this is
+        // calibration evidence, scored the same day (R-4), not a grade a model handed out.
+        var verdict = await ResolveLoop(client, loop);
+        Assert.True(verdict.Correct, "The code prints 4 and the learner predicted 4.");
+        Assert.True(verdict.BrierScore < 0.25, $"A confident, correct call should score well; got {verdict.BrierScore:F2}.");
+
+        // ── The Ledger issues the signed record of what was actually proved ──
+        var record = await GetLedger(client);
+
+        // It is a real signed document: signature and the public key a verifier checks it against.
+        Assert.False(string.IsNullOrEmpty(record.Signature), "An unsigned record proves nothing.");
+        Assert.False(string.IsNullOrEmpty(record.PublicKey), "A record without its key cannot be verified.");
+
+        // And it says exactly what was proved — the held competency, and nothing invented.
+        var competency = Assert.Single(record.Competencies);
+        Assert.Equal(_held1, competency.ConceptId);
+        Assert.Equal("The inverted index", competency.ConceptName);
+
+        // Honest assurance: this came from unaided APPLY — work a model could not fake — so it is
+        // carried at full trust, un-discounted (C-6).
+        Assert.True(
+            competency.Assurance >= 0.99,
+            $"APPLY evidence should be recorded at full assurance, not {competency.Assurance:F2}.");
+    }
+
     // ── The script's steps, each a real HTTP call a learner would make ───────
+
+    private async Task<Guid> CommitLoop(HttpClient client, string code, string answer, double confidence)
+    {
+        using var response = await client.PostAsJsonAsync(
+            new Uri("/api/reality/loops", UriKind.Relative),
+            new { kind = "output", code, answer, confidence },
+            Json);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        return (await Read<CommitBody>(response)).Data!.LoopId;
+    }
+
+    private static async Task<ResolveBody> ResolveLoop(HttpClient client, Guid loop)
+    {
+        using var response = await client.PostAsync(
+            new Uri($"/api/reality/loops/{loop}/resolve", UriKind.Relative), null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        return (await Read<ResolveBody>(response)).Data!;
+    }
+
+    private static async Task<RecordBody> GetLedger(HttpClient client)
+    {
+        using var response = await client.GetAsync(new Uri("/api/ledger/me", UriKind.Relative));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        return (await Read<RecordBody>(response)).Data!;
+    }
 
     private static async Task<RepsBody> Reps(HttpClient client)
     {
@@ -369,4 +451,25 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
     private sealed record RepBody(
         Guid ConceptId, string Slug, string Urgency,
         double Retrievability, double ExpectedMinutes, string Because);
+
+    private sealed record CommitBody(Guid LoopId, string Kind, string Answer, double Confidence);
+
+    private sealed record ResolveBody(
+        Guid LoopId, bool Correct, double BrierScore, string Predicted, string GroundTruth, double Confidence);
+
+    /// A sandbox that "runs" the code deterministically — so a code Loop resolves without Docker.
+    private sealed class StubSandbox(Result<ExecutionResult> outcome) : ISandbox
+    {
+        public Task<Result<ExecutionResult>> RunAsync(SandboxJob job, CancellationToken ct = default)
+            => Task.FromResult(outcome);
+    }
+
+    private sealed record CompetencyBody(Guid ConceptId, string ConceptName, double Assurance);
+
+    private sealed record RecordBody(
+        string Subject,
+        IReadOnlyList<CompetencyBody> Competencies,
+        string Signature,
+        string PublicKey,
+        DateTime IssuedAt);
 }
