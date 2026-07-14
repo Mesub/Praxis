@@ -5,13 +5,14 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { twin, type DecayForecastEntry, type TwinSummaryResponse } from "@/lib/api";
 import { calibrationVerdict, forecastUrgency, STATES } from "@/lib/graph";
+import { ConceptMap } from "./ConceptMap";
 
 /*
-  The Graph (prototype §6). The learner's own mind, with the decay showing. A full node-link map of
-  concepts and prerequisites is a bigger visual (it needs the graph structure and a layout) and is a
-  follow-up; what lands here is the honest state of the mind: what is held, what is building, what is
-  rotting, and what has already fallen below the line — plus the decay forecast, which is the rep
-  queue in all but name. The one thing PRAXIS lets you enjoy is the held count advancing.
+  The Graph (prototype §6). The learner's own mind, with the decay showing. The node-link map leads —
+  concepts and prerequisites, shaded by belief, the frontier ringed — and below it the honest tally:
+  what is held, what is building, what is rotting, what has fallen below the line, and the decay
+  forecast (the rep queue in all but name). The one thing PRAXIS lets you enjoy is the frontier
+  advancing, and now you can watch it.
 */
 
 export default function GraphPage() {
@@ -50,7 +51,11 @@ export default function GraphPage() {
           apps hide: how much of what you know is slipping, and what you only think you still know.
         </p>
 
-        <div className="mt-6">
+        <section className="mt-6" aria-label="Concept map">
+          <ConceptMap />
+        </section>
+
+        <div className="mt-8 border-t border-line-soft pt-7">
           {loading ? (
             <p className="text-[13.5px] text-ink-3">Reading your Twin…</p>
           ) : error ? (

@@ -4,7 +4,13 @@ import type { ApiResult, TwinSummaryResponse } from "@/lib/api";
 
 const summary = vi.fn();
 vi.mock("@/lib/api", () => ({
-  twin: { summary: (...a: unknown[]) => summary(...a) },
+  twin: {
+    summary: (...a: unknown[]) => summary(...a),
+    states: () => Promise.resolve({ ok: true, data: [] }),
+  },
+  // The map fetches these; an empty structure renders its harmless "no map yet" state, leaving the
+  // summary assertions below untouched.
+  graph: { structure: () => Promise.resolve({ ok: true, data: { nodes: [], edges: [] } }) },
 }));
 
 import GraphPage from "./page";
