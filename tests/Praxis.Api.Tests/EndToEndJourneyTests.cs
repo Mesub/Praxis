@@ -10,6 +10,7 @@ using Praxis.Infrastructure.Ai;
 using Praxis.Modules.Graph.Packs;
 using Praxis.Modules.Graph.Persistence;
 using Praxis.Modules.Kernel;
+using Praxis.Modules.Kernel.Domain;
 using Praxis.Modules.Kernel.Events;
 using Praxis.Modules.Kernel.Projections;
 using Praxis.Modules.Reality.Domain;
@@ -236,7 +237,80 @@ public sealed class EndToEndJourneyTests : IAsyncLifetime
             $"APPLY evidence should be recorded at full assurance, not {competency.Assurance:F2}.");
     }
 
+    [Fact]
+    public async Task The_instrumented_log_is_a_complete_ordered_trace_the_RCT_can_replay()
+    {
+        // The RCT (doc 25 §1.2) does not analyse a dashboard — it analyses the *log*. So the log has
+        // to hold the whole session: every interaction, in order, timestamped in the learner's world,
+        // and enough to recompute the RCT's own outcome measures. If an interaction is missing here,
+        // it is missing from the trial.
+        var (client, learner) = await Register();
+
+        // A session's worth of real behaviour: mastery evidence, a full tutor session (start · a paid
+        // hint · a production · a completed end), and a Reality Loop settled by running code.
+        await ProveConcept(learner, _held1);
+
+        var session = await StartSession(client, _frontier);
+        await TakeHint(client, session);
+        await Produce(client, session, "selfExplanation");
+        await EndSession(client, session, actualMinutes: 12);
+
+        var loop = await CommitLoop(client, code: "print(2 + 2)", answer: "4", confidence: 0.8);
+        await ResolveLoop(client, loop);
+
+        // ── The log is read back, exactly as a researcher would read it ──────
+        var stream = await ReadStream(learner);
+
+        // **Completeness.** Every kind of thing the learner did left a typed fact behind — nothing
+        // happened off the record.
+        var kinds = stream.Select(e => e.Type).ToHashSet();
+        foreach (var required in new[]
+        {
+            LearningEventType.EvidenceAccepted,      // mastery
+            LearningEventType.SessionStarted,        // ─┐
+            LearningEventType.HintTaken,             //  │ the session, start to finish
+            LearningEventType.ProductionRecorded,    //  │
+            LearningEventType.SessionCompleted,      // ─┘
+            LearningEventType.PredictionMade,        // ─┐ the Reality Loop, committed and settled
+            LearningEventType.PredictionResolved,    // ─┘
+        })
+        {
+            Assert.Contains(required, kinds);
+        }
+
+        // **Total order.** The RCT replays the log; a replay needs a spine, and the database assigns
+        // it — strictly increasing, no gaps of its own making, no two events sharing a number.
+        var sequences = stream.Select(e => e.Sequence).ToList();
+        Assert.Equal(sequences.OrderBy(s => s).ToList(), sequences);
+        Assert.Equal(sequences.Distinct().Count(), sequences.Count);
+
+        // **A timeline in the learner's world.** Decay, retention, transfer-after-a-delay — every RCT
+        // measure is a function of *when things happened to the learner*, not when a row was written.
+        Assert.All(stream, e => Assert.Equal(DateTimeKind.Utc, e.OccurredAt.Kind));
+
+        // **The outcomes the RCT reports are derivable from the log alone.** Calibration is the Brier
+        // on a resolved prediction; the build/transfer outcome is whether reality said it was right —
+        // both are on the settled loop, no dashboard required.
+        var resolved = stream.Where(e => e.Type == LearningEventType.PredictionResolved)
+            .Select(EventCatalogue.Deserialize<PredictionResolved>)
+            .ToList();
+        Assert.NotEmpty(resolved);
+        Assert.All(resolved, r => Assert.InRange(r.BrierScore, 0.0, 1.0));
+        Assert.Contains(resolved, r => r.Correct);
+
+        // Replayability itself — that this exact log rebuilds the exact learner — is the promise the
+        // kernel proves in isolation (RebuildFromZeroTests, TwinProjectionTests). Here we prove the
+        // other half: that the log the RCT would replay is actually complete.
+    }
+
     // ── The script's steps, each a real HTTP call a learner would make ───────
+
+    private async Task<IReadOnlyList<LearningEvent>> ReadStream(Guid learner)
+    {
+        await using var scope = _api.Factory.Services.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IEventStore>();
+        return await store.ReadStreamAsync(learner);
+    }
 
     private async Task<Guid> CommitLoop(HttpClient client, string code, string answer, double confidence)
     {
