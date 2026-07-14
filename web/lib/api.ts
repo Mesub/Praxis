@@ -537,9 +537,50 @@ export interface TwinSummaryResponse {
   decayForecast: DecayForecastEntry[];
 }
 
+/** One concept's discrete state, as the Twin computes it — the shade the map paints a node. A concept
+ *  the learner has never touched is absent from the list, not present with a fake state. */
+export interface TwinConceptStateResponse {
+  conceptId: string;
+  /** "held" | "inProgress" | "decaying" | "lapsed". */
+  state: string;
+  pKnows: number;
+  retrievability: number;
+}
+
 export const twin = {
   summary: (forecastDays = 30, token?: string, signal?: AbortSignal) =>
     api.get<TwinSummaryResponse>(`/api/twin?forecastDays=${forecastDays}`, token, signal),
+  /** Every concept the learner has touched, with its state — what the Graph map shades each node by. */
+  states: (token?: string, signal?: AbortSignal) =>
+    api.get<TwinConceptStateResponse[]>("/api/twin/states", token, signal),
+};
+
+// ── Graph structure (E2 · the whole DAG in one read) ──────────────────────────
+
+/** A concept, as a node on the map: identity and the difficulty prior. */
+export interface GraphStructureNode {
+  conceptId: string;
+  slug: string;
+  title: string;
+  difficulty: number;
+}
+
+/** A prerequisite edge: `from` must be held before `to`. */
+export interface GraphStructureEdge {
+  from: string;
+  to: string;
+}
+
+export interface GraphStructureResponse {
+  nodes: GraphStructureNode[];
+  edges: GraphStructureEdge[];
+}
+
+export const graph = {
+  /** The whole domain graph — every concept and every prerequisite edge — for the map to lay out. */
+  structure: (domain = "ai-engineering", token?: string, signal?: AbortSignal) =>
+    api.get<GraphStructureResponse>(
+      `/api/graph/concepts/structure?domain=${encodeURIComponent(domain)}`, token, signal),
 };
 
 // ── Teach-back (E6 · EXPLAIN evidence) ────────────────────────────────────────
