@@ -1,9 +1,12 @@
 """Configuration for the AI plane.
 
-**The AI plane is stateless.** It owns no database, no session, and no memory of the last request.
-Everything it needs to answer arrives in the request or comes from here. That is what lets it be
-scaled, restarted or thrown away without anybody losing anything — and it is why the *answer key*
-lives behind the oracle (M5.3) rather than in this process's head.
+**The AI plane is stateless about learners and sessions.** It keeps no memory of the last request;
+everything it needs to answer arrives in the request or comes from here, which is what lets it be
+scaled, restarted or thrown away without anybody losing anything.
+
+The one durable thing it owns is the **answer-key store** (M14.1) — and it owns that precisely so
+no other process ever can. A key that lived only in this process's head died with a restart, and a
+banked item whose key died is a question a learner can answer and PRAXIS can never mark.
 """
 
 from functools import lru_cache
@@ -32,6 +35,14 @@ class Settings(BaseSettings):
     #   settings.anthropic_api_key.get_secret_value()
     anthropic_api_key: SecretStr = Field(default=SecretStr(""))
 
+    # ── The oracle's durable memory ──────────────────────────────────────────
+    #
+    # When set, generated answer keys are filed in this database (M14.1) and survive a restart.
+    # A separate *database*, not a schema of `praxis`: the core's connection cannot reach it,
+    # because Postgres has no cross-database queries. Empty (tests, cold dev) falls back to the
+    # in-memory store, which is exactly as durable as it ever was.
+    oracle_store_url: SecretStr = Field(default=SecretStr(""))
+
     # Opus-class for compilation, grading and synthesis; Sonnet-class for tutor turns and item
     # generation. Wired up properly by the router in M5.2.
     model_heavy: str = "claude-opus-4-8"
@@ -46,6 +57,11 @@ class Settings(BaseSettings):
     def has_api_key(self) -> bool:
         """Whether a key is configured. **Not what it is.**"""
         return bool(self.anthropic_api_key.get_secret_value().strip())
+
+    @property
+    def has_oracle_store(self) -> bool:
+        """Whether the durable key store is configured. **Not where it is.**"""
+        return bool(self.oracle_store_url.get_secret_value().strip())
 
 
 @lru_cache

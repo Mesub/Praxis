@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from praxis_ai.claude import ClaudeClient, ModelUnavailableError
 from praxis_ai.config import Settings, get_settings
 from praxis_ai.cost import Attribution
+from praxis_ai.key_store import PostgresAnswerKeyStore
 from praxis_ai.oracle import (
     AnswerKeyStore,
     ClaimOutcome,
@@ -30,12 +31,23 @@ from praxis_ai.oracle import (
 
 router = APIRouter(prefix="/oracle", tags=["oracle"])
 
-#: Populated by the item generator (M5.5). Swapped for durable storage in M5.7 — the *shape* of the
-#: store is what matters here: a ``get``, and nothing that lists or searches or hands anything out.
-_store = InMemoryAnswerKeyStore()
+#: Populated by the item generator (M5.5). Durable when ``oracle_store_url`` is configured
+#: (M14.1); in-memory otherwise, which is what tests and a cold dev checkout get. The *shape* of
+#: the store is what matters: a ``get``, and nothing that lists or searches or hands anything out.
+_store: AnswerKeyStore | None = None
 
 
-def get_store() -> AnswerKeyStore:
+def get_store(settings: Annotated[Settings, Depends(get_settings)]) -> AnswerKeyStore:
+    global _store  # a process-wide singleton, built once from settings
+
+    if _store is None:
+        if settings.has_oracle_store:
+            durable = PostgresAnswerKeyStore(settings.oracle_store_url.get_secret_value())
+            durable.ensure_schema()
+            _store = durable
+        else:
+            _store = InMemoryAnswerKeyStore()
+
     return _store
 
 

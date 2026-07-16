@@ -537,6 +537,25 @@ match it, don't reinvent it.
 
 ---
 
+## M14 — The item bank, wired (post-Phase-0)
+
+> The M13.1 deferral, paid down. The adaptive diagnostic could not run end to end because nothing
+> generated-and-banked items — and the generated keys lived only in the AI plane's memory, so a
+> restart would have made a banked item permanently unmarkable. Spec:
+> `docs/superpowers/specs/2026-07-16-item-bank-wiring-design.md` · plan:
+> `docs/superpowers/plans/2026-07-16-item-bank-wiring.md`.
+
+- [x] **M14.1** Durable answer-key store on the AI plane — a banked item is markable after a restart.
+      → **The oracle's memory outlives the process, and the core still cannot reach it.** New `PostgresAnswerKeyStore` (`ai/src/praxis_ai/key_store.py`) files generated keys in a **separate database** `praxis_oracle` — not a schema of `praxis`, because the .NET core's connection string points at `praxis` and Postgres has no cross-database queries, so an injection into the core still retrieves nothing (C-5 stays a fact about the deployment). The store keeps the oracle protocol's deliberately tiny shape — a `get`, an `add`, `ensure_schema`, and *nothing that lists or searches* (a test pins exactly that surface). `get_store()` builds it when `ORACLE_STORE_URL` is configured and falls back to in-memory otherwise (tests, cold dev). Same-id re-files keep the first key (item ids are stem hashes — same id, same item). Bootstrap on both paths: `scripts/db/init/02-oracle-database.sql` for fresh volumes, an idempotent guard in `dev.ps1` for existing ones; the AI tests create the database themselves, idempotently, like the .NET tests already assume the container. 5 AI tests incl. the restart simulation (a *new store instance* over the same database still resolves the key). **229 AI tests** (was 224). Full gate: **PASSED — every stage ran and passed** (1035 .NET + 229 AI + 169 web). *(The known Reality Docker-sandbox flake tripped twice under full-gate load — a different test each time, both green in isolation; the mechanism is the sandbox's 10s wall clock including container startup under parallel-suite CPU contention. Pre-existing, unrelated to this diff, worth its own fix if it keeps recurring.)*
+- [ ] **M14.2** The generator is handed the declared misconceptions, and names which one an item hunts.
+- [ ] **M14.3** The .NET side of the wire; a banked item remembers the name the oracle knows it by (`OracleId`).
+- [ ] **M14.4** The `IConceptIntel` seam — Assessment asks for summary, difficulty and declared wrong beliefs without knowing the Graph exists.
+- [ ] **M14.5** `EnsureConceptPool` — a thin pool is topped up with fresh items whose answers this process never saw.
+- [ ] **M14.6** The web diagnostic keeps its pool filled; a failed top-up is never an error screen.
+- [ ] **M14.7** The end-to-end proof: an empty bank fills itself, the diagnostic runs, and the answer never crossed the wire.
+
+---
+
 ## Deliberately not in this plan
 
 Mobile · offline · i18n · payments · institutions · the News engine · the Project engine · the

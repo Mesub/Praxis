@@ -90,6 +90,15 @@ if (-not $healthy) {
 
 Write-Host 'Postgres is healthy on localhost:5455.' -ForegroundColor Green
 
+# The oracle's database (M14.1). The init script only runs on a fresh volume, so a volume that
+# predates it needs the database created here. Idempotent: exists means done.
+$oracleExists = docker exec praxis-postgres psql -U praxis -d praxis -tAc "SELECT 1 FROM pg_database WHERE datname = 'praxis_oracle'" 2>$null
+
+if ("$oracleExists".Trim() -ne '1') {
+    Write-Host 'Creating the praxis_oracle database (answer keys live there, out of the core''s reach)...' -ForegroundColor Cyan
+    Invoke-Native { docker exec praxis-postgres psql -U praxis -d praxis -c 'CREATE DATABASE praxis_oracle' } | Out-Null
+}
+
 if ($InfraOnly) {
     exit 0
 }
