@@ -338,6 +338,72 @@ public sealed class PackValidatorTests
     }
 
     [Fact]
+    public void A_misconception_key_longer_than_64_characters_is_refused()
+    {
+        // Assessment's learner-model columns (BankedItem.TargetsMisconception,
+        // LearnerMisconception.Key) are HasMaxLength(64). A key the pack loader accepts but the
+        // learner model cannot store is a key that survives the airlock and then blows up
+        // SaveChangesAsync in EnsureConceptPool — losing the whole generated batch, silently.
+        var longKey = new string('a', 65);
+
+        var result = PackValidator.Validate(Parse($$"""
+            domain: test
+            version: 1
+            note: A key too long for the learner-model columns.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                misconceptions:
+                  - { key: {{longKey}}, statement: I believe a wrong thing. }
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("cannot exceed 64 characters", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_misconception_key_of_exactly_64_characters_passes()
+    {
+        // The boundary: 64 is the limit, not the first refused length.
+        var boundaryKey = new string('a', 64);
+
+        var result = PackValidator.Validate(Parse($$"""
+            domain: test
+            version: 1
+            note: A key exactly at the learner-model column limit.
+            concepts:
+              - slug: a
+                title: A
+                summary: A.
+                difficulty: 0
+                minutes: 30
+                misconceptions:
+                  - { key: {{boundaryKey}}, statement: I believe a wrong thing. }
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+              - slug: b
+                title: B
+                summary: B.
+                difficulty: 0
+                minutes: 30
+                requires: [a]
+                proof: { hold: 0.8, evidence: [{ type: Build, min-score: 1.0, max: 0.9 }] }
+            """));
+
+        Assert.True(result.IsSuccess, string.Join(" | ", result.Errors));
+    }
+
+    [Fact]
     public void A_misconception_with_no_statement_is_refused()
     {
         // A misconception a learner cannot read back in their own voice is one they will never

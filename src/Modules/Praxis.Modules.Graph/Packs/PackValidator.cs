@@ -24,6 +24,12 @@ namespace Praxis.Modules.Graph.Packs;
 ///   in a prerequisite is indistinguishable from a missing prerequisite until someone fails.
 public static class PackValidator
 {
+    /// Matches Assessment's learner-model columns (BankedItem.TargetsMisconception,
+    /// LearnerMisconception.Key), both `HasMaxLength(64)`. A key the pack loader accepts but those
+    /// columns cannot store would cross the wire, survive the generator's airlock, and then blow
+    /// up `SaveChangesAsync` in `EnsureConceptPool` — losing the whole generated batch, silently.
+    private const int MaxMisconceptionKeyLength = 64;
+
     public static Result<ValidatedPack> Validate(PackDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -168,6 +174,16 @@ public static class PackValidator
                 errors.Add(
                     $"'{slug}' declares misconception key '{m.Key}', which is not kebab-case "
                     + "(lowercase letters, digits and hyphens). Keys are identifiers, not prose.");
+            }
+
+            if (m.Key.Trim().Length > MaxMisconceptionKeyLength)
+            {
+                errors.Add(
+                    $"'{slug}' declares misconception key '{m.Key}', which is "
+                    + $"{m.Key.Trim().Length} characters long. Keys cannot exceed "
+                    + $"{MaxMisconceptionKeyLength} characters — the learner-model columns that "
+                    + "store them (BankedItem.TargetsMisconception, LearnerMisconception.Key) are "
+                    + $"sized to that limit.");
             }
 
             if (string.IsNullOrWhiteSpace(m.Statement))
