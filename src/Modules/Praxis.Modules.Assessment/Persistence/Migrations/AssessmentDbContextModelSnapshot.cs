@@ -81,6 +81,10 @@ namespace Praxis.Modules.Assessment.Persistence.Migrations
                     b.Property<double>("Guessing")
                         .HasColumnType("double precision");
 
+                    b.Property<string>("OracleId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("Stem")
                         .IsRequired()
                         .HasMaxLength(8000)

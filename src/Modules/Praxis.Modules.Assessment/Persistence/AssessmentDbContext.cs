@@ -67,6 +67,7 @@ public sealed class AssessmentDbContext : DbContext
             item.Property(i => i.Discrimination).IsRequired();
             item.Property(i => i.Guessing).IsRequired();
             item.Property(i => i.TargetsMisconception).HasMaxLength(64);
+            item.Property(i => i.OracleId).HasMaxLength(128);
             item.Property(i => i.TimesServed).IsRequired();
             item.Property(i => i.TimesCorrect).IsRequired();
         });

@@ -62,6 +62,10 @@ public sealed class BankedItem
     /// items that are merely hard. It is the difference between hunting and grinding.
     public string? TargetsMisconception { get; private set; }
 
+    /// The name the oracle filed this item's key under; null for items whose keys were seeded by
+    /// other means.
+    public string? OracleId { get; private set; }
+
     /// Sympson–Hetter exposure. **An item everybody sees is an item everybody has heard about.**
     public int TimesServed { get; private set; }
 
@@ -79,7 +83,8 @@ public sealed class BankedItem
         double discrimination = 1.0,
         double guessing = 0.0,
         Guid? familyId = null,
-        string? targetsMisconception = null)
+        string? targetsMisconception = null,
+        string? oracleId = null)
         => new()
         {
             Id = id,
@@ -92,6 +97,7 @@ public sealed class BankedItem
             Guessing = guessing,
             FamilyId = familyId,
             TargetsMisconception = targetsMisconception,
+            OracleId = oracleId,
         };
 
     /// Only a projection may call this, and only in response to an event that says it happened.

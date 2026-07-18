@@ -108,6 +108,31 @@ public sealed class AiPlaneContractTests
         }
     }
 
+    /// **Pinned deliberately, not just caught by reflection.** The reflection-based drift tests above
+    /// would catch it if either side forgot its half of the wire — but they would catch it just as
+    /// happily if somebody renamed both halves to something wrong *together*. This test names the two
+    /// fields the plan actually asked for, so a reviewer reading the test can see the wire's shape
+    /// without cross-referencing the OpenAPI file: the core declares wrong beliefs out
+    /// (`known_misconceptions`), and the only thing that can ever come back naming one is a key from
+    /// that same declared set (`targets_misconception`) — never free text.
+    [Fact]
+    public void The_wire_carries_declared_wrong_beliefs_out_and_a_hunted_key_back()
+    {
+        var request = Schemas.GetProperty("GenerateItemRequest").GetProperty("properties");
+        Assert.True(request.TryGetProperty("known_misconceptions", out _));
+
+        var response = Schemas.GetProperty("ItemResponse").GetProperty("properties");
+        Assert.True(response.TryGetProperty("targets_misconception", out _));
+
+        Assert.Contains(
+            nameof(GenerateItemRequest.KnownMisconceptions),
+            typeof(GenerateItemRequest).GetProperties().Select(p => p.Name));
+
+        Assert.Contains(
+            nameof(ItemResponse.TargetsMisconception),
+            typeof(ItemResponse).GetProperties().Select(p => p.Name));
+    }
+
     // ── The refusals, at the seam ────────────────────────────────────────────
 
     /// **The most dangerous place in the system for an `answer` field.**

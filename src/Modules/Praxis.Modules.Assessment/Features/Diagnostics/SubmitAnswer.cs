@@ -104,7 +104,7 @@ public static class SubmitAnswer
             // ── The only thing in the system that knows the answer ───────────
             var checkedClaim = await _ai.CheckClaimAsync(
                 new CheckClaimRequest(
-                    ItemId: item.Id.ToString(),
+                    ItemId: item.OracleId ?? item.Id.ToString(),
                     Claim: command.Claim,
                     LearnerId: learner.ToString(),
                     ConceptId: item.ConceptId.ToString()),

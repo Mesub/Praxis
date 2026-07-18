@@ -185,7 +185,11 @@ public sealed record GenerateItemRequest(
 
     /// Fingerprints of what this learner has already been shown. **The core remembers; the AI plane
     /// does not.** Novelty is checked against these deterministically on the far side (M5.5).
-    IReadOnlyList<string> AlreadySeen);
+    IReadOnlyList<string> AlreadySeen,
+
+    /// The concept's declared wrong beliefs, key → first-person statement. Keys, never answers:
+    /// naming how a learner is likely wrong is the opposite of handing them what is right (C-5).
+    IReadOnlyDictionary<string, string> KnownMisconceptions);
 
 /// **Everything the core, the tutor and the learner ever see of an item.**
 ///
