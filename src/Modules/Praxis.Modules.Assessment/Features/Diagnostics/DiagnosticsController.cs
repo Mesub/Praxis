@@ -61,6 +61,21 @@ public sealed class DiagnosticsController : ControllerBase
             ct))
             .ToApiResponse();
     }
+
+    /// **Make sure there is something honest to ask.** Below the floor, PRAXIS writes new items
+    /// via the AI plane — the answer goes to the oracle's store on the far side and never comes
+    /// back here. Skipping this call breaks nothing: `next-item` keeps its refusal.
+    [HttpPost("pool")]
+    public async Task<IActionResult> Pool(
+        [FromBody] PoolRequest request,
+        [FromServices] EnsureConceptPool.Handler handler,
+        CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return (await handler.HandleAsync(new EnsureConceptPool.Command(request.ConceptId), ct))
+            .ToApiResponse();
+    }
 }
 
 // ── The request body, and the validator that actually runs on it ────────────
@@ -104,4 +119,11 @@ public sealed class AnswerRequestValidator : AbstractValidator<AnswerRequest>
 
         RuleFor(r => r.Seconds).GreaterThanOrEqualTo(0);
     }
+}
+
+public sealed record PoolRequest(Guid ConceptId);
+
+public sealed class PoolRequestValidator : AbstractValidator<PoolRequest>
+{
+    public PoolRequestValidator() => RuleFor(r => r.ConceptId).NotEmpty();
 }
