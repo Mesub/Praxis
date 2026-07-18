@@ -66,6 +66,7 @@ builder.Services.AddAssessment(connectionString);
 // crosses as a value and the adapter lives here, where the application is assembled.
 builder.Services.AddScoped<IMasteryContracts, GraphMasteryContracts>();
 builder.Services.AddScoped<Praxis.Modules.Tutor.IMisconceptionLibrary, GraphMisconceptionLibrary>();
+builder.Services.AddScoped<Praxis.Modules.Assessment.IConceptIntel, GraphConceptIntel>();
 
 // The Graph knows the subject; the Twin knows the learner; the Compiler knows neither. This is the
 // only place the three meet.
