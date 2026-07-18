@@ -164,6 +164,36 @@ public sealed class EnsureConceptPoolTests
         Assert.Equal(misconceptions, captured.KnownMisconceptions);
     }
 
+    /// The generator's difficulty is an *echo* of what we asked for, on a 0–1 scale. A buggy or
+    /// adversarial AI plane echoing something outside that scale must not be able to write a wild
+    /// IRT logit into the bank — the estimator would trust it, and every theta it touched with it.
+    [Fact]
+    public async Task An_out_of_scale_difficulty_echo_is_clamped_before_it_becomes_a_logit()
+    {
+        var world = new Harness(_fixture);
+        var conceptId = Guid.CreateVersion7();
+
+        // 3 banked, unseen — exactly 2 generate calls needed.
+        for (var i = 0; i < 3; i++)
+        {
+            await world.BankAsync(conceptId, Fingerprint());
+        }
+
+        world.Ai.Returns(
+            Generated("oracle-high", 1.8, Fingerprint()),
+            Generated("oracle-low", -0.2, Fingerprint()));
+
+        var result = await world.Run(conceptId);
+
+        Assert.True(result.IsSuccess);
+
+        var rows = await world.ItemsFor(conceptId);
+
+        // Clamped to the ends of the scale, then mapped: 1 → +3 logits, 0 → -3 logits.
+        Assert.Equal(3.0, Assert.Single(rows, r => r.OracleId == "oracle-high").Difficulty, 1e-9);
+        Assert.Equal(-3.0, Assert.Single(rows, r => r.OracleId == "oracle-low").Difficulty, 1e-9);
+    }
+
     [Fact]
     public async Task A_generation_failure_banks_nothing_and_carries_the_failure()
     {
@@ -197,6 +227,35 @@ public sealed class EnsureConceptPoolTests
         Assert.Equal(2, result.Value.Generated);
         Assert.Equal(3, world.Ai.Captured.Count);
         Assert.Equal(2, (await world.ItemsFor(conceptId)).Count);
+    }
+
+    /// `AlreadySeen` means the real plane never hands back a banked stem — but that guarantee lives
+    /// on the far side of the wire, and this handler must stay honest when the far side is not: a
+    /// misbehaving plane echoing a fingerprint the bank already holds is a *conflict* the caller can
+    /// retry, not an unhandled exception surfacing as a 500.
+    [Fact]
+    public async Task A_fingerprint_the_bank_already_holds_is_a_conflict_not_a_crash()
+    {
+        var world = new Harness(_fixture);
+        var conceptId = Guid.CreateVersion7();
+
+        var alreadyBanked = Fingerprint();
+        await world.BankAsync(conceptId, alreadyBanked);
+
+        world.Ai.Returns(
+            Generated("oracle-1", 0.5, Fingerprint()),
+            Generated("oracle-2", 0.5, Fingerprint()),
+            Generated("oracle-3", 0.5, Fingerprint()),
+            Generated("oracle-dup", 0.5, alreadyBanked));
+
+        var result = await world.Run(conceptId);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ResultStatus.Conflict, result.Status);
+
+        // And the save was all-or-nothing: the three real items did not land alongside the dup,
+        // because the one SaveChangesAsync is one transaction.
+        Assert.Single(await world.ItemsFor(conceptId));
     }
 
     [Fact]

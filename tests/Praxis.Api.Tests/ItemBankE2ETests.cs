@@ -38,15 +38,25 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    /// **Property names, not substrings.** A raw text scan for "answer" would trip on this very
-    /// concept's own declared misconception — `models-should-always-answer` — the moment its key
-    /// crosses the wire as a JSON object key ending `…-answer":`. That is not a leak; it is the
-    /// generate path doing exactly what M14.2 built it to do (hand the generator a wrong belief to
-    /// hunt). So the sweep parses every captured request and every response body as JSON and checks
-    /// **property names** for an answer-shaped field — never the free text sitting in a value, which
-    /// is where a wrong-belief statement legitimately lives.
-    private static readonly HashSet<string> ForbiddenPropertyNames =
-        new(StringComparer.OrdinalIgnoreCase) { "answer", "solution", "expected" };
+    /// **Property names, not free text — but *compound* property names count.** The sweep parses
+    /// every captured request and every response body as JSON and checks property names the way
+    /// `SchemaTests` checks column names: any name *containing* one of these fragments is
+    /// answer-shaped, so `answerKey` and `expectedOutput` are caught, not just bare `answer`.
+    ///
+    /// The one place a fragment legitimately appears in a key is the `knownMisconceptions` map,
+    /// where a declared wrong belief's slug — `models-should-always-answer`, on this very concept —
+    /// crosses the wire as a JSON object key. That is data wearing a key's clothes, not a schema
+    /// field, and the walker spares that map's keys (and only them).
+    private static readonly string[] ForbiddenNameFragments =
+    [
+        "answer",
+        "solution",
+        "expected",
+        "correct_response",
+        "key_text",
+        "ground_truth",
+        "rubric",
+    ];
 
     private readonly ApiFixture _api;
 
@@ -232,6 +242,23 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
         }
     }
 
+    /// The sweep, swept. `SchemaTests` proves no *column* can be answer-shaped; this proves the
+    /// wire sweep above holds the same standard — compound names are caught, and the one lawful
+    /// appearance of a fragment in a key (a declared wrong-belief slug in the misconceptions map)
+    /// does not scare it into a false positive.
+    [Fact]
+    public void The_sweep_catches_compound_answer_shaped_names_and_spares_misconception_slugs()
+    {
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(
+            () => AssertNoAnswerShapedField("""{"answerKey": "leak"}"""));
+
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(
+            () => AssertNoAnswerShapedField("""{"data": {"expectedOutput": "leak"}}"""));
+
+        AssertNoAnswerShapedField(
+            """{"knownMisconceptions": {"models-should-always-answer": "a stated wrong belief"}}""");
+    }
+
     // ── Plumbing ───────────────────────────────────────────────────────────────
 
     private WebApplicationFactory<Program> BuildFactory(IAiPlane aiPlane)
@@ -284,10 +311,10 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
     private static void AssertNoAnswerShapedField(string json)
     {
         using var doc = JsonDocument.Parse(json);
-        WalkForForbiddenPropertyNames(doc.RootElement);
+        WalkForForbiddenPropertyNames(doc.RootElement, keysAreData: false);
     }
 
-    private static void WalkForForbiddenPropertyNames(JsonElement element)
+    private static void WalkForForbiddenPropertyNames(JsonElement element, bool keysAreData)
     {
         switch (element.ValueKind)
         {
@@ -295,11 +322,17 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
                 foreach (var property in element.EnumerateObject())
                 {
                     Assert.False(
-                        ForbiddenPropertyNames.Contains(property.Name),
+                        !keysAreData && ForbiddenNameFragments.Any(f =>
+                            property.Name.Contains(f, StringComparison.OrdinalIgnoreCase)),
                         $"'{property.Name}' is an answer-shaped property name, and nothing PRAXIS "
                         + "sends or receives should ever carry one.");
 
-                    WalkForForbiddenPropertyNames(property.Value);
+                    // A misconceptions map's keys are declared wrong-belief slugs — data wearing a
+                    // key's clothes — and only they are spared the name check.
+                    WalkForForbiddenPropertyNames(
+                        property.Value,
+                        keysAreData: property.Name.Equals(
+                            "knownMisconceptions", StringComparison.OrdinalIgnoreCase));
                 }
 
                 break;
@@ -307,7 +340,7 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
             case JsonValueKind.Array:
                 foreach (var item in element.EnumerateArray())
                 {
-                    WalkForForbiddenPropertyNames(item);
+                    WalkForForbiddenPropertyNames(item, keysAreData: false);
                 }
 
                 break;

@@ -30,6 +30,9 @@ data/
 *.db
 *.sqlite
 
+# Agent working files — per-session scratch; the plans themselves live in docs/superpowers/plans/
+.superpowers/
+
 # OS / editor
 .DS_Store
 Thumbs.db

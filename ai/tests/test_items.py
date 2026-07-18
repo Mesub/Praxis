@@ -265,6 +265,30 @@ async def test_the_generator_is_handed_the_declared_wrong_beliefs_and_targets_on
     assert key.misconceptions["bm25-is-obsolete"] == "I think BM25 is obsolete."
 
 
+async def test_the_generators_own_statement_of_the_targeted_belief_is_kept() -> None:
+    """When the generator's own ``misconceptions`` map already restates the targeted belief, that
+    statement wins — the declared one is only a fallback for when the map is silent. The
+    generator's phrasing is written against *this* item's wrong answer, which is what the oracle
+    will actually be marking."""
+    generator, store, _model = _generator(
+        json.dumps(
+            {
+                "question": QUESTION,
+                "answer": THE_ANSWER,
+                "misconceptions": {"bm25-is-obsolete": "Believes TF-IDF superseded BM25 here."},
+                "targets": "bm25-is-obsolete",
+            }
+        )
+    )
+
+    item = await _generate(
+        generator, known_misconceptions={"bm25-is-obsolete": "I think BM25 is obsolete."}
+    )
+
+    key = store.get(item.id)
+    assert key.misconceptions["bm25-is-obsolete"] == "Believes TF-IDF superseded BM25 here."
+
+
 async def test_an_undeclared_target_is_dropped_never_invented() -> None:
     generator, _store, _model = _generator(
         json.dumps(

@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Praxis.Infrastructure.Ai;
 using Praxis.Modules.Assessment.Domain;
 using Praxis.Modules.Assessment.Persistence;
@@ -110,7 +111,9 @@ public static class EnsureConceptPool
                     item.EvidenceType,
                     item.Stem,
                     item.Fingerprint,
-                    difficulty: (item.Difficulty * 6.0) - 3.0,   // generator 0..1 → IRT logits
+                    // Generator 0..1 → IRT logits. The echo is clamped first: a buggy AI plane
+                    // must not be able to write a wild logit the estimator would then trust.
+                    difficulty: (Math.Clamp(item.Difficulty, 0.0, 1.0) * 6.0) - 3.0,
                     targetsMisconception: item.TargetsMisconception,
                     oracleId: item.Id));
             }
@@ -121,7 +124,21 @@ public static class EnsureConceptPool
             }
 
             _db.Items.AddRange(generated);
-            await _db.SaveChangesAsync(ct);   // the one save
+
+            try
+            {
+                await _db.SaveChangesAsync(ct);   // the one save
+            }
+            catch (DbUpdateException collision) when (
+                collision.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                // `AlreadySeen` should make this unreachable — but that guarantee lives on the far
+                // side of the wire. A plane that echoes a banked fingerprint anyway, or a race with
+                // a concurrent top-up, is a conflict the caller can retry, not a bug in this handler.
+                return Result<PoolResponse>.Conflict(
+                    "An item with this fingerprint is already banked. The pool may have been "
+                    + "topped up concurrently — ask again.");
+            }
 
             return Result<PoolResponse>.Success(
                 new PoolResponse(generated.Count, unseen + generated.Count));
