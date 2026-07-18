@@ -133,6 +133,11 @@ class GenerateItemRequest(BaseModel):
     #: does not.** Novelty is checked against these, deterministically (M5.5).
     already_seen: list[str] = Field(default_factory=list)
 
+    #: The concept's **declared** wrong beliefs, keyed by a short stable slug. The generator is told
+    #: what they are and may name one in the response's `targets_misconception` — but only a key
+    #: from this map ever survives the airlock in `items.py` (M14.2).
+    known_misconceptions: dict[str, str] = Field(default_factory=dict)
+
 
 class ItemResponse(BaseModel):
     """**Everything the core, the tutor and the learner ever see of an item.**
@@ -148,6 +153,10 @@ class ItemResponse(BaseModel):
     stem: str
     difficulty: float
     fingerprint: str
+
+    #: A key from `GenerateItemRequest.known_misconceptions`, or null. Never free text — the airlock
+    #: in `items.py` guarantees that.
+    targets_misconception: str | None = None
 
 
 @router.post("/items", response_model=ItemResponse)
@@ -168,6 +177,7 @@ async def generate_item(
                 learner_id=request.learner_id, concept_id=request.concept_id
             ),
             already_seen=frozenset(request.already_seen),
+            known_misconceptions=request.known_misconceptions,
         )
     except ItemRejectedError as rejected:
         raise HTTPException(status_code=422, detail=str(rejected)) from rejected
@@ -181,4 +191,5 @@ async def generate_item(
         stem=item.stem,
         difficulty=item.difficulty,
         fingerprint=item.fingerprint,
+        targets_misconception=item.targets_misconception,
     )

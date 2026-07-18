@@ -126,7 +126,15 @@ def test_there_is_no_field_on_an_item_that_could_hold_an_answer() -> None:
 
     assert not (names & forbidden), f"An Item can now carry {names & forbidden}."
 
-    assert names == {"id", "concept_id", "evidence_type", "stem", "difficulty", "fingerprint"}
+    assert names == {
+        "id",
+        "concept_id",
+        "evidence_type",
+        "stem",
+        "difficulty",
+        "fingerprint",
+        "targets_misconception",
+    }
 
 
 async def test_the_answer_key_is_filed_with_the_misconceptions_it_catches() -> None:
@@ -227,6 +235,67 @@ async def test_a_difficulty_outside_the_scale_is_a_bug_and_says_so() -> None:
             difficulty=1.4,
             attribution=ALICE,
         )
+
+
+# ── The generator is handed the declared wrong beliefs ───────────────────────
+
+
+async def test_the_generator_is_handed_the_declared_wrong_beliefs_and_targets_one() -> None:
+    """The reply names a declared key; it survives to the item. Free-text slugs never do."""
+    generator, store, _model = _generator(
+        json.dumps(
+            {
+                "question": QUESTION,
+                "answer": THE_ANSWER,
+                "misconceptions": {},
+                "targets": "bm25-is-obsolete",
+            }
+        )
+    )
+
+    item = await _generate(
+        generator, known_misconceptions={"bm25-is-obsolete": "I think BM25 is obsolete."}
+    )
+
+    assert item.targets_misconception == "bm25-is-obsolete"
+
+    # The declared statement rides along in the answer key, so the oracle can recognise the belief
+    # at marking time even though the generator's own map was empty this time.
+    key = store.get(item.id)
+    assert key.misconceptions["bm25-is-obsolete"] == "I think BM25 is obsolete."
+
+
+async def test_an_undeclared_target_is_dropped_never_invented() -> None:
+    generator, _store, _model = _generator(
+        json.dumps(
+            {
+                "question": QUESTION,
+                "answer": THE_ANSWER,
+                "misconceptions": {},
+                "targets": "made-up-slug",
+            }
+        )
+    )
+
+    item = await _generate(
+        generator, known_misconceptions={"bm25-is-obsolete": "I think BM25 is obsolete."}
+    )
+
+    assert item.targets_misconception is None
+
+
+async def test_no_declared_beliefs_means_no_target_and_no_prompt_section() -> None:
+    generator, _store, model = _generator(
+        json.dumps({"question": QUESTION, "answer": THE_ANSWER, "misconceptions": {}})
+    )
+
+    item = await _generate(generator)
+
+    assert item.targets_misconception is None
+
+    prompt = model.calls[-1]["messages"][0]["content"]
+    assert "KNOWN WRONG BELIEFS" not in prompt  # capture the prompt the way the existing tests in
+    # this file do — via the fake model's recorded call kwargs, not a second fake client.
 
 
 # ── Bias: the writer must not be the marker ──────────────────────────────────

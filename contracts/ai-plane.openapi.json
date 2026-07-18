@@ -120,6 +120,13 @@
           "evidence_type": {
             "$ref": "#/components/schemas/EvidenceType"
           },
+          "known_misconceptions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Known Misconceptions",
+            "type": "object"
+          },
           "learner_id": {
             "minLength": 1,
             "title": "Learner Id",
@@ -284,6 +291,17 @@
           "stem": {
             "title": "Stem",
             "type": "string"
+          },
+          "targets_misconception": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targets Misconception"
           }
         },
         "required": [

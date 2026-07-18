@@ -103,3 +103,24 @@ def test_pending_is_in_the_contract_so_the_core_cannot_ignore_it() -> None:
         "failed",
         "pending",
     }
+
+
+def test_the_generator_can_be_handed_declared_misconceptions_and_names_one_back() -> None:
+    """M14.2, pinned explicitly. The core now sends the concept's declared wrong beliefs
+    (`known_misconceptions`, a key-to-statement map) and the item names which one, if any, it was
+    built to catch (`targets_misconception`, a key or null).
+
+    Neither is an answer — a slug and a map of already-known wrong beliefs — which is why the sweep
+    above (``test_no_schema_in_the_contract_can_carry_an_answer``) stays green without weakening it.
+    """
+    committed = json.loads(CONTRACT.read_text(encoding="utf-8"))
+
+    request = committed["components"]["schemas"]["GenerateItemRequest"]["properties"]
+    assert "known_misconceptions" in request, (
+        "The core has no way to tell the generator what this concept's declared wrong beliefs are."
+    )
+
+    response = committed["components"]["schemas"]["ItemResponse"]["properties"]
+    assert "targets_misconception" in response, (
+        "The item can no longer say which declared misconception it was built to catch."
+    )

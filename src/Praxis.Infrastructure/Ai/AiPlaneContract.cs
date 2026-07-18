@@ -200,4 +200,9 @@ public sealed record ItemResponse(
 
     /// A stable hash of the stem. The core stores it, and passes it back in `AlreadySeen` next time,
     /// which is how "never-seen" stays a fact rather than a hope.
-    string Fingerprint);
+    string Fingerprint,
+
+    /// A key from the `GenerateItemRequest.KnownMisconceptions` the core sent — or null. Never free
+    /// text: the AI plane's airlock (M14.2) guarantees only a key the core itself declared in
+    /// advance ever comes back here.
+    string? TargetsMisconception);

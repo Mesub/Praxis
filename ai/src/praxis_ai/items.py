@@ -100,6 +100,11 @@ class Item:
     #: opinion.
     fingerprint: str = field(compare=False, default="")
 
+    #: The **key** of a declared wrong belief this item was built to catch, or ``None``. A key from
+    #: the caller's own declared set (never free text the model invented) — the airlock in
+    #: ``_parse`` guarantees that, the same discipline as the oracle's ``_parse``.
+    targets_misconception: str | None = field(compare=False, default=None)
+
 
 def fingerprint_of(stem: str) -> str:
     """A stem's identity, robust to the cosmetic edits a model makes when told to 'vary' something.
@@ -128,6 +133,7 @@ class ItemGenerator:
         difficulty: float,
         attribution: Attribution,
         already_seen: frozenset[str] = frozenset(),
+        known_misconceptions: dict[str, str] | None = None,
         attempts: int = 3,
     ) -> Item:
         """A never-seen item, and an answer key filed where the tutor cannot reach it.
@@ -135,6 +141,11 @@ class ItemGenerator:
         ``already_seen`` is a set of **fingerprints**, not stems. The caller (the .NET core, which
         actually remembers things) knows what this learner has met; this process does not, and does
         not need to.
+
+        ``known_misconceptions`` is the concept's **declared** wrong beliefs, keyed by a short
+        stable slug. The generator is told what they are and may name one in ``targets`` — but only
+        a key from this map ever survives (M14.2). Free text the model invents is discarded, never
+        passed through.
         """
         if not 0.0 <= difficulty <= 1.0:
             raise ValueError(f"Difficulty is 0-1. {difficulty} is not a difficulty.")
@@ -143,7 +154,13 @@ class ItemGenerator:
 
         for attempt in range(attempts):
             item, key, cost = await self._draft(
-                concept_id, concept_summary, evidence_type, difficulty, attribution, already_seen
+                concept_id,
+                concept_summary,
+                evidence_type,
+                difficulty,
+                attribution,
+                already_seen,
+                known_misconceptions,
             )
 
             # **The check that makes "never-seen" a fact.** The model was asked for novelty; asking
@@ -193,18 +210,24 @@ class ItemGenerator:
         difficulty: float,
         attribution: Attribution,
         already_seen: frozenset[str],
+        known_misconceptions: dict[str, str] | None,
     ) -> tuple[Item, AnswerKey, Cost]:
         completion = await self._client.complete(
-            _prompt(concept_summary, evidence_type, difficulty, len(already_seen)),
+            _prompt(
+                concept_summary, evidence_type, difficulty, len(already_seen), known_misconceptions
+            ),
             task=Task.GENERATE_ITEM,
             attribution=attribution,
             system=_SYSTEM,
             max_tokens=2_048,
         )
 
-        drafted = _parse(completion.text)
+        known_keys = frozenset((known_misconceptions or {}).keys())
+        drafted = _parse(completion.text, known_keys)
 
         item_id = f"item-{fingerprint_of(drafted['question'])[:16]}"
+
+        targeted = drafted["targets"]
 
         item = Item(
             id=item_id,
@@ -213,21 +236,31 @@ class ItemGenerator:
             stem=drafted["question"],
             difficulty=difficulty,
             fingerprint=fingerprint_of(drafted["question"]),
+            targets_misconception=targeted,
         )
+
+        # The union: the generator's own catches, plus the declared statement for whichever known
+        # belief this item was built to catch — so the oracle can recognise it at marking time even
+        # if the generator's own ``misconceptions`` map did not restate it.
+        misconceptions = dict(drafted["misconceptions"])
+
+        if targeted is not None and known_misconceptions is not None:
+            misconceptions.setdefault(targeted, known_misconceptions[targeted])
 
         key = AnswerKey(
             item_id=item_id,
             concept_id=concept_id,
             question=drafted["question"],
             answer=drafted["answer"],
-            misconceptions=drafted["misconceptions"],
+            misconceptions=misconceptions,
         )
 
         return item, key, completion.cost
 
 
-_SYSTEM = """You write assessment items. You produce a question, its answer, and the \
-misconceptions the question is designed to catch.
+_SYSTEM = """You write assessment items. You produce a question, its answer, the misconceptions \
+the question is designed to catch, and — when you are given a concept's already-known wrong \
+beliefs — which one, if any, this item is built to catch.
 
 The question will be shown to a learner. The answer will NOT be — it goes to a marking oracle that \
 the tutor cannot read. Write the answer for a marker, not for a student: it is a marking standard, \
@@ -239,14 +272,24 @@ Rules:
 a worked example. This is not a stylistic preference — an APPLY item that can be answered by \
 recognising a template is not evidence of anything.
 - Misconceptions are keyed by a short stable slug (kebab-case), e.g. "thinks-tf-is-linear".
+- ``targets`` names the key of one of the KNOWN WRONG BELIEFS given to you, if this item is built \
+to catch it — or null if none was given, or none fits. Only a key from that declared list is \
+valid; never invent one.
 
 Reply with ONLY a JSON object:
-{"question": "...", "answer": "...", "misconceptions": {"slug": "the wrong belief, stated"}}
+{"question": "...", "answer": "...", "misconceptions": {"slug": "the wrong belief, stated"}, \
+"targets": "<declared key>" | null}
 
 Do not explain. Do not add commentary. The JSON object is your entire reply."""
 
 
-def _prompt(summary: str, evidence_type: EvidenceType, difficulty: float, seen: int) -> str:
+def _prompt(
+    summary: str,
+    evidence_type: EvidenceType,
+    difficulty: float,
+    seen: int,
+    known: dict[str, str] | None = None,
+) -> str:
     novelty = (
         f"\n\nThis learner has already been shown {seen} item(s) on this concept. Yours must be "
         "genuinely different — a different situation, not the same problem with the numbers "
@@ -255,14 +298,23 @@ def _prompt(summary: str, evidence_type: EvidenceType, difficulty: float, seen: 
         else ""
     )
 
+    beliefs = "\n".join(f"- {k}: {v}" for k, v in (known or {}).items())
+    targeting = (
+        f"\n\nKNOWN WRONG BELIEFS for this concept (key: the belief):\n{beliefs}\n"
+        "If your item is built to catch one of these, name its key in `targets`. "
+        "Only these keys are valid; anything else will be discarded."
+        if known
+        else ""
+    )
+
     return (
         f"CONCEPT:\n{summary}\n\n"
         f"EVIDENCE TYPE: {evidence_type.value}\n"
-        f"DIFFICULTY TARGET: {difficulty:.2f} (0 = trivial, 1 = expert){novelty}"
+        f"DIFFICULTY TARGET: {difficulty:.2f} (0 = trivial, 1 = expert){novelty}{targeting}"
     )
 
 
-def _parse(text: str) -> dict:
+def _parse(text: str, known_keys: frozenset[str]) -> dict:
     try:
         parsed = json.loads(_json_of(text))
     except (json.JSONDecodeError, ValueError) as bad:
@@ -292,10 +344,23 @@ def _parse(text: str) -> dict:
     ):
         raise ItemRejectedError("Misconceptions must be a map of slug to statement.")
 
+    # **The airlock** — same discipline as the oracle's ``_parse``. ``targets`` is a key the caller
+    # declared *in advance*, or nothing at all. A model that names a slug it invented on the spot
+    # gets logged and discarded, never passed through as if it were real.
+    targets = parsed.get("targets")
+
+    if targets is not None and targets not in known_keys:
+        log.warning(
+            "Generator proposed a misconception target outside the declared set. Discarded.",
+            extra={"targets": targets},
+        )
+        targets = None
+
     return {
         "question": question.strip(),
         "answer": answer.strip(),
         "misconceptions": {k.strip(): v.strip() for k, v in misconceptions.items()},
+        "targets": targets,
     }
 
 

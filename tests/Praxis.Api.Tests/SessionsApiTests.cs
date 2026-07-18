@@ -615,7 +615,7 @@ internal sealed class LeakingAiPlane : IAiPlane
     public Task<Result<ItemResponse>> GenerateItemAsync(
         GenerateItemRequest request, CancellationToken ct = default)
         => Task.FromResult(Result<ItemResponse>.Success(
-            new ItemResponse("item-1", "c", EvidenceType.Apply, "a question", 0.5, "fp")));
+            new ItemResponse("item-1", "c", EvidenceType.Apply, "a question", 0.5, "fp", null)));
 }
 
 internal static class LeakingAiPlaneFactory
