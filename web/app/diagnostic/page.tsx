@@ -46,10 +46,18 @@ export default function DiagnosticPage() {
   const [error, setError] = useState<string | null>(null);
   const askedAt = useRef<number>(0);
 
+  // Best-effort supply, never a gate: a failed top-up is not something the learner ever sees.
+  // `nextItem`'s own refusal — an honest, rendered `stopped` state — is the only real gate.
+  const topUpPool = useCallback(
+    () => diagnostics.ensurePool(concept).catch(() => undefined),
+    [concept],
+  );
+
   const loadNext = useCallback(
     async (from: DiagnosticState) => {
       setBusy(true);
       setError(null);
+      await topUpPool();
       const res = await diagnostics.nextItem(session, concept);
       setBusy(false);
       if (!res.ok) {
@@ -61,7 +69,7 @@ export default function DiagnosticPage() {
       setConfidence(0.7);
       askedAt.current = Date.now();
     },
-    [session, concept],
+    [session, concept, topUpPool],
   );
 
   // The first question. State is updated only after the await resolves — never synchronously inside
@@ -69,6 +77,7 @@ export default function DiagnosticPage() {
   useEffect(() => {
     let active = true;
     void (async () => {
+      await topUpPool();
       const res = await diagnostics.nextItem(session, concept);
       if (!active) return;
       if (!res.ok) {
@@ -81,7 +90,7 @@ export default function DiagnosticPage() {
     return () => {
       active = false;
     };
-  }, [session, concept]);
+  }, [session, concept, topUpPool]);
 
   async function submit() {
     if (state.current === null || claim.trim() === "") return;

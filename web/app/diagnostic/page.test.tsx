@@ -7,10 +7,12 @@ import type { AnswerResponse, ApiResult, NextItemResponse } from "@/lib/api";
 // session deterministically, without a live backend or a seeded item bank.
 const nextItem = vi.fn();
 const submitAnswer = vi.fn();
+const ensurePool = vi.fn();
 vi.mock("@/lib/api", () => ({
   diagnostics: {
     nextItem: (...a: unknown[]) => nextItem(...a),
     submitAnswer: (...a: unknown[]) => submitAnswer(...a),
+    ensurePool: (...a: unknown[]) => ensurePool(...a),
   },
 }));
 
@@ -51,6 +53,8 @@ describe("DiagnosticPage", () => {
   beforeEach(() => {
     nextItem.mockReset();
     submitAnswer.mockReset();
+    ensurePool.mockReset();
+    ensurePool.mockResolvedValue(ok({ generated: 0, poolSize: 5 }));
   });
 
   it("drives the adaptive loop and ends on the blind-spot screen", async () => {
@@ -95,5 +99,52 @@ describe("DiagnosticPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/connection problem/i);
     // Still on the question — no verdict was invented from a failed dependency.
     expect(screen.getByText("A question")).toBeInTheDocument();
+  });
+
+  it("tops up the pool before asking the first question", async () => {
+    const order: string[] = [];
+    ensurePool.mockImplementation(async () => {
+      order.push("ensurePool");
+      return ok({ generated: 0, poolSize: 5 });
+    });
+    nextItem.mockImplementation(async () => {
+      order.push("nextItem");
+      return ok(item({ stem: "A question" }));
+    });
+
+    render(<DiagnosticPage />);
+
+    expect(await screen.findByText("A question")).toBeInTheDocument();
+    expect(order).toEqual(["ensurePool", "nextItem"]);
+  });
+
+  it("still asks the question when the pool top-up fails — best-effort, not a gate", async () => {
+    ensurePool.mockReset();
+    ensurePool.mockRejectedValueOnce(new Error("network"));
+    nextItem.mockResolvedValueOnce(ok(item({ stem: "A question" })));
+
+    render(<DiagnosticPage />);
+
+    // nextItem's own refusal is the only honest gate — a failed top-up alone must never
+    // produce an error screen.
+    expect(await screen.findByText("A question")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("tops up the pool again after each answer, before the next question", async () => {
+    nextItem
+      .mockResolvedValueOnce(ok(item({ itemId: "a", stem: "First question" })))
+      .mockResolvedValueOnce(ok(item({ itemId: "b", stem: "Second question" })));
+    submitAnswer.mockResolvedValueOnce(ok(answer({})));
+
+    render(<DiagnosticPage />);
+
+    expect(await screen.findByText("First question")).toBeInTheDocument();
+    expect(ensurePool).toHaveBeenCalledTimes(1);
+
+    await answerCurrent();
+
+    expect(await screen.findByText("Second question")).toBeInTheDocument();
+    expect(ensurePool).toHaveBeenCalledTimes(2);
   });
 });

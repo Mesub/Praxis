@@ -170,6 +170,12 @@ export interface AnswerRequest {
   seconds: number;
 }
 
+/** `EnsureConceptPool`'s honest accounting: what it generated, and what the pool holds now. */
+export interface PoolResponse {
+  generated: number;
+  poolSize: number;
+}
+
 export const diagnostics = {
   nextItem: (sessionId: string, conceptId: string, token?: string, signal?: AbortSignal) =>
     api.get<NextItemResponse>(
@@ -181,6 +187,17 @@ export const diagnostics = {
     api.post<AnswerResponse>(
       `/api/assessment/diagnostics/${sessionId}/answers`,
       body,
+      token,
+      signal,
+    ),
+  /**
+   * Best-effort supply, never a gate. `next-item`'s own refusal is the only honest signal an empty
+   * pool ever produces — this call exists only to make that refusal rare.
+   */
+  ensurePool: (conceptId: string, token?: string, signal?: AbortSignal) =>
+    api.post<PoolResponse>(
+      `/api/assessment/diagnostics/pool`,
+      { conceptId },
       token,
       signal,
     ),
