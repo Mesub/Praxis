@@ -565,6 +565,18 @@ match it, don't reinvent it.
 
 ---
 
+## M15 — Everyday English (the second pack)
+
+> The proof that packs are how PRAXIS grows: a whole new domain — everyday written English,
+> authored for intermediate learners transferring from Nepali — with **zero engine changes**.
+> Spec: `docs/superpowers/specs/2026-07-19-english-everyday-pack-design.md` · plan:
+> `docs/superpowers/plans/2026-07-19-english-everyday-pack.md`.
+
+- [x] **M15.1** The pack, the card, and the wiring that loads it.
+      → `packs/english-everyday/pack.yaml`: 31 concepts across 7 regions (sentence machinery, articles & nouns, tenses, prepositions & verb patterns, vocabulary in use, connected writing, register & real writing), 44 edges, **15 first-language-transfer misconceptions declared by name** (articles-are-decoration, perfect-is-fancy-past, prepositions-translate-literally, questions-by-tone-alone, …) so the generator hunts them and the Twin watches them die. Apply carries the floor on every contract (oracle-marked, never-seen sentence work); no Build/Predict — the Reality Loop is code-only in Phase 0 and the pack says so rather than pretends. `EnglishPackTests` holds the shipped YAML to `SeedPackTests`' standard in CI (validator gate, 31-count, every-concept-holdable, misconception keys pinned). "Everyday English" card in `web/lib/onboarding.ts` (+2 web tests). Dev wiring committed alongside: `dotnet run -- --load-pack <path>` (Program.cs, beside `--migrate`) and the Next dev proxy (`web/next.config.ts` rewrites `/api` → :5175) that let the console run against the real API in a browser for the first time. Dev DB now carries both packs (61 concepts, 35 misconceptions). **1049 .NET / 236 AI / 174 web, full gate PASSED.** Live practice still needs `ANTHROPIC_API_KEY` in `ai/.env` — the diagnostic honestly refuses without it, which the browser run demonstrated end to end.
+
+---
+
 ## Deliberately not in this plan
 
 Mobile · offline · i18n · payments · institutions · the News engine · the Project engine · the

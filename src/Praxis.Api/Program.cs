@@ -27,6 +27,7 @@ using Praxis.Modules.Twin.Persistence;
 using Praxis.Modules.Twin.Projections;
 using Praxis.Modules.Kernel.Persistence;
 using Praxis.Modules.Kernel.Projections;
+using Praxis.Shared;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -151,6 +152,7 @@ var app = builder.Build();
 // ── Operational commands ────────────────────────────────────────────────────
 //
 // `dotnet run -- --migrate`             apply pending migrations, then exit
+// `dotnet run -- --load-pack <path>`    load a domain pack's YAML into the Graph, then exit
 // `dotnet run -- --rebuild-projections` destroy every projection and recompute it from the log
 //
 // The rebuild is not a repair tool. It is the standing proof that the event log is the source of
@@ -170,6 +172,37 @@ if (args.Contains("--migrate", StringComparer.Ordinal))
     await scope.ServiceProvider.GetRequiredService<AssessmentDbContext>().Database.MigrateAsync();
 
     Log.Information("Migrations applied.");
+    return;
+}
+
+if (Array.IndexOf(args, "--load-pack") is var packArg and >= 0)
+{
+    if (packArg + 1 >= args.Length)
+    {
+        Log.Error("--load-pack needs a path to a pack.yaml.");
+        return;
+    }
+
+    await using var scope = app.Services.CreateAsyncScope();
+    var loader = scope.ServiceProvider.GetRequiredService<Praxis.Modules.Graph.Packs.PackLoader>();
+
+    var loaded = await loader.LoadAsync(await File.ReadAllTextAsync(args[packArg + 1]));
+
+    if (loaded.IsSuccess)
+    {
+        Log.Information(
+            "Pack loaded: {Domain} v{Version} ({Concepts} concepts, {Edges} edges).",
+            loaded.Value.Domain, loaded.Value.Version, loaded.Value.Concepts, loaded.Value.Edges);
+    }
+    else if (loaded.Status == ResultStatus.Conflict)
+    {
+        Log.Information("Pack already loaded at this version. Nothing to do.");
+    }
+    else
+    {
+        Log.Error("Pack refused: {Errors}", string.Join("; ", loaded.Errors));
+    }
+
     return;
 }
 
