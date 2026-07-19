@@ -63,3 +63,16 @@ describe("the hard truth", () => {
     expect(HARD_TRUTH.toLowerCase()).toContain("failing");
   });
 });
+
+describe("everyday english objective", () => {
+  it('search finds it by "english" and by "grammar"', () => {
+    expect(searchObjectives("english").map((o) => o.id)).toContain("obj-everyday-english");
+    expect(searchObjectives("grammar").map((o) => o.id)).toContain("obj-everyday-english");
+  });
+
+  it("carries an honest cost line, not a brochure", () => {
+    const english = OBJECTIVES.find((o) => o.id === "obj-everyday-english");
+    expect(english?.difficulty).toBe("Serious");
+    expect(english?.cost.length).toBeGreaterThan(20);
+  });
+});

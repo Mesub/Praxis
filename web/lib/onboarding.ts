@@ -45,6 +45,14 @@ export const OBJECTIVES: readonly Objective[] = [
     keywords: ["ai", "ml", "machine learning", "llm", "engineer", "transformers", "deep learning"],
   },
   {
+    id: "obj-everyday-english",
+    title: "Everyday English",
+    role: "Write clear, natural everyday English — messages, plans, opinions — and kill the errors your first language plants. Text first: writing accuracy is the fuel speaking runs on.",
+    cost: "Months of honest reps. You will find out what you only think you know.",
+    difficulty: "Serious",
+    keywords: ["english", "grammar", "writing", "vocabulary", "articles", "tenses", "fluency", "esl", "language"],
+  },
+  {
     id: "obj-radiologist",
     title: "Diagnostic Radiologist",
     role: "Read what is on the film and what is not. The discipline is calibration — knowing exactly how sure you are.",
