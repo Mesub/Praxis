@@ -1,0 +1,621 @@
+# PRAXIS — domain pack: Everyday English
+#
+# Objective: "Write clear, natural everyday English — messages, plans, opinions — with the
+# errors your first language plants hunted down by name."
+#
+# One objective. Not a course, not a level system. One (roadmap §1).
+#
+# ── Who this pack is authored for ────────────────────────────────────────────────
+#
+# An intermediate learner whose first language is Nepali. That choice is not decoration: the
+# misconceptions below are FIRST-LANGUAGE TRANSFER errors — beliefs that are true of Nepali and
+# quietly false of English. Nepali has no articles, marks questions by tone, orders sentences
+# subject-object-verb, and attaches postpositions where English scatters prepositions. Each of
+# those facts is a specific, nameable wrong belief when carried into English, and each one below
+# is declared so the item generator can hunt it (M14.2) and the Twin can watch it die.
+#
+# Speaking is deliberately absent. PRAXIS cannot grade speech in Phase 0, and this pack does not
+# pretend otherwise (C-1): it builds the written accuracy that speaking runs on, and says so.
+#
+# ── How to read a concept ────────────────────────────────────────────────────────
+#
+#   difficulty  IRT logit prior, -3 (trivial) to +3 (brutal), for an INTERMEDIATE learner —
+#               replaced by measurement once the cohort responds.
+#   minutes     Focused work for a median learner to first produce evidence. A prior.
+#   requires    The ONLY ordering claim in this file.
+#   contrasts   The confusable pair — where the Assessment engine goes hunting for distractors.
+#   proof       CEILING: model-graded evidence (recall, explain, critique) can never sum to hold.
+#               FLOOR: apply evidence alone is always sufficient. No build/predict here — the
+#               Reality Loop is code-only in Phase 0, and prose cannot run against hidden tests.
+#               Apply, for language, means: a never-seen sentence to fix, complete, or write,
+#               marked by the oracle. Real writing is always enough; talking about grammar never is.
+
+domain: english-everyday
+version: 1
+note: >
+  Second shipped pack. 31 concepts on the shortest honest path to clear, correct everyday
+  written English, authored for intermediate learners transferring from Nepali. Difficulties
+  and durations are priors awaiting cohort data. American spelling throughout.
+
+concepts:
+
+  # ── Sentence machinery: the frame every other concept hangs on ─────────────
+
+  - slug: word-order-svo
+    title: "Word order: English is subject-verb-object"
+    summary: >
+      Nepali waits for the verb; English does not. "म भात खान्छु" ends on the verb, but English
+      demands "I eat rice" — actor, action, object, in that order, almost always. Mastery is
+      producing SVO without thinking, and knowing the few places English genuinely bends
+      (questions, and not much else).
+    difficulty: -1.2
+    minutes: 30
+    misconceptions:
+      - key: word-order-flexible
+        statement: >
+          I think English word order can bend the way Nepali's does — if the words are right,
+          the order is a matter of style and the reader will understand me.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: subject-verb-agreement
+    title: Subject-verb agreement
+    summary: >
+      He goes, she has, it does — the third-person -s that Nepali verb endings never prepared
+      you to hear. One letter, and its absence is the single loudest marker of learner English.
+      Mastery is agreement surviving even when the subject and verb are far apart.
+    difficulty: -0.9
+    minutes: 30
+    requires: [word-order-svo]
+    misconceptions:
+      - key: agreement-is-optional
+        statement: >
+          I think "he go" and "he goes" say the same thing, so agreement is polish rather than
+          grammar — nobody misunderstands me, so both are basically fine.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: negation-do
+    title: "Negation: don't, doesn't, didn't"
+    summary: >
+      Nepali negates inside the verb; English brings in a helper. "I not like" is the direct
+      transfer, "I don't like" is the language. Mastery is picking the right helper for the
+      subject and tense without touching the main verb: he doesn't go, not "he doesn't goes."
+    difficulty: -0.8
+    minutes: 25
+    requires: [word-order-svo]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: questions-do-support
+    title: "Questions: do-support and inversion"
+    summary: >
+      Nepali turns a statement into a question with tone and a particle; English rebuilds the
+      sentence. "Where you live?" is the transfer; "Where do you live?" is the rule. Mastery is
+      forming questions with do/does/did — and knowing when NOT to (who came? what happened?).
+    difficulty: -0.5
+    minutes: 35
+    requires: [word-order-svo, negation-do]
+    misconceptions:
+      - key: questions-by-tone-alone
+        statement: >
+          I think rising tone is what makes a question, like in Nepali — "You are coming?" is a
+          real question, so "do" is an optional decoration English teachers insist on.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  # ── Articles & nouns: the ground Nepali never made you walk on ─────────────
+
+  - slug: a-an-first-mention
+    title: "a / an: introducing what's new"
+    summary: >
+      Nepali has no articles at all, so every English article is a decision you never had to
+      make before. "a" and "an" mark the first mention — a thing the reader doesn't know yet.
+      "I saw a dog" opens a story; "I saw dog" opens a question about your English.
+    difficulty: -0.7
+    minutes: 35
+    requires: [word-order-svo]
+    contrasts: [the-definite-reference]
+    misconceptions:
+      - key: articles-are-decoration
+        statement: >
+          I think a/an/the are polish on top of the sentence — the meaning is already there
+          without them, so dropping them is a small style issue, not an error.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: the-definite-reference
+    title: "the: what we both already know"
+    summary: >
+      "the" does not mean important — it means the reader can tell WHICH one you mean: mentioned
+      before, unique in context, or unique in the world. "I went to the hospital" works because
+      you both know which hospital. Mastery is hearing the difference between a/an, the, and
+      nothing, sentence by sentence.
+    difficulty: -0.2
+    minutes: 45
+    requires: [a-an-first-mention]
+    contrasts: [a-an-first-mention]
+    misconceptions:
+      - key: the-marks-importance
+        statement: >
+          I think "the" makes a noun feel important or specific in a general way, so sprinkling
+          it on serious nouns ("the life", "the society") makes my English sound more proper.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: zero-article-generalities
+    title: "No article at all: generalities and abstractions"
+    summary: >
+      The third choice, and the subtlest: English drops the article for plurals and uncountables
+      spoken of in general. "Life is hard," not "The life is hard"; "I like music," not "the
+      music" — unless you mean particular music you both know. Mastery is choosing NOTHING on
+      purpose, not by forgetting.
+    difficulty: 0.3
+    minutes: 40
+    requires: [the-definite-reference]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: countable-uncountable
+    title: Countable and uncountable nouns
+    summary: >
+      English secretly sorts every noun into things you can count and stuff you cannot — and the
+      sort does not match intuition. Advice, information, furniture, homework: all uncountable,
+      no matter how many pieces there are. Mastery is knowing the everyday uncountables cold and
+      reaching for "a piece of / some" instead of -s.
+    difficulty: -0.4
+    minutes: 35
+    requires: [word-order-svo]
+    misconceptions:
+      - key: uncountables-take-plural
+        statement: >
+          I think more than one advice is "advices" and more than one information is
+          "informations" — plural means add -s, and these are clearly things you can have more of.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: quantifiers
+    title: "much / many, few / little, some / any"
+    summary: >
+      The quantity words split along the countable line: many friends but much time, a few days
+      but a little money, some in offers and statements, any in questions and negatives. Mastery
+      is the pairing being automatic — the wrong half sounds wrong before you can say why.
+    difficulty: 0.0
+    minutes: 40
+    requires: [countable-uncountable]
+    misconceptions:
+      - key: much-many-interchangeable
+        statement: >
+          I think much and many mean the same thing and I can pick whichever feels right —
+          "much people" and "many water" both get the point across.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  # ── Tenses, as a Nepali speaker actually meets them ────────────────────────
+
+  - slug: present-simple-vs-continuous
+    title: Present simple vs present continuous
+    summary: >
+      "I work in Kathmandu" (always true) against "I am working from home today" (right now,
+      temporary). The trap runs both directions: continuous where habit belongs, and continuous
+      on verbs that refuse it — know, want, understand, believe. "I am knowing him" is the
+      transfer error this concept exists to kill.
+    difficulty: -0.6
+    minutes: 40
+    requires: [subject-verb-agreement]
+    misconceptions:
+      - key: continuous-shows-politeness
+        statement: >
+          I think the -ing form is the fuller, more polite version of the verb — "I am knowing
+          your answer" or "I am wanting one ticket" sounds softer and more correct than the
+          bare form.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: past-simple
+    title: "Past simple: one finished thing, one -ed (or one irregular)"
+    summary: >
+      The workhorse of every story you will ever tell: finished action, stated time. Regular
+      verbs take -ed once; the fifty irregulars you actually meet daily (went, saw, ate, took)
+      must be automatic. The tense marker lives on the verb OR on "did" — never both.
+    difficulty: -0.5
+    minutes: 35
+    requires: [present-simple-vs-continuous]
+    misconceptions:
+      - key: double-past-did
+        statement: >
+          I think "I didn't went" and "Did you saw it?" are extra correct — both words carry the
+          past, so marking it twice makes the tense clearer, the way agreement stacks up in Nepali.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: present-perfect-vs-past
+    title: Present perfect vs past simple
+    summary: >
+      The hardest line in English tense for almost every learner: "I have seen that movie"
+      (experience, time unstated, still relevant) against "I saw it yesterday" (done, dated,
+      closed). Nepali does not draw this line, so the forms feel interchangeable. They are not:
+      a stated finished time forces past simple, every time.
+    difficulty: 0.6
+    minutes: 55
+    requires: [past-simple]
+    contrasts: [past-simple]
+    misconceptions:
+      - key: perfect-is-fancy-past
+        statement: >
+          I think "have + verb" is a more formal, more educated way of saying the past —
+          "I have seen him yesterday" is the polished version of "I saw him yesterday."
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: future-forms
+    title: "Future: will, going to, and the present continuous"
+    summary: >
+      English has no future tense — it has choices. "will" for decisions made right now and
+      predictions; "going to" for plans already made; "I'm meeting her at five" for
+      arrangements. Mastery is matching the form to how settled the plan is, not defaulting
+      to "will" for everything.
+    difficulty: 0.2
+    minutes: 45
+    requires: [present-simple-vs-continuous]
+    misconceptions:
+      - key: one-future-will
+        statement: >
+          I think "will" is simply the future tense, and "going to" or present continuous are
+          just longer ways of saying the same thing — so "I will meet my friend tomorrow" covers
+          every future situation.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: past-continuous
+    title: "Past continuous: the interrupted background"
+    summary: >
+      "I was cooking when the power went out" — a long action painted as background, a short one
+      cutting through it. The pairing with past simple is the whole point: was/were + -ing sets
+      the scene, the simple past delivers the event. Everyday storytelling runs on this frame.
+    difficulty: 0.1
+    minutes: 35
+    requires: [past-simple]
+    contrasts: [past-simple]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  # ── Prepositions & verb patterns: where Nepali postpositions betray you ────
+
+  - slug: in-on-at-time
+    title: "in / on / at: time"
+    summary: >
+      At 5 o'clock, on Friday, on July 19, in July, in 2026, in the morning but at night.
+      The system is a funnel — at for clock points, on for days and dates, in for everything
+      bigger — plus a handful of fixed phrases you simply memorize. Nepali's "मा" covers all of
+      it with one word, which is exactly why each English choice must become deliberate.
+    difficulty: -0.3
+    minutes: 30
+    requires: [word-order-svo]
+    contrasts: [in-on-at-place]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: in-on-at-place
+    title: "in / on / at: place"
+    summary: >
+      In a city, on a street, at an address; in the room, on the wall, at the door. "at" is a
+      point, "on" a surface, "in" a container — until idiom takes over (on the bus, in the car,
+      at home). Mastery is the core geometry plus the everyday exceptions, automatic.
+    difficulty: -0.1
+    minutes: 30
+    requires: [in-on-at-time]
+    contrasts: [in-on-at-time]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: verb-preposition-pairs
+    title: "Verb + preposition: pairs you cannot translate"
+    summary: >
+      Listen TO music, depend ON him, married TO her, discuss (nothing!) the plan, reach
+      (nothing!) the office. The preposition belongs to the verb, not to logic, and translating
+      the Nepali postposition plants errors that sound almost right — "discuss about", "reach
+      to" — which is what makes them survive for years.
+    difficulty: 0.5
+    minutes: 50
+    requires: [in-on-at-place]
+    misconceptions:
+      - key: prepositions-translate-literally
+        statement: >
+          I think the English preposition is the translation of the Nepali postposition — "बारेमा
+          छलफल" becomes "discuss about", "अफिस पुग्नु" becomes "reach to office" — so if the
+          Nepali needs one, the English does too.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: gerund-vs-infinitive
+    title: "enjoy doing, want to do: gerund vs infinitive"
+    summary: >
+      Some verbs take -ing (enjoy swimming, finish eating, keep trying), some take to (want to
+      go, decide to stay, hope to see), a few take both with different meanings (stop smoking /
+      stop to smoke). There is no rule that saves you — there is a short list that does.
+    difficulty: 0.4
+    minutes: 45
+    requires: [present-simple-vs-continuous]
+    misconceptions:
+      - key: gerund-infinitive-same
+        statement: >
+          I think "enjoy to swim" and "enjoy swimming" are the same choice said two ways —
+          whichever comes out first is fine, the meaning is identical.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: phrasal-verbs-core
+    title: "Phrasal verbs: the everyday fifty"
+    summary: >
+      Wake up, turn off, look after, run out of, put off — the small verbs that carry most of
+      spoken and casual written English. Formal single verbs (extinguish, postpone) exist, but a
+      message written without phrasal verbs reads stiff and translated. Mastery is the everyday
+      set produced naturally, particles in the right place.
+    difficulty: 0.7
+    minutes: 55
+    requires: [gerund-vs-infinitive, verb-preposition-pairs]
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Recall, min-score: 0.9, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  - slug: modals-ability-permission
+    title: "can, could, may: ability and permission"
+    summary: >
+      Can swim, could swim as a child, may I come in — one modal, one bare verb, no -s and no
+      "to". The form is easy; the discipline is not stacking what cannot stack ("can be able
+      to") and hearing the register step from can to could to may in requests.
+    difficulty: -0.2
+    minutes: 30
+    requires: [negation-do]
+    contrasts: [modals-advice-obligation]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: modals-advice-obligation
+    title: "should, must, have to: advice and obligation"
+    summary: >
+      Should advises, must obliges from the speaker, have to obliges from outside — and the
+      negatives split further: mustn't forbids, don't have to releases. That last pair inverts
+      meaning on one word, which is why it earns real practice rather than a glance.
+    difficulty: 0.3
+    minutes: 40
+    requires: [modals-ability-permission]
+    contrasts: [modals-ability-permission]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  # ── Vocabulary in use: words that only work in pairs ───────────────────────
+
+  - slug: collocations-make-do-take-have
+    title: "make / do / take / have: the partner words"
+    summary: >
+      Make a decision, do homework, take a photo, have lunch — the verb is chosen by its noun,
+      not by meaning, and every language pairs them differently. "Do a mistake" is understood
+      and wrong. Mastery is the hundred everyday pairs sounding inevitable.
+    difficulty: 0.2
+    minutes: 45
+    requires: [the-definite-reference]
+    misconceptions:
+      - key: collocation-any-verb
+        statement: >
+          I think make, do, take, and have are interchangeable helper verbs — "do a photo" and
+          "make homework" carry the meaning fine, so the pairing is not something to study.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: word-families
+    title: "Word families: succeed, success, successful, successfully"
+    summary: >
+      One idea, four costumes — verb, noun, adjective, adverb — and the sentence slot decides
+      which one you need. "He succeed in life" fails not on the idea but on the costume.
+      Mastery is switching forms on demand for the everyday families.
+    difficulty: 0.4
+    minutes: 40
+    requires: [collocations-make-do-take-have]
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Recall, min-score: 0.9, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  - slug: nepali-english-false-friends
+    title: "False friends: Nepali-English that isn't English"
+    summary: >
+      Words English gave Nepali and Nepali reshaped: "hotel" for a rice-and-curry eatery,
+      "boring" for "I am bored", "out of station", "do one thing", "isn't it?" pinned to every
+      question. Each is perfect Nepali-English and misleading English-English. Mastery is
+      knowing which of your English words are actually Nepali.
+    difficulty: 0.1
+    minutes: 35
+    requires: [collocations-make-do-take-have]
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Recall, min-score: 0.9, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  # ── Connected writing: sentences that hold hands ───────────────────────────
+
+  - slug: linking-words
+    title: "Linking: but, so, because, although"
+    summary: >
+      The joints between ideas — contrast, result, reason, concession — and the punctuation each
+      one demands. The transfer trap is doubling the way Nepali structures allow: "Although it
+      rained, but we went" uses two joints where English permits one.
+    difficulty: 0.3
+    minutes: 40
+    requires: [present-perfect-vs-past]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: relative-clauses
+    title: "Relative clauses: who, which, that"
+    summary: >
+      "The man who called yesterday", "the phone that I bought" — folding two sentences into
+      one without dropping or doubling the pronoun ("the phone that I bought it" is the classic
+      transfer). Mastery is smooth defining clauses in everyday description.
+    difficulty: 0.8
+    minutes: 50
+    requires: [linking-words]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: conditionals-real-unreal
+    title: "Conditionals: real and unreal if"
+    summary: >
+      "If it rains, we'll stay home" (real, likely) against "If I had money, I would travel"
+      (unreal, imagined) — where the past form stops meaning past time and starts meaning
+      distance from reality. That reuse of the past is the hard part, and the contrast edge
+      to past-simple is where the distractors live.
+    difficulty: 1.1
+    minutes: 55
+    requires: [relative-clauses, past-simple]
+    contrasts: [past-simple]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: reported-speech-basics
+    title: "Reported speech: he said he was coming"
+    summary: >
+      Carrying someone's words across time: tenses step back (am → was, will → would), pronouns
+      and time words shift (tomorrow → the next day), and questions lose their inversion — "He
+      asked where I lived", not "where did I live". The machinery of everyday retelling.
+    difficulty: 1.6
+    minutes: 55
+    requires: [conditionals-real-unreal, past-simple]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  # ── Register & real writing: the reason the rest exists ────────────────────
+
+  - slug: formal-vs-informal
+    title: "Register: matching the words to the reader"
+    summary: >
+      "Hey, got a sec?" and "Would you have a moment?" are both correct — for different readers.
+      English politeness lives in indirectness and phrasing, not in honorific grammar like
+      Nepali's तपाईं/तिमी, so the instinct to reach for maximum formality everywhere produces
+      stiff, distant messages. Mastery is choosing register on purpose.
+    difficulty: 0.6
+    minutes: 40
+    requires: [linking-words]
+    misconceptions:
+      - key: formal-is-always-better
+        statement: >
+          I think the most formal phrasing is always the safest and most respectful choice —
+          like using तपाईं everywhere — so I write "I am writing to inquire" to friends and
+          colleagues alike.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: everyday-messages
+    title: "Everyday messages: plans, requests, apologies"
+    summary: >
+      The payoff concept: a WhatsApp plan, a request to a colleague, an apology for running
+      late — three sentences that sound like you, in the right register, with the grammar
+      earned below carrying them. This is where articles, tenses, and prepositions stop being
+      exercises and become your actual voice.
+    difficulty: 0.5
+    minutes: 50
+    requires: [formal-vs-informal, verb-preposition-pairs]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: short-emails
+    title: "Short emails: subject to sign-off"
+    summary: >
+      The everyday email in full: a subject line that says the point, an opening that isn't
+      "Respected Sir" for a teammate, a body of three clean sentences, a close that fits.
+      South-Asian formal templates are the specific unlearning here — warmth and clarity over
+      ceremony, in messages a real colleague would be glad to receive.
+    difficulty: 0.9
+    minutes: 55
+    requires: [everyday-messages]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
