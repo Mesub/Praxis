@@ -1,0 +1,333 @@
+# PRAXIS — domain pack: Reading English
+#
+# Objective: "Understand everyday and work English at reading speed — get the point, catch what
+# is implied, and trust the right answer over the one that merely repeats the words."
+#
+# One objective. The receiving-side twin of english-everyday.
+#
+# ── Who this pack is authored for ────────────────────────────────────────────────
+#
+# An intermediate learner whose first language is Nepali. The misconceptions below are not
+# grammar-transfer errors — they are READING-HABIT errors: the word-by-word decoding, the
+# dictionary reflex, the keyword-match trap, the nearest-noun guess. Each is a specific, nameable
+# habit that quietly wrecks comprehension, and each is declared so the item generator can hunt it
+# (M14.2) and the Twin can watch it die.
+#
+# Listening is deliberately absent. It needs audio PRAXIS does not have yet; rather than fake it
+# with transcripts (the pretending C-1 exists to stop), it is a named follow-up, M17 — Listening
+# English. This pack is "Reading English" so that one can be its honest sibling.
+#
+# ── How to read a concept ────────────────────────────────────────────────────────
+#
+#   difficulty  IRT logit prior, -3 (trivial) to +3 (brutal), for an INTERMEDIATE reader —
+#               replaced by measurement once the cohort responds.
+#   minutes     Focused work for a median learner to first produce evidence. A prior.
+#   requires    The ONLY ordering claim in this file. Edges stay inside this pack.
+#   contrasts   The confusable pair — where the Assessment engine hunts distractors.
+#   proof       CEILING: model-graded evidence (explain, critique) can never sum to hold.
+#               FLOOR: apply alone is always sufficient. Apply, for reading, means: a NEVER-SEEN
+#               passage answered against a FIXED KEY (multiple choice, true/false/not-given, span
+#               selection, ordering) — deterministic, unfakeable, and the key is never in the
+#               tutor's context (C-5). No build/predict; a comprehension answer cannot run against
+#               hidden tests. No recall; there is nothing here to memorize.
+
+domain: english-reading
+version: 1
+note: >
+  Third shipped pack. 15 concepts on the shortest honest path to understanding everyday and work
+  English at reading speed, authored for intermediate readers transferring from Nepali.
+  Difficulties and durations are priors awaiting cohort data. American spelling throughout.
+
+concepts:
+
+  # ── Region A · Decoding the sentence: the obstacles that stop the eye ───────
+
+  - slug: long-noun-phrases
+    title: "Long noun phrases: find the head"
+    summary: >
+      English stacks nouns into towers — "customer service response time targets" — and the word
+      it is really about is the last one, with everything before it describing it. A Nepali reader
+      trained on postpositions reaches for the first noun and loses the thread. Mastery is finding
+      the head of any stack fast, so a dense work sentence stops being a wall.
+    difficulty: 0.2
+    minutes: 30
+    misconceptions:
+      - key: head-is-first-noun
+        statement: >
+          I think the first noun in a long string is what the phrase is about, so "response time"
+          is the point of "customer service response time targets" — I read the tower left to right
+          and stop at the first thing that makes sense.
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  - slug: embedded-clauses
+    title: "Embedded clauses: the subject and verb split apart"
+    summary: >
+      English drops a whole clause between a subject and its verb — "the report that the manager
+      you emailed asked for is late" — and the reader who cannot bracket the middle loses who did
+      what. Mastery is holding the main frame while a relative or subordinate clause interrupts it,
+      and knowing the interruption ended.
+    difficulty: 0.6
+    minutes: 35
+    requires: [long-noun-phrases]
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  - slug: reference-tracking
+    title: "Reference: what it, they, this point back to"
+    summary: >
+      "It", "they", "this", "the former" — English leans hard on words that stand in for something
+      said earlier, sometimes paragraphs back. Mastery is tracing every reference to the right
+      antecedent, not the nearest noun, because the nearest noun is the trap the sentence was built
+      around.
+    difficulty: 0.4
+    minutes: 35
+    requires: [embedded-clauses]
+    misconceptions:
+      - key: nearest-noun-reference
+        statement: >
+          I think "it", "they" and "this" refer to the closest noun before them, so I grab whatever
+          word is nearest and move on — the writer put it there, so that must be what they mean.
+    proof:
+      hold: 0.78
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.78 }
+
+  - slug: connectives-that-flip
+    title: "Connectives that flip the meaning"
+    summary: >
+      "However", "although", "whereas", "nonetheless" — small words that reverse the sentence that
+      follows them. Skip one and you read the opposite of what was written. Mastery is treating a
+      connective as a turn signal: it tells you which way the meaning is about to go before you get
+      there.
+    difficulty: 0.5
+    minutes: 30
+    requires: [embedded-clauses]
+    misconceptions:
+      - key: connectives-are-filler
+        statement: >
+          I think words like "however" and "although" are just polish between the real facts, so I
+          skim past them to the nouns and verbs — the important information is in the content words,
+          not the little joining words.
+    proof:
+      hold: 0.78
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.78 }
+
+  - slug: phrasal-verbs-in-context
+    title: "Phrasal verbs: read them, don't translate them"
+    summary: >
+      "Put off", "look into", "run out of" — verb plus particle, meaning something no dictionary of
+      the parts predicts. A reader who translates the words gets nonsense. Mastery is inferring the
+      whole unit's meaning from the sentence around it, the same way a fluent reader never notices
+      they are doing it.
+    difficulty: 0.3
+    minutes: 30
+    requires: [embedded-clauses]
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  - slug: what-the-article-signals
+    title: "What a and the tell a reader"
+    summary: >
+      On the writing side you choose articles; on the reading side they are signals. "a client"
+      means new — you have not met them yet. "the client" means you should already know which one,
+      from earlier in the text or from shared context. Mastery is reading articles as the writer's
+      quiet instructions about what is new and what is assumed. (Mirror of the writing pack's
+      a-an-first-mention, from the other direction.)
+    difficulty: 0.1
+    minutes: 35
+    requires: [embedded-clauses]
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  # ── Region B · Getting the meaning: the strategies over the whole text ──────
+
+  - slug: gist-vs-detail
+    title: "Gist vs detail: match effort to purpose"
+    summary: >
+      Reading is not one speed. Sometimes you want the point of a whole email in five seconds;
+      sometimes you need the one date buried in paragraph three. Mastery is choosing — skim for
+      gist, scan for a fact, slow-read only where it pays — instead of grinding every text word by
+      word as if all of it mattered equally.
+    difficulty: -0.8
+    minutes: 25
+    requires: [embedded-clauses]
+    misconceptions:
+      - key: every-word-or-fail
+        statement: >
+          I think if I do not understand every word, I have not understood the passage — so I stop
+          at the first unknown word and cannot move on until it is resolved, and reading stays slow
+          and exhausting.
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  - slug: main-idea
+    title: "Main idea: the point, not a line of it"
+    summary: >
+      The main idea is the sentence that would survive if you cut the passage to one line — it
+      covers the whole thing, not one vivid detail. Mastery is telling the point from its support,
+      and refusing the answer that merely repeats words you can see, because repeating the text is
+      not the same as being its point.
+    difficulty: 0.4
+    minutes: 40
+    requires: [gist-vs-detail, what-the-article-signals]
+    contrasts: [gist-vs-detail]
+    misconceptions:
+      - key: keyword-match-wins
+        statement: >
+          I think the right answer is the option that shares the most words with the passage, so I
+          pick whichever choice repeats phrases I recognize — if the words match, it must be what
+          the text says.
+    proof:
+      hold: 0.78
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.78 }
+
+  - slug: inference
+    title: "Inference: the safe step past what is printed"
+    summary: >
+      Writers imply more than they state. Inference is the conclusion the text supports without
+      saying — and the discipline is its two edges: the safe step the words license, versus the
+      overreach they do not. Mastery is drawing what must be true, refusing what merely could be,
+      and never mistaking "printed literally" for "the whole meaning".
+    difficulty: 1.5
+    minutes: 45
+    requires: [main-idea, reference-tracking, connectives-that-flip]
+    misconceptions:
+      - key: literal-only
+        statement: >
+          I think only what is printed on the page counts as true, so a question about what the
+          writer implies feels like a trick — if it does not say it in words, I cannot conclude it.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: authors-stance
+    title: "Author's stance: fact, opinion, and which side"
+    summary: >
+      Behind most real writing is a position — for, against, or genuinely neutral — and a mix of
+      fact and opinion the reader has to sort. Mastery is hearing the writer's stance and telling a
+      reported fact from a confident claim, because a sentence written with certainty is not
+      thereby true.
+    difficulty: 1.4
+    minutes: 45
+    requires: [inference]
+    misconceptions:
+      - key: fact-and-opinion-same
+        statement: >
+          I think if something is written confidently and in print, it is a fact — I do not
+          separate what the writer is claiming from what is actually established, so opinion reads
+          to me as truth.
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
+
+  - slug: vocab-from-context
+    title: "Vocabulary from context: no dictionary"
+    summary: >
+      A fluent reader meets unknown words constantly and rarely stops — they infer a workable
+      meaning from the neighbors and read on, sharpening it over later sightings. Mastery is doing
+      the same: a good-enough guess from context beats a dictionary lookup that breaks your flow
+      and is forgotten by the next paragraph.
+    difficulty: 0.0
+    minutes: 30
+    requires: [gist-vs-detail]
+    misconceptions:
+      - key: dictionary-reflex
+        statement: >
+          I think every unknown word means stop and look it up, so I break my reading for each one
+          — I cannot trust a meaning I only guessed, so I check, and by the time I am back I have
+          lost the thread.
+    proof:
+      hold: 0.75
+      evidence:
+        - { type: Critique, min-score: 0.7, max: 0.15 }
+        - { type: Apply, min-score: 0.8, max: 0.75 }
+
+  - slug: reading-tone-register
+    title: "Reading tone and register"
+    summary: >
+      The same request reads warm or curt depending on word choice, and the register tells you how
+      the writer sees the relationship and what they really want. Mastery is reading tone off the
+      page — formal or friendly, patient or impatient — and using it to understand intent, not just
+      content. (Mirror of the writing pack's formal-vs-informal, from the reading side.)
+    difficulty: 0.8
+    minutes: 35
+    requires: [authors-stance]
+    proof:
+      hold: 0.78
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.78 }
+
+  # ── Region C · Real-world receiving: where it pays off ─────────────────────
+
+  - slug: reading-a-work-email
+    title: "Reading a work email: what is actually being asked"
+    summary: >
+      A real work email hides one thing that matters — the ask — inside greetings, context, and
+      politeness. Mastery is extracting it fast: what action is required of you, by when, and what
+      is only background, so you answer the email that was sent rather than the one you skimmed.
+    difficulty: 0.3
+    minutes: 30
+    requires: [main-idea]
+    proof:
+      hold: 0.78
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.78 }
+
+  - slug: following-instructions
+    title: "Following instructions: steps, conditions, order"
+    summary: >
+      Instructions in prose carry logic — do this before that, but only if this other thing is
+      true. "If X, then Y; otherwise Z" hides in plain sentences. Mastery is reading procedure and
+      condition out of ordinary text and executing in the right order, catching the "unless" and
+      the "before" that change everything.
+    difficulty: 0.2
+    minutes: 30
+    requires: [connectives-that-flip]
+    proof:
+      hold: 0.78
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.78 }
+
+  - slug: news-vs-opinion
+    title: "News vs opinion: reported fact vs argued claim"
+    summary: >
+      A news report and an opinion piece can look identical and do opposite things — one relays
+      what happened, the other argues you into a view. Mastery is telling them apart on sight, so
+      you read a claim as a claim to be weighed and a report as a fact to be checked, and never
+      swallow an argument because it was printed like news.
+    difficulty: 1.0
+    minutes: 40
+    requires: [inference, authors-stance]
+    proof:
+      hold: 0.80
+      evidence:
+        - { type: Explain, min-score: 0.7, max: 0.20 }
+        - { type: Apply, min-score: 0.8, max: 0.80 }
