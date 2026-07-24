@@ -577,6 +577,27 @@ match it, don't reinvent it.
 
 ---
 
+## M16 — Reading English (the third pack)
+
+> The receiving-side twin of the everyday-English pack: reading comprehension for the same
+> Nepali-transfer cohort, with **zero engine changes**. Spec:
+> `docs/superpowers/specs/2026-07-24-english-reading-pack-design.md` · plan:
+> `docs/superpowers/plans/2026-07-24-english-reading-pack.md`.
+
+- [x] **M16.1** The pack, the card, and the CI gate that holds it.
+      → `packs/english-reading/pack.yaml`: 15 concepts across 3 regions (decode the sentence,
+      get the meaning, real-world receiving), a DAG of requires edges, and **8 reading-habit
+      misconceptions declared by name** (keyword-match-wins, literal-only, nearest-noun-reference,
+      every-word-or-fail, dictionary-reflex, connectives-are-filler, fact-and-opinion-same,
+      head-is-first-noun) so the generator hunts them and the Twin watches them die. Apply carries
+      the floor on every contract — for reading, a never-seen passage answered against a fixed key
+      the tutor never sees (C-5); no Build/Predict/Recall. `EnglishReadingPackTests` holds the
+      shipped YAML to the pack standard in CI (validator gate, 15-count, every-concept-holdable,
+      misconception keys pinned). "Reading English" card in `web/lib/onboarding.ts` (+2 web tests).
+      Listening deferred to M17 (needs audio). Dev DB now carries three packs. Full gate PASSED.
+
+---
+
 ## Deliberately not in this plan
 
 Mobile · offline · i18n · payments · institutions · the News engine · the Project engine · the
