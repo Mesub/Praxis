@@ -53,6 +53,14 @@ export const OBJECTIVES: readonly Objective[] = [
     keywords: ["english", "grammar", "writing", "vocabulary", "articles", "tenses", "fluency", "esl", "language"],
   },
   {
+    id: "obj-reading-english",
+    title: "Reading English",
+    role: "Understand everyday and work English at reading speed — get the point, catch what's implied, and trust the right answer over the one that just repeats the words. The receiving side of fluency.",
+    cost: "Months of passages you only half understand. The habit of stopping to look up every word is the first thing that has to die.",
+    difficulty: "Serious",
+    keywords: ["reading", "comprehension", "understanding", "english", "inference", "skimming", "esl", "work email", "language"],
+  },
+  {
     id: "obj-radiologist",
     title: "Diagnostic Radiologist",
     role: "Read what is on the film and what is not. The discipline is calibration — knowing exactly how sure you are.",

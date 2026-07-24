@@ -76,3 +76,16 @@ describe("everyday english objective", () => {
     expect(english?.cost.length).toBeGreaterThan(20);
   });
 });
+
+describe("reading english objective", () => {
+  it('search finds it by "reading" and by "comprehension"', () => {
+    expect(searchObjectives("reading").map((o) => o.id)).toContain("obj-reading-english");
+    expect(searchObjectives("comprehension").map((o) => o.id)).toContain("obj-reading-english");
+  });
+
+  it("carries an honest cost line, not a brochure", () => {
+    const reading = OBJECTIVES.find((o) => o.id === "obj-reading-english");
+    expect(reading?.difficulty).toBe("Serious");
+    expect(reading?.cost.length).toBeGreaterThan(20);
+  });
+});
