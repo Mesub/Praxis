@@ -10,6 +10,20 @@
 
 Spec: `docs/superpowers/specs/2026-07-26-fixed-key-reading-item-design.md`.
 
+## Amendments during execution
+
+- **2026-07-26, during Task 2 — the "multiple choice requires a declared misconception" validator
+  rule is deleted.** Task 1 as written added it; Task 2 discovered it made the milestone's own goal
+  impossible, because only 8 of the 15 reading concepts declare misconceptions and the other 7
+  would have been forced onto model-graded prose — the exact marking this milestone exists to
+  remove. It also contradicted Task 5, which already designs for a distractor with no declared
+  belief (`test_a_distractor_with_no_declared_belief_is_wrong_and_says_nothing_more`). Ruled by the
+  project owner. Task 1's other rule — a format is legal only on `Apply` evidence — stands.
+- **2026-07-26, Task 2 — the pack's YAML shape.** Task 2's brief showed block-style evidence
+  clauses with `min_score:`. The real file uses flow style with hyphenated keys and PascalCase enum
+  values: `- { type: Apply, min-score: 0.8, max: 0.75, format: MultipleChoice }`. The brief was
+  wrong; the file's existing convention governs.
+
 ## Global Constraints
 
 - **No answer, ever, on the core side.** No column, field, property, or wire member in `praxis` or in any `.NET` type may carry the correct option. `SchemaTests` reads `information_schema` and must stay green.
