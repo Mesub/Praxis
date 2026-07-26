@@ -38,6 +38,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
+from decimal import Decimal
 from enum import StrEnum
 from typing import Protocol
 
@@ -62,6 +63,16 @@ class ClaimOutcome(StrEnum):
 
 class UnknownItemError(KeyError):
     """No key for this item. PRAXIS refuses rather than guessing at what the answer might be."""
+
+
+class FormatMismatchError(RuntimeError):
+    """The answer arrived in the wrong shape for the item.
+
+    Deliberately **not** a fallback to the model. A fixed-key item answered in prose is a bug in
+    the caller, and quietly marking it with a language model would turn a deterministic verdict
+    into an opinion while every test stayed green — which is precisely the failure the fixed key
+    exists to remove.
+    """
 
 
 class OracleUnclearError(RuntimeError):
@@ -166,13 +177,28 @@ class Oracle:
         self._client = client
         self._store = store
 
-    async def check(self, item_id: str, claim: str, attribution: Attribution) -> Verdict:
+    async def check(
+        self,
+        item_id: str,
+        claim: str,
+        attribution: Attribution,
+        selected_option: int | None = None,
+    ) -> Verdict:
         key = self._store.get(item_id)
 
         if key is None:
             raise UnknownItemError(
                 f"No answer key for item {item_id!r}. PRAXIS will not improvise a verdict about a "
                 "learner from an item it cannot mark."
+            )
+
+        if key.correct_option is not None:
+            return self._mark_fixed_key(key, selected_option, attribution)
+
+        if selected_option is not None:
+            raise FormatMismatchError(
+                f"Item {item_id!r} is marked from prose, but a selected option arrived. PRAXIS "
+                "does not guess which one the learner meant."
             )
 
         # **The one place in PRAXIS where the answer enters a prompt.** It is here, it is in this
@@ -205,6 +231,57 @@ class Oracle:
         )
 
         return Verdict(outcome=outcome, misconception=misconception, cost=completion.cost)
+
+    def _mark_fixed_key(
+        self, key: AnswerKey, selected_option: int | None, attribution: Attribution
+    ) -> Verdict:
+        """**Two integers.** No model, no prompt, no cost, and no room for an opinion.
+
+        There is no ``PARTIAL`` here and there cannot be: you either chose the option or you did
+        not. A grader that could call a four-way choice "partially right" is a grader that can be
+        argued with, and this one cannot be.
+        """
+        if selected_option is None:
+            raise FormatMismatchError(
+                f"Item {key.item_id!r} is marked against a fixed key, but no option was selected."
+            )
+
+        if not 0 <= selected_option < OPTION_COUNT:
+            raise FormatMismatchError(f"{selected_option} is not one of this item's options.")
+
+        correct = selected_option == key.correct_option
+
+        misconception = None if correct else key.option_misconceptions.get(selected_option)
+
+        # The same airlock the model path uses: only a belief the item's author declared.
+        if misconception is not None and misconception not in key.misconceptions:
+            log.warning(
+                "A distractor named a belief outside the item's declared set. Discarded.",
+                extra={"item_id": key.item_id},
+            )
+            misconception = None
+
+        log.info(
+            "claim checked",
+            extra={
+                "item_id": key.item_id,
+                "concept_id": key.concept_id,
+                "learner_id": attribution.learner_id,
+                "outcome": "correct" if correct else "wrong",
+                "misconception": misconception,
+            },
+        )
+
+        return Verdict(
+            outcome=ClaimOutcome.CORRECT if correct else ClaimOutcome.WRONG,
+            misconception=misconception,
+            # No model was called, so there is no real call to price. This is not the "unknown
+            # price" case cost.py warns about (a routed-to model with no entry in PRICES) — it is
+            # the opposite: we know the exact cost because nothing was spent. Reusing a real
+            # model's id here (even at 0 tokens via price_of) would misrepresent this verdict as
+            # having gone to a model when it never did, so it is built directly instead.
+            cost=Cost(model="none", input_tokens=0, output_tokens=0, usd=Decimal(0)),
+        )
 
 
 def _prompt(key: AnswerKey, claim: str) -> str:

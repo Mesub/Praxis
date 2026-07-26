@@ -22,6 +22,7 @@ from praxis_ai.cost import Attribution
 from praxis_ai.oracle import (
     AnswerKey,
     ClaimOutcome,
+    FormatMismatchError,
     InMemoryAnswerKeyStore,
     Oracle,
     OracleUnclearError,
@@ -233,3 +234,85 @@ async def test_neither_the_answer_nor_the_claim_is_logged(caplog: pytest.LogCapt
     # But the verdict *is* recorded — it is what the Twin will act on, and it is three words the
     # learner already knows.
     assert "thinks-tf-is-linear" in logged
+
+
+# ── Fixed-key items are marked by comparison, and touch no model ────────────
+
+
+class ExplodingClaude:
+    """A client that fails the test if it is touched. Deterministic marking means *no model*."""
+
+    async def complete(self, *args, **kwargs):
+        raise AssertionError(
+            "The oracle called a model to mark a fixed-key item. That is the whole thing this "
+            "milestone exists to stop: a comparison became an opinion."
+        )
+
+
+_KEY = AnswerKey(
+    item_id="item-1",
+    concept_id="c1",
+    question="Whose roster is wrong?",
+    answer="Anyone who swapped without telling the office.",
+    misconceptions={"keyword-match-wins": "I think the repeating option is right."},
+    correct_option=1,
+    option_misconceptions={0: "keyword-match-wins"},
+)
+
+
+@pytest.mark.asyncio
+async def test_the_right_index_is_correct_and_costs_nothing():
+    oracle = Oracle(ExplodingClaude(), InMemoryAnswerKeyStore({"item-1": _KEY}))
+
+    verdict = await oracle.check("item-1", "", Attribution("l1", "c1"), selected_option=1)
+
+    assert verdict.outcome is ClaimOutcome.CORRECT
+    assert verdict.misconception is None
+    assert verdict.cost.usd == 0
+
+
+@pytest.mark.asyncio
+async def test_a_distractor_names_the_belief_its_author_built_it_to_catch():
+    oracle = Oracle(ExplodingClaude(), InMemoryAnswerKeyStore({"item-1": _KEY}))
+
+    verdict = await oracle.check("item-1", "", Attribution("l1", "c1"), selected_option=0)
+
+    assert verdict.outcome is ClaimOutcome.WRONG
+    assert verdict.misconception == "keyword-match-wins"
+
+
+@pytest.mark.asyncio
+async def test_a_distractor_with_no_declared_belief_is_wrong_and_says_nothing_more():
+    oracle = Oracle(ExplodingClaude(), InMemoryAnswerKeyStore({"item-1": _KEY}))
+
+    verdict = await oracle.check("item-1", "", Attribution("l1", "c1"), selected_option=2)
+
+    assert verdict.outcome is ClaimOutcome.WRONG
+    assert verdict.misconception is None
+
+
+@pytest.mark.asyncio
+async def test_prose_sent_to_a_fixed_key_item_is_refused_rather_than_guessed():
+    oracle = Oracle(ExplodingClaude(), InMemoryAnswerKeyStore({"item-1": _KEY}))
+
+    with pytest.raises(FormatMismatchError):
+        await oracle.check("item-1", "I think it is the swappers", Attribution("l1", "c1"))
+
+
+@pytest.mark.asyncio
+async def test_a_selection_on_a_prose_item_is_refused_rather_than_guessed():
+    prose = AnswerKey(
+        item_id="item-2", concept_id="c1", question="q", answer="a", misconceptions={}
+    )
+    oracle = Oracle(ExplodingClaude(), InMemoryAnswerKeyStore({"item-2": prose}))
+
+    with pytest.raises(FormatMismatchError):
+        await oracle.check("item-2", "", Attribution("l1", "c1"), selected_option=0)
+
+
+@pytest.mark.asyncio
+async def test_an_index_outside_the_options_is_refused():
+    oracle = Oracle(ExplodingClaude(), InMemoryAnswerKeyStore({"item-1": _KEY}))
+
+    with pytest.raises(FormatMismatchError):
+        await oracle.check("item-1", "", Attribution("l1", "c1"), selected_option=9)

@@ -85,3 +85,35 @@ def test_the_store_has_the_oracle_shape_and_nothing_more(store: PostgresAnswerKe
     public = {name for name in dir(store) if not name.startswith("_")}
 
     assert public == {"add", "get", "ensure_schema"}
+
+
+def test_a_fixed_key_survives_a_round_trip(store):
+    store.add(
+        AnswerKey(
+            item_id="item-mcq",
+            concept_id="c1",
+            question="q",
+            answer="the second one",
+            misconceptions={"keyword-match-wins": "..."},
+            correct_option=1,
+            option_misconceptions={0: "keyword-match-wins"},
+        )
+    )
+
+    got = store.get("item-mcq")
+
+    assert got.correct_option == 1
+    assert got.option_misconceptions == {0: "keyword-match-wins"}
+
+
+def test_a_prose_key_still_round_trips_with_no_index(store):
+    store.add(
+        AnswerKey(
+            item_id="item-prose", concept_id="c1", question="q", answer="a", misconceptions={}
+        )
+    )
+
+    got = store.get("item-prose")
+
+    assert got.correct_option is None
+    assert got.option_misconceptions == {}

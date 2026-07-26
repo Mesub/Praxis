@@ -32,6 +32,15 @@ CREATE TABLE IF NOT EXISTS answer_keys (
 )
 """
 
+# A fixed-key item (M17) adds two columns to a table that may already have rows in it. Both
+# statements are ``IF NOT EXISTS``, so running this against a database that already has the
+# columns — or one that has never seen this file at all — is a no-op either way.
+_UPGRADE = """
+ALTER TABLE answer_keys ADD COLUMN IF NOT EXISTS correct_option integer;
+ALTER TABLE answer_keys
+    ADD COLUMN IF NOT EXISTS option_misconceptions jsonb NOT NULL DEFAULT '{}'::jsonb;
+"""
+
 
 class PostgresAnswerKeyStore:
     def __init__(self, url: str) -> None:
@@ -40,27 +49,35 @@ class PostgresAnswerKeyStore:
     def ensure_schema(self) -> None:
         with psycopg.connect(self._url, autocommit=True) as conn:
             conn.execute(_SCHEMA)
+            conn.execute(_UPGRADE)
 
     def add(self, key: AnswerKey) -> None:
         # Item ids are stem hashes: the same id is the same item, so first write wins and a
         # re-file is a no-op rather than an error.
         with psycopg.connect(self._url, autocommit=True) as conn:
             conn.execute(
-                "INSERT INTO answer_keys (item_id, concept_id, question, answer, misconceptions)"
-                " VALUES (%s, %s, %s, %s, %s) ON CONFLICT (item_id) DO NOTHING",
+                "INSERT INTO answer_keys"
+                " (item_id, concept_id, question, answer, misconceptions,"
+                "  correct_option, option_misconceptions)"
+                " VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (item_id) DO NOTHING",
                 (
                     key.item_id,
                     key.concept_id,
                     key.question,
                     key.answer,
                     Jsonb(key.misconceptions),
+                    key.correct_option,
+                    # jsonb object keys are strings; the option index is recovered as an int on
+                    # the way back out in `get`.
+                    Jsonb({str(k): v for k, v in key.option_misconceptions.items()}),
                 ),
             )
 
     def get(self, item_id: str) -> AnswerKey | None:
         with psycopg.connect(self._url) as conn:
             row = conn.execute(
-                "SELECT item_id, concept_id, question, answer, misconceptions"
+                "SELECT item_id, concept_id, question, answer, misconceptions,"
+                "       correct_option, option_misconceptions"
                 " FROM answer_keys WHERE item_id = %s",
                 (item_id,),
             ).fetchone()
@@ -74,4 +91,6 @@ class PostgresAnswerKeyStore:
             question=row[2],
             answer=row[3],
             misconceptions=dict(row[4]),
+            correct_option=row[5],
+            option_misconceptions={int(k): v for k, v in dict(row[6] or {}).items()},
         )
