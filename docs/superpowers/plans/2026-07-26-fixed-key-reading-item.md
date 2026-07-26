@@ -2388,6 +2388,209 @@ git commit -m "The reading item, proven end to end and on the record (M17)"
 
 ---
 
+---
+
+### Task 12: The verdict — the refusal, said out loud
+
+> **Added during execution, 2026-07-26, by owner ruling.** The approved prototype had three states;
+> the plan only scheduled the first. The spec promised this one — "it reports the outcome, the
+> confidence gap, and the named belief the distractor caught, and says out loud that the key was
+> never here to reveal" — and no task owned it. Runs after Task 10, before Task 11.
+
+**Files:**
+- Modify: `web/lib/diagnostic.ts`
+- Modify: `web/app/diagnostic/page.tsx`
+- Test: `web/lib/diagnostic.test.ts`, `web/app/diagnostic/page.test.tsx`
+
+**Interfaces:**
+- Consumes: `AnsweredItem` (already carries `statedConfidence`, `outcome`, `youSaidYouWereSure`, `andYouWere`, `misconception`), and `AnswerResponse` from `web/lib/api.ts`.
+- Produces: `Phase` gains `"marked"`; `verdictHeadline(item: AnsweredItem): string`; `lastAnswered(state: DiagnosticState): AnsweredItem | null`.
+
+**Why the page must pause.** Today `submit()` calls `recordAnswer` and then immediately `loadNext`, so the learner never sees what happened — the screen simply becomes the next question. The verdict needs a state the page can rest in, which means `recordAnswer` sets a phase and the next item is fetched only when the learner asks for it.
+
+- [ ] **Step 1: Write the failing pure tests**
+
+Add to `web/lib/diagnostic.test.ts`:
+
+```ts
+import { lastAnswered, recordAnswer, verdictHeadline, type AnsweredItem } from "./diagnostic";
+
+function answered(over: Partial<AnsweredItem> = {}): AnsweredItem {
+  return {
+    itemId: "i1",
+    stem: "Whose roster is wrong?",
+    statedConfidence: 0.85,
+    outcome: "Wrong",
+    youSaidYouWereSure: true,
+    andYouWere: "not",
+    misconception: "keyword-match-wins",
+    thetaBefore: 0,
+    thetaAfter: null,
+    ...over,
+  };
+}
+
+describe("verdictHeadline", () => {
+  it("names the gap when you were sure and wrong — the sentence PRAXIS exists to say", () => {
+    expect(verdictHeadline(answered())).toBe("You said 85% sure, and you were not right.");
+  });
+
+  it("does not scold when you were unsure and wrong", () => {
+    const h = verdictHeadline(answered({ statedConfidence: 0.55, youSaidYouWereSure: false }));
+    expect(h).toContain("55%");
+    expect(h).not.toContain("sure");
+  });
+
+  it("credits knowledge you are not spending when you were right but doubted it", () => {
+    const h = verdictHeadline(
+      answered({ outcome: "Correct", andYouWere: "right", statedConfidence: 0.6, youSaidYouWereSure: false }),
+    );
+    expect(h).toContain("Right");
+    expect(h).toContain("60%");
+  });
+
+  it("does not over-credit a confident right answer", () => {
+    const h = verdictHeadline(answered({ outcome: "Correct", andYouWere: "right" }));
+    expect(h).toContain("Right");
+  });
+});
+
+describe("recordAnswer", () => {
+  it("rests on the verdict instead of racing to the next question", () => {
+    const state = { phase: "asking" as const, current: { itemId: "i1", stem: "q", evidenceType: null, theta: 0, standardError: 1, confidentEnoughToStop: false, passage: null, options: null, format: "MultipleChoice" }, history: [], stopSays: null };
+    const after = recordAnswer(state, 0.85, { outcome: "Wrong", misconception: "keyword-match-wins", youSaidYouWereSure: true, andYouWere: "not" });
+    expect(after.phase).toBe("marked");
+    expect(lastAnswered(after)?.misconception).toBe("keyword-match-wins");
+  });
+});
+```
+
+- [ ] **Step 2: Run them and confirm they fail**
+
+Run: `cd web && npx vitest run lib/diagnostic.test.ts`
+Expected: FAIL — `verdictHeadline` is not exported.
+
+- [ ] **Step 3: Add the pure logic**
+
+In `web/lib/diagnostic.ts`, widen the phase and add both functions:
+
+```ts
+export type Phase = "loading" | "asking" | "marked" | "stopped";
+```
+
+```ts
+/**
+ * The one sentence PRAXIS can say that a learner cannot work out for themselves.
+ *
+ * It is only sayable because the confidence was stated *before* the outcome existed (C-6). Note
+ * what it never contains: which option was right. That is not withheld here — it was never in this
+ * browser, and there is no field on `AnsweredItem` it could have arrived in.
+ */
+export function verdictHeadline(item: AnsweredItem): string {
+  const pct = Math.round(item.statedConfidence * 100);
+
+  if (item.andYouWere === "right") {
+    return item.youSaidYouWereSure
+      ? `Right — and you said ${pct}% sure.`
+      : `Right — and you only said ${pct}%.`;
+  }
+
+  return item.youSaidYouWereSure
+    ? `You said ${pct}% sure, and you were not right.`
+    : `Not right — and you said ${pct}%, so you already suspected it.`;
+}
+
+/** The item just marked, for the screen that rests on it. Null before anything is answered. */
+export function lastAnswered(state: DiagnosticState): AnsweredItem | null {
+  return state.history.length === 0 ? null : state.history[state.history.length - 1];
+}
+```
+
+In `recordAnswer`, change the returned object to `{ ...state, phase: "marked", current: null, history: [...state.history, answered] }`.
+
+- [ ] **Step 4: Write the failing component tests**
+
+Add to `web/app/diagnostic/page.test.tsx`, reusing the file's existing `READING_ITEM` fixture and `fireEvent` idiom:
+
+```tsx
+it("rests on the verdict and names the belief, without naming the key", async () => {
+  nextItem.mockResolvedValue({ ok: true, data: READING_ITEM });
+  submitAnswer.mockResolvedValue({
+    ok: true,
+    data: { outcome: "Wrong", misconception: "keyword-match-wins", youSaidYouWereSure: true, andYouWere: "not" },
+  });
+  render(<DiagnosticPage />);
+
+  fireEvent.click((await screen.findAllByRole("radio"))[0]);
+  fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+
+  expect(await screen.findByText(/you were not right/i)).toBeInTheDocument();
+  expect(screen.getByText(/keyword-match-wins/)).toBeInTheDocument();
+  expect(screen.getByText(/never entered this browser/i)).toBeInTheDocument();
+
+  // The key is not here, on any path, in any casing.
+  expect(screen.queryByText(/correct answer/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/the right answer/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/option b/i)).not.toBeInTheDocument();
+});
+
+it("does not fetch the next item until the learner asks for it", async () => {
+  nextItem.mockResolvedValue({ ok: true, data: READING_ITEM });
+  submitAnswer.mockResolvedValue({
+    ok: true,
+    data: { outcome: "Wrong", misconception: null, youSaidYouWereSure: false, andYouWere: "not" },
+  });
+  render(<DiagnosticPage />);
+
+  fireEvent.click((await screen.findAllByRole("radio"))[0]);
+  const callsBefore = nextItem.mock.calls.length;
+  fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+
+  await screen.findByText(/not right/i);
+  expect(nextItem.mock.calls.length).toBe(callsBefore);
+
+  fireEvent.click(screen.getByRole("button", { name: /next question/i }));
+  await waitFor(() => expect(nextItem.mock.calls.length).toBe(callsBefore + 1));
+});
+
+it("handles a wrong answer that caught no named belief", async () => {
+  // 7 of the 15 reading concepts declare no misconceptions. A verdict with nothing to name is a
+  // normal outcome, not a broken screen.
+  nextItem.mockResolvedValue({ ok: true, data: READING_ITEM });
+  submitAnswer.mockResolvedValue({
+    ok: true,
+    data: { outcome: "Wrong", misconception: null, youSaidYouWereSure: true, andYouWere: "not" },
+  });
+  render(<DiagnosticPage />);
+
+  fireEvent.click((await screen.findAllByRole("radio"))[0]);
+  fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+
+  expect(await screen.findByText(/you were not right/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /next question/i })).toBeInTheDocument();
+});
+```
+
+- [ ] **Step 5: Render it**
+
+In `web/app/diagnostic/page.tsx`: stop `submit()` from calling `loadNext`, and render a `MarkedCard` when `state.phase === "marked"`. Follow the approved prototype at `docs/superpowers/specs/2026-07-26-fixed-key-reading-item-prototype.html` (states 2 and 3) for structure, tone and tokens — the outcome glyph beside the headline, the named-belief block, the refusal paragraph on an accent-bordered rail, and the "Next question →" button. Use `role="status"` on the panel so the verdict is announced. Colour is never the only signal: the glyph carries `✓` or `×`.
+
+The refusal copy must say, in substance: *PRAXIS is not telling you which one was right. The key never entered this browser or the process that served it, so there is nothing here to reveal — what you get instead is the belief that produced your answer, and the next question will go hunting for it.* Omit the belief block entirely when `misconception` is null; do not print an empty box.
+
+- [ ] **Step 6: Run everything**
+
+Run: `cd web && npm run test && npm run lint && npm run build && npx tsc --noEmit`
+Expected: all green, every pre-existing diagnostic test still passing.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add web/lib web/app/diagnostic
+git commit -m "The verdict rests, names the belief, and refuses the key out loud (M17)"
+```
+
+---
+
 ## Notes for whoever executes this
 
 - **Tasks 1–2 are .NET+pack, 4–6 are Python, 7–9 are .NET, 10 is web.** Tasks 4–6 depend only on each other and can be done by someone who never opens a `.cs` file; they must land before Task 7, because Task 7's tests exercise the widened wire.
