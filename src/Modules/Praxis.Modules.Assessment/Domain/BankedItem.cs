@@ -34,6 +34,21 @@ public sealed class BankedItem
     /// what the answer to it is, and that is somewhere else entirely.
     public string Stem { get; private set; } = string.Empty;
 
+    /// The shape of this item, and therefore how it is marked. `Prose` is every item banked before
+    /// M17 and its marking is unchanged.
+    public ItemFormat Format { get; private set; } = ItemFormat.Prose;
+
+    /// The text under study, for a reading item. **The learner reads it** — it is no more secret
+    /// than the stem, and the tutor is given it so a hint can point at an actual sentence.
+    public string? Passage { get; private set; }
+
+    /// The choices, in the order they are shown. **Not a secret**: they are on the screen.
+    ///
+    /// Which one is correct is not here, is not nullable-and-empty here, and is not derivable from
+    /// here. It is a single integer in the oracle's own database, and the only thing that has ever
+    /// come back out of that database is one of three words.
+    public IReadOnlyList<string>? Options { get; private set; }
+
     /// A stable hash of the stem. The core remembers these and passes them back as `AlreadySeen`,
     /// which is how *"never seen before"* stays a fact rather than a hope (M5.5).
     public string Fingerprint { get; private set; } = string.Empty;
@@ -84,7 +99,10 @@ public sealed class BankedItem
         double guessing = 0.0,
         Guid? familyId = null,
         string? targetsMisconception = null,
-        string? oracleId = null)
+        string? oracleId = null,
+        ItemFormat format = ItemFormat.Prose,
+        string? passage = null,
+        IReadOnlyList<string>? options = null)
         => new()
         {
             Id = id,
@@ -98,6 +116,9 @@ public sealed class BankedItem
             FamilyId = familyId,
             TargetsMisconception = targetsMisconception,
             OracleId = oracleId,
+            Format = format,
+            Passage = passage,
+            Options = options,
         };
 
     /// Only a projection may call this, and only in response to an event that says it happened.

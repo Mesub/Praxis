@@ -78,12 +78,22 @@ namespace Praxis.Modules.Assessment.Persistence.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<int>("Format")
+                        .HasColumnType("integer");
+
                     b.Property<double>("Guessing")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("Options")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("OracleId")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Passage")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
 
                     b.Property<string>("Stem")
                         .IsRequired()

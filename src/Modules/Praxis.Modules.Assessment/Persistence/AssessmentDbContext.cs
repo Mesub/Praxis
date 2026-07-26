@@ -1,4 +1,7 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Praxis.Modules.Assessment.Domain;
 
 namespace Praxis.Modules.Assessment.Persistence;
@@ -70,6 +73,24 @@ public sealed class AssessmentDbContext : DbContext
             item.Property(i => i.OracleId).HasMaxLength(128);
             item.Property(i => i.TimesServed).IsRequired();
             item.Property(i => i.TimesCorrect).IsRequired();
+
+            item.Property(i => i.Format).IsRequired();
+            item.Property(i => i.Passage).HasMaxLength(8_000);
+
+            // The options ride as jsonb: they are read whole, every time, and never queried into.
+            // A child table would buy ordering guarantees the list already has.
+            var optionsToJson = new ValueConverter<IReadOnlyList<string>?, string?>(
+                v => v == null ? null : JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => v == null ? null : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null));
+
+            var optionsComparer = new ValueComparer<IReadOnlyList<string>?>(
+                (a, b) => (a ?? new List<string>()).SequenceEqual(b ?? new List<string>()),
+                v => v == null ? 0 : v.Aggregate(0, (h, s) => HashCode.Combine(h, s.GetHashCode(StringComparison.Ordinal))),
+                v => v == null ? null : v.ToList());
+
+            item.Property(i => i.Options)
+                .HasConversion(optionsToJson, optionsComparer)
+                .HasColumnType("jsonb");
         });
 
         modelBuilder.Entity<LearnerMisconception>(mc =>

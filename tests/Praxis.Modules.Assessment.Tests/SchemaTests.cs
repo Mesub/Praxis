@@ -42,6 +42,9 @@ public sealed class SchemaTests
         "solution",
         "expected",
         "correct_response",
+        "correct_option",
+        "correct_index",
+        "key_index",
         "key_text",
         "answer_key",
         "ground_truth",
@@ -76,6 +79,31 @@ public sealed class SchemaTests
              injection, by a support tool, or by the next person who does not know why this test
              existed.
              """);
+    }
+
+    /// **The options are not a secret and the index is.**
+    ///
+    /// A learner is looking at all four choices; hiding them would be theatre. Which one is right is a
+    /// different kind of thing entirely, and it is not here — it went to `praxis_oracle`, a separate
+    /// database this process has no connection string for.
+    [Fact]
+    public async Task The_item_bank_holds_the_choices_and_never_which_one_is_right()
+    {
+        var columns = (await ColumnsIn(AssessmentDbContext.Schema))
+            .Where(c => c.Table == "items")
+            .Select(c => c.Column)
+            .ToList();
+
+        Assert.Contains("Passage", columns);
+        Assert.Contains("Options", columns);
+        Assert.Contains("Format", columns);
+
+        foreach (var forbidden in new[] { "CorrectOption", "CorrectIndex", "Key", "AnswerIndex" })
+        {
+            Assert.DoesNotContain(
+                columns,
+                c => c.Equals(forbidden, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     /// The bank has a stem, and a stem is **not** a secret. The learner is looking at it.
