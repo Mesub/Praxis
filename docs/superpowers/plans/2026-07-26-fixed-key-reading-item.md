@@ -551,6 +551,9 @@ git commit -m "The item grows a passage and four choices, and the guard grows th
 Add to `ai/tests/test_items.py` (reuse the module's existing fake Claude client — match its name; if it is `FakeClaude(text=...)`, use that):
 
 ```python
+import dataclasses
+import json
+
 import pytest
 
 from praxis_ai.items import Item, ItemFormat, ItemGenerator, ItemRejectedError, fingerprint_of
@@ -612,7 +615,8 @@ async def test_the_correct_index_goes_to_the_store_and_not_to_the_caller():
     )
 
     # The type has nowhere to put it, so this is belt and braces on the type's promise.
-    assert not any("correct" in f for f in vars(item))
+    # `Item` is a slots dataclass, so ask `dataclasses.fields` — `vars()` raises on slots classes.
+    assert not any("correct" in f.name for f in dataclasses.fields(item))
 
     key = store.get(item.id)
     assert key is not None
@@ -641,8 +645,10 @@ async def test_a_distractor_belief_outside_the_declared_set_is_discarded():
 
 @pytest.mark.asyncio
 async def test_a_multiple_choice_item_without_four_options_is_rejected():
-    reply = _MCQ_REPLY.replace('    "Anyone who calls the front desk."\n', "")
-    generator = ItemGenerator(FakeClaude(reply), InMemoryAnswerKeyStore())
+    # Three options, still valid JSON — so this fails the option-count rule, not the parser.
+    three = json.loads(_MCQ_REPLY)
+    three["options"] = three["options"][:3]
+    generator = ItemGenerator(FakeClaude(json.dumps(three)), InMemoryAnswerKeyStore())
 
     with pytest.raises(ItemRejectedError):
         await generator.generate(
@@ -690,6 +696,16 @@ class ItemFormat(StrEnum):
     PROSE = "prose"
     MULTIPLE_CHOICE = "multiple_choice"
 ```
+
+The option count is a named constant shared by the generator, the parser and the marker, so the three cannot drift apart on it. It goes in `oracle.py` — `items.py` already imports from `oracle.py`, and the reverse would be a circular import:
+
+```python
+#: How many options a fixed-key item has. Fixed at four for v1, and not a number to vary casually:
+#: it *is* the guessing floor the estimator is told about (c = 1/4).
+OPTION_COUNT = 4
+```
+
+Then in `items.py`, extend the existing import: `from praxis_ai.oracle import OPTION_COUNT, AnswerKey, InMemoryAnswerKeyStore`.
 
 Add to the `Item` dataclass, after `stem`:
 
@@ -814,15 +830,15 @@ Give `_parse` the signature `_parse(text: str, known_keys: frozenset[str], item_
 
     if (
         not isinstance(options, list)
-        or len(options) != 4
+        or len(options) != OPTION_COUNT
         or not all(isinstance(o, str) and o.strip() for o in options)
     ):
         raise ItemRejectedError(
-            "A fixed-key item needs exactly four non-empty options. Fewer is a different item with "
-            "a different guessing floor, and the estimator was told to expect four."
+            f"A fixed-key item needs exactly {OPTION_COUNT} non-empty options. Fewer is a different "
+            "item with a different guessing floor, and the estimator was told to expect four."
         )
 
-    if not isinstance(correct, int) or isinstance(correct, bool) or not 0 <= correct < 4:
+    if not isinstance(correct, int) or isinstance(correct, bool) or not 0 <= correct < OPTION_COUNT:
         raise ItemRejectedError(
             "The correct option must be an index into the four options. Without it the item is "
             "unmarkable, and a learner would spend real effort on it for nothing."
@@ -837,7 +853,7 @@ Give `_parse` the signature `_parse(text: str, known_keys: frozenset[str], item_
         except (TypeError, ValueError):
             continue
 
-        if index == correct or not 0 <= index < 4:
+        if index == correct or not 0 <= index < OPTION_COUNT:
             continue
 
         if key not in known_keys:
@@ -1070,7 +1086,7 @@ And add the marker, which touches no client:
                 f"Item {key.item_id!r} is marked against a fixed key, but no option was selected."
             )
 
-        if not 0 <= selected_option < 4:
+        if not 0 <= selected_option < OPTION_COUNT:
             raise FormatMismatchError(
                 f"{selected_option} is not one of this item's options."
             )
