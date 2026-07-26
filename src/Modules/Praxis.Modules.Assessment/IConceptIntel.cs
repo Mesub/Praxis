@@ -1,3 +1,5 @@
+using Praxis.Shared;
+
 namespace Praxis.Modules.Assessment;
 
 /// What the item generator needs to know about a concept, from whoever holds it.
@@ -8,7 +10,10 @@ public sealed record ConceptIntel(
     /// The generator's difficulty scale is 0..1; the pack's prior is an IRT logit. Mapped here,
     /// once: (prior + 3) / 6, clamped.
     double DifficultyTarget,
-    IReadOnlyDictionary<string, string> DeclaredMisconceptions);
+    IReadOnlyDictionary<string, string> DeclaredMisconceptions,
+
+    /// The shape this concept's apply items take, from its proof contract.
+    ItemFormat ApplyFormat = ItemFormat.Prose);
 
 public interface IConceptIntel
 {

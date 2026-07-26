@@ -91,7 +91,8 @@ public static class EnsureConceptPool
                         Difficulty: intel.DifficultyTarget,
                         LearnerId: learner.ToString(),
                         AlreadySeen: fingerprints,
-                        KnownMisconceptions: intel.DeclaredMisconceptions),
+                        KnownMisconceptions: intel.DeclaredMisconceptions,
+                        ItemFormat: intel.ApplyFormat),
                     ct);
 
                 if (!response.IsSuccess)
@@ -114,8 +115,15 @@ public static class EnsureConceptPool
                     // Generator 0..1 → IRT logits. The echo is clamped first: a buggy AI plane
                     // must not be able to write a wild logit the estimator would then trust.
                     difficulty: (Math.Clamp(item.Difficulty, 0.0, 1.0) * 6.0) - 3.0,
+                    // **A coin has a θ too.** An N-way choice is right 1/N of the time whatever the
+                    // learner knows, and the 3PL estimator must be told so — an item banked at zero
+                    // reads a lucky guess as evidence and inflates everyone who takes it.
+                    guessing: item.Options is { Count: > 0 } shown ? 1.0 / shown.Count : 0.0,
                     targetsMisconception: item.TargetsMisconception,
-                    oracleId: item.Id));
+                    oracleId: item.Id,
+                    format: intel.ApplyFormat,
+                    passage: item.Passage,
+                    options: item.Options));
             }
 
             if (generated.Count == 0 && failed is not null)

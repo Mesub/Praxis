@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Praxis.Modules.Assessment;
 using Praxis.Modules.Graph.Persistence;
+using Praxis.Shared;
 
 namespace Praxis.Api.Composition;
 
@@ -32,9 +33,19 @@ public sealed class GraphConceptIntel : IConceptIntel
             .OrderBy(m => m.Key)
             .ToDictionaryAsync(m => m.Key, m => m.Statement, ct);
 
+        // The Apply clause's format is what an item generated against this concept must take —
+        // Prose when the contract has no Apply clause at all, which is every concept before M17.
+        var applyFormat = await _db.Contracts.AsNoTracking()
+            .Where(c => c.ConceptId == conceptId)
+            .SelectMany(c => c.Accepted)
+            .Where(a => a.Type == EvidenceType.Apply)
+            .Select(a => (ItemFormat?)a.Format)
+            .FirstOrDefaultAsync(ct) ?? ItemFormat.Prose;
+
         return new ConceptIntel(
             concept.Summary,
             Math.Clamp((concept.DifficultyPrior + 3.0) / 6.0, 0.0, 1.0),
-            declared);
+            declared,
+            applyFormat);
     }
 }

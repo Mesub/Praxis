@@ -122,7 +122,12 @@ public sealed record CheckClaimRequest(
     /// Required on every call: the AI plane is stateless and cannot know who is asking, and nothing
     /// is spent anonymously.
     string LearnerId,
-    string ConceptId);
+    string ConceptId,
+
+    /// The option the learner chose, for a fixed-key item — and **nothing else about it**. The
+    /// index of the *correct* one is not here, is not on the response, and is not obtainable from
+    /// this process: it is in `praxis_oracle`, which this connection string does not reach.
+    int? SelectedOption = null);
 
 /// **Everything the tutor is ever told.** Three words, and possibly a key.
 public sealed record CheckClaimResponse(
@@ -189,7 +194,11 @@ public sealed record GenerateItemRequest(
 
     /// The concept's declared wrong beliefs, key → first-person statement. Keys, never answers:
     /// naming how a learner is likely wrong is the opposite of handing them what is right (C-5).
-    IReadOnlyDictionary<string, string> KnownMisconceptions);
+    IReadOnlyDictionary<string, string> KnownMisconceptions,
+
+    /// The shape the item must take, declared by the pack and carried here. The AI plane defaults
+    /// to prose when it is absent, which is every caller written before M17.
+    ItemFormat ItemFormat = ItemFormat.Prose);
 
 /// **Everything the core, the tutor and the learner ever see of an item.**
 ///

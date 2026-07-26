@@ -270,16 +270,103 @@ public sealed class EnsureConceptPoolTests
         Assert.Empty(world.Ai.Captured);
     }
 
+    /// A fixed-key concept's Apply items come back with a passage and options, and the bank must
+    /// hold both plus a guessing floor derived from how many options were actually shown — never
+    /// hardcoded to four, and never zero, because a coin has a theta too.
+    [Fact]
+    public async Task A_multiple_choice_concept_banks_the_passage_the_options_and_a_real_guessing_floor()
+    {
+        var world = new Harness(_fixture, Intel(applyFormat: ItemFormat.MultipleChoice));
+        var conceptId = Guid.CreateVersion7();
+
+        // 4 banked, unseen, so exactly 1 generate call is needed.
+        for (var i = 0; i < 4; i++)
+        {
+            await world.BankAsync(conceptId, Fingerprint());
+        }
+
+        world.Ai.Returns(Generated(
+            "oracle-1", 0.5, Fingerprint(),
+            passage: "A short passage about a roster.",
+            options: ["A", "B", "C", "D"]));
+
+        var result = await world.Run(conceptId);
+
+        Assert.True(result.IsSuccess);
+
+        var banked = Assert.Single(await world.ItemsFor(conceptId), i => i.OracleId == "oracle-1");
+
+        Assert.Equal(ItemFormat.MultipleChoice, banked.Format);
+        Assert.Equal("A short passage about a roster.", banked.Passage);
+        Assert.Equal(4, banked.Options!.Count);
+
+        // A four-way guess is right a quarter of the time. An item banked at c = 0 tells the
+        // estimator that a coin flip is knowledge, and inflates every learner who takes it.
+        Assert.Equal(0.25, banked.Guessing, precision: 6);
+    }
+
+    [Fact]
+    public async Task The_requested_format_is_the_one_the_concept_declares()
+    {
+        var world = new Harness(_fixture, Intel(applyFormat: ItemFormat.MultipleChoice));
+        var conceptId = Guid.CreateVersion7();
+
+        // 4 banked, unseen, so exactly 1 generate call is needed.
+        for (var i = 0; i < 4; i++)
+        {
+            await world.BankAsync(conceptId, Fingerprint());
+        }
+
+        world.Ai.Returns(Generated("oracle-1", 0.5, Fingerprint()));
+
+        await world.Run(conceptId);
+
+        Assert.NotEmpty(world.Ai.Captured);
+        Assert.All(world.Ai.Captured, r => Assert.Equal(ItemFormat.MultipleChoice, r.ItemFormat));
+    }
+
+    [Fact]
+    public async Task A_prose_concept_still_banks_a_prose_item_with_no_guessing_floor()
+    {
+        var world = new Harness(_fixture, Intel(applyFormat: ItemFormat.Prose));
+        var conceptId = Guid.CreateVersion7();
+
+        // 4 banked, unseen, so exactly 1 generate call is needed.
+        for (var i = 0; i < 4; i++)
+        {
+            await world.BankAsync(conceptId, Fingerprint());
+        }
+
+        world.Ai.Returns(Generated("oracle-1", 0.5, Fingerprint()));
+
+        await world.Run(conceptId);
+
+        var banked = Assert.Single(await world.ItemsFor(conceptId), i => i.OracleId == "oracle-1");
+
+        Assert.Equal(ItemFormat.Prose, banked.Format);
+        Assert.Null(banked.Passage);
+        Assert.Null(banked.Options);
+        Assert.Equal(0.0, banked.Guessing, precision: 6);
+    }
+
     private static string Fingerprint() => $"fp-{Guid.NewGuid():N}";
 
-    private static ConceptIntel Intel(IReadOnlyDictionary<string, string>? misconceptions = null)
+    private static ConceptIntel Intel(
+        IReadOnlyDictionary<string, string>? misconceptions = null,
+        ItemFormat applyFormat = ItemFormat.Prose)
         => new(
             Summary: "An inverted index maps terms to the documents that contain them.",
             DifficultyTarget: 0.5,
-            DeclaredMisconceptions: misconceptions ?? new Dictionary<string, string>());
+            DeclaredMisconceptions: misconceptions ?? new Dictionary<string, string>(),
+            ApplyFormat: applyFormat);
 
     private static Result<ItemResponse> Generated(
-        string oracleId, double difficulty, string fingerprint, string? targetsMisconception = null)
+        string oracleId,
+        double difficulty,
+        string fingerprint,
+        string? targetsMisconception = null,
+        string? passage = null,
+        IReadOnlyList<string>? options = null)
         => Result<ItemResponse>.Success(new ItemResponse(
             Id: oracleId,
             ConceptId: "concept",
@@ -287,7 +374,9 @@ public sealed class EnsureConceptPoolTests
             Stem: "A generated stem nobody in this process has read the answer to.",
             Difficulty: difficulty,
             Fingerprint: fingerprint,
-            TargetsMisconception: targetsMisconception));
+            TargetsMisconception: targetsMisconception,
+            Passage: passage,
+            Options: options));
 
     private sealed class Harness
     {
