@@ -81,42 +81,6 @@ public sealed class SchemaTests
              """);
     }
 
-    /// Words that, appearing anywhere in an `items` column name, suggest the column might hold or
-    /// point at the correct choice. Broader and noisier on purpose than `Forbidden`: this list is not
-    /// substring-safe against real column names (real columns here are PascalCase with no
-    /// underscores), which is exactly what made the first version of this guard toothless — it banned
-    /// `correct_option` when the column that would actually get added is `CorrectOption`.
-    ///
-    /// This runs only against `items`, so its false positives are cheap: add the column to
-    /// `KnownInnocent` below with a one-line reason. Its false negatives are the ones that matter, and
-    /// an exact-name blocklist has one for every name nobody thought to type in advance — which is why
-    /// this is a "does it brush against a suspicious word" check with an allowlist, not the reverse.
-    private static readonly string[] KeyLike =
-    [
-        "correct", "right", "key", "answer", "index", "option",
-    ];
-
-    /// Columns whose names brush against a word in `KeyLike` but are demonstrably not a key.
-    /// **Adding to this list is a deliberate act.** That is the point: a new column with a suspicious
-    /// name fails the build until somebody consciously argues it is innocent, which is the only way a
-    /// guard catches the case nobody thought of.
-    private static readonly string[] KnownInnocent =
-    [
-        "Id", "ConceptId", "FamilyId", "OracleId",  // identifiers, not keys
-        "TimesCorrect",                             // a count of attempts, not a key
-        "Options",                                  // the choices, which the learner is looking at
-        "TargetsMisconception",                     // a named wrong belief -- the opposite of an answer
-    ];
-
-    /// The detection logic itself, pulled out of the test so it can be exercised directly against a
-    /// hand-picked list of names — the only way to prove it catches a name nobody enumerated, rather
-    /// than merely proving the four names somebody thought to write down are absent.
-    private static List<string> KeyLikeSuspects(IEnumerable<string> columnNames)
-        => columnNames
-            .Where(c => KeyLike.Any(w => c.Contains(w, StringComparison.OrdinalIgnoreCase)))
-            .Where(c => !KnownInnocent.Contains(c, StringComparer.OrdinalIgnoreCase))
-            .ToList();
-
     /// **The options are not a secret and the index is.**
     ///
     /// A learner is looking at all four choices; hiding them would be theatre. Which one is right is a
@@ -137,21 +101,21 @@ public sealed class SchemaTests
         Assert.Contains("Options", columns);
         Assert.Contains("Format", columns);
 
-        var suspects = KeyLikeSuspects(columns);
+        var suspects = KeyLikeColumnGuard.Suspects(columns);
 
         Assert.True(
             suspects.Count == 0,
             $"""
              A column on `items` brushes against a word that suggests it might hold or point at the
-             correct choice, and it is not on `KnownInnocent`:
+             correct choice, and it is not on `KeyLikeColumnGuard.KnownInnocent`:
 
                  {string.Join("\n    ", suspects)}
 
              Options exist on this item now, which makes "just also store which one is right" the
              single most tempting column to add to this table. If this column is genuinely innocent,
-             say so by adding it to `KnownInnocent` with a one-line reason. If it is not innocent, it
-             does not belong here — it belongs behind the oracle, in `praxis_oracle`, a database this
-             process has no connection string for.
+             say so by adding it to `KeyLikeColumnGuard.KnownInnocent` with a one-line reason. If it is
+             not innocent, it does not belong here — it belongs behind the oracle, in `praxis_oracle`,
+             a database this process has no connection string for.
              """);
     }
 
@@ -215,5 +179,104 @@ public sealed class SchemaTests
         }
 
         return found;
+    }
+}
+
+/// **The matching logic behind `The_item_bank_holds_the_choices_and_never_which_one_is_right`,
+/// pulled out so it can be tested without a database.**
+///
+/// This exists to be called from two places: `SchemaTests`, which asks the real
+/// `information_schema` whether any `items` column looks like a key, and
+/// `KeyLikeColumnGuardTests` below, which asks this logic directly about names that were never in
+/// any database. Splitting it out is what makes the second test possible — and the second test is
+/// what makes the first one trustworthy.
+internal static class KeyLikeColumnGuard
+{
+    /// Words that, appearing anywhere in an `items` column name, suggest the column might hold or
+    /// point at the correct choice. Broader and noisier on purpose than `SchemaTests.Forbidden`:
+    /// this list is not substring-safe against real column names (real columns here are PascalCase
+    /// with no underscores), which is exactly what made the first version of this guard toothless —
+    /// it banned `correct_option` when the column that would actually get added is `CorrectOption`.
+    ///
+    /// This runs only against `items`, so its false positives are cheap: add the column to
+    /// `KnownInnocent` below with a one-line reason. Its false negatives are the ones that matter,
+    /// and an exact-name blocklist has one for every name nobody thought to type in advance — which
+    /// is why this is a "does it brush against a suspicious word" check with an allowlist, not the
+    /// reverse.
+    internal static readonly string[] KeyLike =
+    [
+        "correct", "right", "key", "answer", "index", "option",
+    ];
+
+    /// Columns whose names brush against a word in `KeyLike` but are demonstrably not a key.
+    /// **Adding to this list is a deliberate act.** That is the point: a new column with a
+    /// suspicious name fails the build until somebody consciously argues it is innocent, which is
+    /// the only way a guard catches the case nobody thought of.
+    internal static readonly string[] KnownInnocent =
+    [
+        "Id", "ConceptId", "FamilyId", "OracleId",  // identifiers, not keys
+        "TimesCorrect",                             // a count of attempts, not a key
+        "Options",                                  // the choices, which the learner is looking at
+        "TargetsMisconception",                     // a named wrong belief -- the opposite of an answer
+    ];
+
+    /// The columns from `columnNames` that brush against `KeyLike` and are not on `KnownInnocent`.
+    internal static List<string> Suspects(IEnumerable<string> columnNames)
+        => columnNames
+            .Where(c => KeyLike.Any(w => c.Contains(w, StringComparison.OrdinalIgnoreCase)))
+            .Where(c => !KnownInnocent.Contains(c, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+}
+
+/// **`SchemaTests` cannot tell "correctly finds nothing" apart from "structurally cannot find
+/// anything" — this test can, because it doesn't need a database to be wrong in.**
+///
+/// The schema-reading guard asks the real `assessment.items` table whether any column looks like a
+/// key, and today the honest answer is no. But a passing assertion over an empty result set looks
+/// identical whether the detector is working or whether `KeyLikeColumnGuard.KeyLike` was emptied in
+/// a merge conflict, `.Any` was swapped for `.All`, or the `KnownInnocent` filter was inverted.
+/// Every existing test would stay green in every one of those cases, right up until a real
+/// `CorrectChoice`-shaped column shipped — which is exactly the silent failure this whole mechanism
+/// exists to prevent.
+///
+/// So this test runs `KeyLikeColumnGuard.Suspects` directly against a hardcoded list of names that
+/// are not, and have never been, in any database. **Deliberately no `[Collection]`, no fixture, no
+/// constructor parameter** — this must run in milliseconds with Docker stopped, because the whole
+/// point is to keep the detector honest independent of whatever the schema happens to look like
+/// today.
+public sealed class KeyLikeColumnGuardTests
+{
+    [Fact]
+    public void The_detector_catches_names_nobody_enumerated_and_spares_the_innocent()
+    {
+        var suspects = KeyLikeColumnGuard.Suspects(
+        [
+            // Names nobody wrote down anywhere else in this file -- the point is that the detector
+            // finds these by matching on `KeyLike`, not by recognizing them.
+            "CorrectChoice",
+            "KeyIndex",
+            "OptionKey",
+            "RightAnswer",
+
+            // Real (or real-shaped) columns that must stay legal.
+            "TimesCorrect",
+            "Options",
+            "Stem",
+            "OracleId",
+            "ConceptId",
+            "TargetsMisconception",
+        ]);
+
+        Assert.Contains("CorrectChoice", suspects);
+        Assert.Contains("KeyIndex", suspects);
+        Assert.Contains("OptionKey", suspects);
+        Assert.Contains("RightAnswer", suspects);
+
+        Assert.DoesNotContain("TimesCorrect", suspects);
+        Assert.DoesNotContain("Options", suspects);
+        Assert.DoesNotContain("Stem", suspects);
+        Assert.DoesNotContain("OracleId", suspects);
+        Assert.DoesNotContain("ConceptId", suspects);
+        Assert.DoesNotContain("TargetsMisconception", suspects);
     }
 }
