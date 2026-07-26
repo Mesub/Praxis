@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PRAXIS — the reading item (M17 prototype)</title>
+<style>
+  /* Tokens lifted verbatim from web/app/globals.css — this prototype must look like the app. */
+  :root {
+    --bg:#0b0c0e; --surface:#141619; --surface-2:#1a1d21; --surface-3:#20242a;
+    --line:#24282e; --line-soft:#1b1e23;
+    --ink:#f2f3f5; --ink-2:#a8aeb8; --ink-3:#6b727d; --ink-4:#4a505a;
+    --accent:#e3b341; --accent-ink:#0b0c0e;
+    --accent-soft:rgba(227,179,65,.12); --accent-line:rgba(227,179,65,.34);
+    --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --critical:#d03b3b; --s1:#3987e5;
+    --r-sm:6px; --r-md:10px; --r-lg:16px;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --mono:ui-monospace,"Cascadia Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --ease:cubic-bezier(.2,.7,.2,1);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{color-scheme:dark}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .serif{font-family:var(--serif)}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  ::selection{background:var(--accent-soft)}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+  .wrap{max-width:1060px;margin:0 auto;padding:40px 16px 80px}
+  .brand{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:.14em}
+  .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.2em;color:var(--ink-3);margin:36px 0 0}
+  h1{font-family:var(--serif);font-weight:400;font-size:clamp(24px,3.6vw,34px);line-height:1.1;margin:12px 0 0}
+  .lede{max-width:64ch;font-size:14.5px;line-height:1.7;color:var(--ink-2);margin:16px 0 0}
+  hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+  .grid{display:grid;gap:24px}
+  @media (min-width:900px){.grid{grid-template-columns:1fr 400px;align-items:start}}
+
+  .card{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:20px}
+  .pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:11px;color:var(--ink-3)}
+  .pill.on{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .label{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-4)}
+
+  /* ── The passage. It is the object of study, so it gets real reading typography. ── */
+  .passage{font-family:var(--serif);font-size:16.5px;line-height:1.75;color:var(--ink);max-width:66ch}
+  .passage p{margin:0 0 .95em}
+  .passage p:last-child{margin-bottom:0}
+  .passage .hdr{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--ink-2);border-left:2px solid var(--line);padding-left:12px;margin-bottom:1.1em}
+  .scroller{max-height:52vh;overflow-y:auto;padding-right:10px}
+  .scroller::-webkit-scrollbar{width:8px}
+  .scroller::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:8px}
+  .note{font-size:11.5px;line-height:1.6;color:var(--ink-4);margin-top:14px;border-top:1px solid var(--line-soft);padding-top:12px}
+
+  /* ── Options: real radios, kept semantic; the visual is a sibling, not a replacement. ── */
+  fieldset{border:0;padding:0;margin:18px 0 0;min-width:0}
+  legend{padding:0}
+  .opt{position:relative;display:block;margin-top:8px}
+  .opt input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+  .opt .face{display:flex;gap:12px;align-items:flex-start;min-height:48px;padding:11px 13px;
+    border:1px solid var(--line);background:var(--bg);border-radius:var(--r-sm);
+    transition:border-color .2s var(--ease),background-color .2s var(--ease)}
+  .opt .key{flex:0 0 auto;width:22px;height:22px;margin-top:1px;border:1px solid var(--line);border-radius:999px;
+    display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--ink-3);background:var(--surface)}
+  .opt .txt{font-size:14px;line-height:1.5;color:var(--ink-2)}
+  .opt input:hover + .face{border-color:var(--ink-4)}
+  .opt input:focus-visible + .face{outline:2px solid var(--accent);outline-offset:2px}
+  .opt input:checked + .face{border-color:var(--accent-line);background:var(--accent-soft)}
+  .opt input:checked + .face .key{border-color:var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:700}
+  .opt input:checked + .face .txt{color:var(--ink)}
+  .opt input:disabled + .face{cursor:default;opacity:.75}
+  .opt input:disabled{cursor:default}
+  /* Chosen-and-wrong: colour is never the only signal — the key glyph changes to ×. */
+  .opt.picked-wrong .face{border-color:var(--critical);background:rgba(208,59,59,.10)}
+  .opt.picked-wrong .key{border-color:var(--critical);background:var(--critical);color:#fff}
+  .opt.picked-right .face{border-color:var(--good);background:rgba(12,163,12,.10)}
+  .opt.picked-right .key{border-color:var(--good);background:var(--good);color:#fff}
+
+  .conf{margin-top:20px;border:1px solid var(--line);background:var(--bg);border-radius:var(--r-sm);padding:12px 14px}
+  .conf .top{display:flex;justify-content:space-between;align-items:baseline}
+  .conf output{font-family:var(--mono);font-size:15px;color:var(--ink-2)}
+  .conf output.sure{color:var(--accent)}
+  input[type=range]{width:100%;margin-top:8px;accent-color:var(--accent);height:24px}
+  .conf .why{font-size:11.5px;line-height:1.6;color:var(--ink-4);margin:8px 0 0}
+  .conf b{color:var(--ink-3);font-weight:600}
+
+  .btn{appearance:none;border:0;border-radius:var(--r-sm);background:var(--accent);color:var(--accent-ink);
+    font:500 13.5px/1 var(--sans);padding:14px 20px;min-height:44px;cursor:pointer;margin-top:16px;
+    transition:opacity .22s var(--ease)}
+  .btn:hover{opacity:.95}
+  .btn:disabled{background:var(--surface-2);color:var(--ink-4);cursor:not-allowed}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink-2)}
+  .btn.ghost:hover{background:var(--surface-2);opacity:1}
+
+  /* ── The verdict ── */
+  .verdict{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:20px;margin-top:20px}
+  .verdict.wrong{border-color:rgba(208,59,59,.45)}
+  .verdict.right{border-color:rgba(12,163,12,.45)}
+  .verdict h2{font-family:var(--serif);font-weight:400;font-size:22px;line-height:1.2;margin:10px 0 0}
+  .glyph{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:999px;font-family:var(--mono);font-size:14px}
+  .glyph.no{background:rgba(208,59,59,.14);border:1px solid var(--critical);color:var(--critical)}
+  .glyph.yes{background:rgba(12,163,12,.14);border:1px solid var(--good);color:var(--good)}
+  .belief{margin-top:16px;border:1px solid rgba(208,59,59,.4);background:var(--bg);border-radius:var(--r-sm);padding:13px 14px}
+  .belief .k{font-family:var(--mono);font-size:12px;color:var(--critical)}
+  .belief .s{font-size:13.5px;line-height:1.6;color:var(--ink-2);margin-top:6px}
+  .refusal{margin-top:16px;border-left:2px solid var(--accent-line);padding:2px 0 2px 14px;font-size:12.5px;line-height:1.65;color:var(--ink-3)}
+  .refusal b{color:var(--ink-2);font-weight:600}
+
+  /* ── Tutor drawer ── */
+  .drawer{margin-top:14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg);overflow:hidden}
+  .drawer summary{list-style:none;cursor:pointer;padding:12px 14px;min-height:44px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;color:var(--ink-2)}
+  .drawer summary::-webkit-details-marker{display:none}
+  .drawer .body{padding:0 14px 14px;border-top:1px solid var(--line-soft)}
+  .budget{font-family:var(--mono);font-size:12px;color:var(--accent)}
+  .said{font-size:13.5px;line-height:1.65;color:var(--ink);font-family:var(--serif);margin:12px 0 0;border-left:2px solid var(--accent-line);padding-left:12px}
+  .sees{display:grid;gap:6px;margin-top:14px;font-size:12px;color:var(--ink-3)}
+  .sees div{display:flex;gap:8px;align-items:baseline}
+  .sees .m{font-family:var(--mono);width:14px;flex:0 0 auto}
+  .sees .yes{color:var(--good)}.sees .no{color:var(--critical)}
+
+  aside .tile{border:1px solid var(--line);background:var(--bg);border-radius:var(--r-sm);padding:10px 12px;margin-top:12px}
+  aside .tile .v{font-family:var(--mono);font-size:15px;margin-top:2px}
+  .k4{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-4)}
+
+  .switch{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px}
+  .switch button{appearance:none;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink-3);
+    border-radius:999px;padding:8px 14px;min-height:40px;font:400 12px/1 var(--sans)}
+  .switch button[aria-pressed=true]{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
+  .stage{display:none}.stage.on{display:block}
+  .hint-bar{font-size:12px;color:var(--ink-4);border:1px dashed var(--line);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">PRAXIS</div>
+
+  <p class="eyebrow">M17 prototype · the reading item</p>
+  <h1>A passage you have never seen, and a key PRAXIS cannot show you.</h1>
+  <p class="lede">
+    This is the answering screen for <b>Reading English</b>. The passage and the four choices are yours to see.
+    Which choice is correct lives in a different database, on the far side of the AI wire — so nothing on this
+    page, and nothing in the process that serves it, can tell you. Marking is an integer comparison, not a
+    model's opinion.
+  </p>
+
+  <hr />
+
+  <p class="hint-bar">Prototype — click through the three states. Nothing is saved.</p>
+
+  <div class="switch" role="group" aria-label="Prototype states">
+    <button type="button" data-go="ask" aria-pressed="true">1 · Answering</button>
+    <button type="button" data-go="wrong" aria-pressed="false">2 · Wrong — a named belief</button>
+    <button type="button" data-go="right" aria-pressed="false">3 · Right</button>
+  </div>
+
+  <!-- ══════════════════ STATE 1 — ANSWERING ══════════════════ -->
+  <section class="stage on" id="ask">
+    <div class="grid">
+      <main>
+        <div class="card">
+          <div class="row">
+            <span class="pill on">Question 3</span>
+            <span class="pill">apply</span>
+            <span class="pill">reading · fixed key</span>
+          </div>
+
+          <p class="label" style="margin:18px 0 8px">The passage</p>
+          <div class="scroller">
+            <div class="passage">
+              <div class="hdr">
+                From: Priya Sharma, Operations<br />
+                To: All warehouse staff<br />
+                Subject: The new roster system — Monday
+              </div>
+              <p>
+                The new scheduling system goes live on Monday. Everyone who worked a Saturday shift last month
+                has already been moved across, so most of you need do nothing at all.
+              </p>
+              <p>
+                However, if you swapped a Saturday with a colleague and did not tell the office at the time, the
+                system has no record of the swap. It will put the original name on the roster, not yours.
+              </p>
+              <p>
+                Please check your own roster before Friday. If it is wrong, reply to this email. Do not call the
+                front desk — they cannot edit the new system yet, and they will only send you back here.
+              </p>
+            </div>
+          </div>
+          <p class="note">
+            Re-read it as often as you like. Your time is recorded because it is data about you — it is not a score,
+            and reading slowly has never been marked down.
+          </p>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <p class="serif" style="font-size:19px;line-height:1.35;margin:0">
+            Whose roster is the new system most likely to get wrong?
+          </p>
+
+          <fieldset>
+            <legend class="label" style="margin-bottom:2px">Choose one</legend>
+
+            <label class="opt">
+              <input type="radio" name="a" value="0" />
+              <span class="face"><span class="key">A</span><span class="txt">Everyone who worked a Saturday shift last month.</span></span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="a" value="1" />
+              <span class="face"><span class="key">B</span><span class="txt">Anyone who swapped a Saturday shift and did not tell the office.</span></span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="a" value="2" />
+              <span class="face"><span class="key">C</span><span class="txt">All warehouse staff, because the whole system changes on Monday.</span></span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="a" value="3" />
+              <span class="face"><span class="key">D</span><span class="txt">Anyone who calls the front desk instead of replying.</span></span>
+            </label>
+          </fieldset>
+
+          <div class="conf">
+            <div class="top">
+              <label class="label" for="c1">How sure are you?</label>
+              <output id="c1out" for="c1">70%</output>
+            </div>
+            <input id="c1" type="range" min="50" max="95" step="5" value="70" />
+            <p class="why">
+              Stated <b>before</b> you find out. Being wrong and knowing you might be is healthy; being wrong and
+              <b>sure</b> is the only thing on your report you could not have worked out for yourself.
+            </p>
+          </div>
+
+          <button class="btn" id="submit" disabled>Submit answer</button>
+
+          <details class="drawer">
+            <summary>
+              <span>Stuck? Ask the tutor</span>
+              <span class="budget">budget 40 left · next rung 5</span>
+            </summary>
+            <div class="body">
+              <p class="said">
+                “Sentence two begins with <i>However</i>. That word is there to reverse the sentence before it.
+                Who does it reverse the news for?”
+              </p>
+              <div class="sees">
+                <div><span class="m yes">✓</span><span>The tutor can read the passage and the question — so a hint can point at the actual text.</span></div>
+                <div><span class="m no">×</span><span>The tutor is never given the four choices. It cannot narrow them for you, because it has not been told they exist.</span></div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </main>
+
+      <aside>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <h2 class="label" style="margin:0">Twin · seeding live</h2>
+            <span class="mono" style="font-size:11px;color:var(--ink-4)">2 answered</span>
+          </div>
+          <div class="tile">
+            <div class="k4">Ability estimate ± uncertainty</div>
+            <div class="v">θ −0.35 <span style="color:var(--ink-4)">± 0.71</span></div>
+          </div>
+          <div class="tile">
+            <div class="k4">Guessing floor · 4 options</div>
+            <div class="v">c = 0.25</div>
+            <p style="font-size:10.5px;line-height:1.6;color:var(--ink-4);margin:6px 0 0">
+              A four-way guess is right a quarter of the time, so the model is told so. A multiple-choice item that
+              pretends otherwise inflates everyone.
+            </p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ══════════════════ STATE 2 — WRONG ══════════════════ -->
+  <section class="stage" id="wrong">
+    <div class="grid">
+      <main>
+        <div class="card">
+          <div class="row">
+            <span class="pill">Question 3</span><span class="pill">apply</span><span class="pill">marked</span>
+          </div>
+          <p class="serif" style="font-size:19px;line-height:1.35;margin:16px 0 0">
+            Whose roster is the new system most likely to get wrong?
+          </p>
+          <fieldset>
+            <legend class="label" style="margin-bottom:2px">Your answer</legend>
+            <div class="opt picked-wrong">
+              <span class="face"><span class="key">×</span><span class="txt" style="color:var(--ink)">Everyone who worked a Saturday shift last month.</span></span>
+            </div>
+            <div class="opt"><span class="face" style="opacity:.5"><span class="key">B</span><span class="txt">Anyone who swapped a Saturday shift and did not tell the office.</span></span></div>
+            <div class="opt"><span class="face" style="opacity:.5"><span class="key">C</span><span class="txt">All warehouse staff, because the whole system changes on Monday.</span></span></div>
+            <div class="opt"><span class="face" style="opacity:.5"><span class="key">D</span><span class="txt">Anyone who calls the front desk instead of replying.</span></span></div>
+          </fieldset>
+        </div>
+
+        <div class="verdict wrong" role="status">
+          <span class="glyph no">×</span>
+          <h2>You said 85% sure, and you were not right.</h2>
+          <p style="font-size:14px;line-height:1.7;color:var(--ink-2);margin:14px 0 0">
+            That gap is the most useful sentence PRAXIS can say to you, and it is only sayable because you stated
+            the number before you found out.
+          </p>
+
+          <div class="belief">
+            <div class="k">keyword-match-wins</div>
+            <div class="s">
+              You chose the option that repeats the passage's words most closely — <i>“worked a Saturday shift last
+              month”</i> appears in the text almost verbatim. In the passage that phrase describes the people who
+              need do <b style="color:var(--ink)">nothing</b>. Matching words is not the same as matching meaning,
+              and this is the habit that will cost you most.
+            </div>
+          </div>
+
+          <p class="refusal">
+            <b>PRAXIS is not telling you which one was right.</b> The key never entered this page, this browser, or
+            the process that served it — so there is nothing here to reveal, and a jailbreak would retrieve nothing.
+            What you get instead is the belief that produced your answer, and the next question will go hunting for it.
+          </p>
+
+          <div class="row" style="margin-top:20px;gap:10px">
+            <button class="btn" style="margin:0">Next question →</button>
+            <button class="btn ghost" style="margin:0">Work it with the tutor · 40 left</button>
+          </div>
+        </div>
+      </main>
+
+      <aside>
+        <div class="card">
+          <h2 class="label" style="margin:0">Twin · seeding live</h2>
+          <div class="tile">
+            <div class="k4">Ability estimate ± uncertainty</div>
+            <div class="v">θ −0.62 <span style="color:var(--ink-4)">± 0.64</span></div>
+          </div>
+          <div class="tile" style="border-color:rgba(208,59,59,.4)">
+            <div class="k4" style="color:var(--critical)">Misconceptions detected</div>
+            <div class="mono" style="font-size:11px;color:var(--ink-2);margin-top:8px">keyword-match-wins</div>
+            <div class="mono" style="font-size:11px;color:var(--ink-2);margin-top:6px">connectives-are-filler</div>
+            <p style="font-size:10.5px;line-height:1.6;color:var(--ink-4);margin:8px 0 0">
+              Named in the pack before you existed. The distractor you picked <i>is</i> the diagnosis — no model
+              had to guess at what you were thinking.
+            </p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ══════════════════ STATE 3 — RIGHT ══════════════════ -->
+  <section class="stage" id="right">
+    <div class="grid">
+      <main>
+        <div class="card">
+          <div class="row"><span class="pill">Question 3</span><span class="pill">apply</span><span class="pill">marked</span></div>
+          <p class="serif" style="font-size:19px;line-height:1.35;margin:16px 0 0">
+            Whose roster is the new system most likely to get wrong?
+          </p>
+          <fieldset>
+            <legend class="label" style="margin-bottom:2px">Your answer</legend>
+            <div class="opt"><span class="face" style="opacity:.5"><span class="key">A</span><span class="txt">Everyone who worked a Saturday shift last month.</span></span></div>
+            <div class="opt picked-right">
+              <span class="face"><span class="key">✓</span><span class="txt" style="color:var(--ink)">Anyone who swapped a Saturday shift and did not tell the office.</span></span>
+            </div>
+            <div class="opt"><span class="face" style="opacity:.5"><span class="key">C</span><span class="txt">All warehouse staff, because the whole system changes on Monday.</span></span></div>
+            <div class="opt"><span class="face" style="opacity:.5"><span class="key">D</span><span class="txt">Anyone who calls the front desk instead of replying.</span></span></div>
+          </fieldset>
+        </div>
+
+        <div class="verdict right" role="status">
+          <span class="glyph yes">✓</span>
+          <h2>Right — and you only said 60%.</h2>
+          <p style="font-size:14px;line-height:1.7;color:var(--ink-2);margin:14px 0 0">
+            You read the reversal correctly and did not trust yourself for it. Knowledge you are not yet spending
+            is worth knowing about too, so it goes on the report beside the blind spots.
+          </p>
+          <p class="refusal">
+            One correct four-way choice is not mastery — a quarter of guesses land. The estimate moved by what a
+            single item is worth <b>and no more</b>, and the uncertainty travelled with it.
+          </p>
+          <div class="row" style="margin-top:20px">
+            <button class="btn" style="margin:0">Next question →</button>
+          </div>
+        </div>
+      </main>
+
+      <aside>
+        <div class="card">
+          <h2 class="label" style="margin:0">Twin · seeding live</h2>
+          <div class="tile">
+            <div class="k4">Ability estimate ± uncertainty</div>
+            <div class="v">θ −0.11 <span style="color:var(--ink-4)">± 0.66</span></div>
+          </div>
+          <div class="tile">
+            <div class="k4">Right, but you doubted it</div>
+            <div class="v" style="color:var(--s1)">2</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<script>
+  // State switcher
+  var stages = ['ask','wrong','right'];
+  document.querySelectorAll('.switch button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var go = b.getAttribute('data-go');
+      stages.forEach(function (s) { document.getElementById(s).classList.toggle('on', s === go); });
+      document.querySelectorAll('.switch button').forEach(function (o) {
+        o.setAttribute('aria-pressed', String(o === b));
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  // Confidence read-out
+  var c1 = document.getElementById('c1'), c1out = document.getElementById('c1out');
+  c1.addEventListener('input', function () {
+    c1out.textContent = c1.value + '%';
+    c1out.classList.toggle('sure', Number(c1.value) >= 80);
+  });
+
+  // Submit is disabled until a choice exists — you cannot submit "nothing" and be marked on it.
+  var submit = document.getElementById('submit');
+  document.querySelectorAll('input[name=a]').forEach(function (r) {
+    r.addEventListener('change', function () { submit.disabled = false; });
+  });
+  submit.addEventListener('click', function () {
+    var picked = document.querySelector('input[name=a]:checked');
+    var target = picked && picked.value === '1' ? 'right' : 'wrong';
+    document.querySelector('.switch button[data-go=' + target + ']').click();
+  });
+</script>
+</body>
+</html>
