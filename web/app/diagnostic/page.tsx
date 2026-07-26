@@ -220,7 +220,10 @@ function QuestionCard({
         <>
           <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-ink-4">The passage</p>
           <div className="mt-2 max-h-[52vh] overflow-y-auto pr-2.5">
-            <div className="serif max-w-[66ch] text-[16.5px] leading-[1.75] text-ink">
+            <div
+              className="serif max-w-[66ch] text-[16.5px] leading-[1.75] text-ink"
+              data-testid="passage-text"
+            >
               {passage.split(/\n\s*\n/).map((para, i) => (
                 <p key={i} className="mb-[0.95em] last:mb-0">
                   {para}
@@ -250,7 +253,7 @@ function QuestionCard({
                 className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
               <span
-                className={`flex min-h-12 items-start gap-3 rounded-md border px-3.5 py-2.5 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-accent peer-focus-visible:outline-offset-2 ${
+                className={`flex min-h-12 items-start gap-3 rounded-sm border px-3.5 py-2.5 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-accent peer-focus-visible:outline-offset-2 ${
                   selectedOption === index
                     ? "border-accent-line bg-[color:var(--accent-soft)]"
                     : "border-line bg-bg"

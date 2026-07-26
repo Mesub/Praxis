@@ -31,6 +31,9 @@ function item(over: Partial<NextItemResponse>): NextItemResponse {
     confidentEnoughToStop: false,
     stopped: false,
     says: null,
+    passage: null,
+    options: null,
+    format: null,
     ...over,
   };
 }
@@ -178,12 +181,23 @@ describe("DiagnosticPage", () => {
   // file's existing `answerCurrent()` helper does, because that click starts the async
   // submit → next-item chain.
 
-  it("renders the passage with its paragraphs intact", async () => {
+  it("renders the passage with its paragraphs intact, as separate elements", async () => {
     nextItem.mockResolvedValue(ok(READING_ITEM));
     render(<DiagnosticPage />);
 
-    expect(await screen.findByText(/goes live Monday/)).toBeInTheDocument();
-    expect(screen.getByText(/However, if you swapped/)).toBeInTheDocument();
+    const first = await screen.findByText(/goes live Monday/);
+    const second = screen.getByText(/However, if you swapped/);
+    expect(first).toBeInTheDocument();
+    expect(second).toBeInTheDocument();
+
+    // `getByText` matches a substring anywhere inside one element, so the two assertions above
+    // alone would still pass a naive `<p>{passage}</p>` single-block render — the exact
+    // regression the `\n\n`-paragraph-break requirement exists to catch. Assert on structure
+    // instead: two distinct <p> elements, and exactly two of them in the passage region.
+    expect(first).not.toBe(second);
+    expect(first.tagName).toBe("P");
+    expect(second.tagName).toBe("P");
+    expect(screen.getByTestId("passage-text").querySelectorAll("p")).toHaveLength(2);
   });
 
   it("offers the four choices as radios and nothing to type", async () => {

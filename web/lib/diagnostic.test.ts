@@ -22,6 +22,9 @@ function ask(over: Partial<NextItemResponse> = {}): NextItemResponse {
     confidentEnoughToStop: false,
     stopped: false,
     says: null,
+    passage: null,
+    options: null,
+    format: null,
     ...over,
   };
 }
