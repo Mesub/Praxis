@@ -5,10 +5,13 @@ import {
   calibrate,
   calibrationVerdict,
   INITIAL_DIAGNOSTIC,
+  lastAnswered,
   misconceptions,
   moveOf,
   receiveItem,
   recordAnswer,
+  verdictHeadline,
+  type AnsweredItem,
   type DiagnosticState,
 } from "./diagnostic";
 
@@ -31,6 +34,21 @@ function ask(over: Partial<NextItemResponse> = {}): NextItemResponse {
 
 function verdict(over: Partial<AnswerResponse> = {}): AnswerResponse {
   return { outcome: "Correct", misconception: null, youSaidYouWereSure: true, andYouWere: "right", ...over };
+}
+
+function answered(over: Partial<AnsweredItem> = {}): AnsweredItem {
+  return {
+    itemId: "i1",
+    stem: "Whose roster is wrong?",
+    statedConfidence: 0.85,
+    outcome: "Wrong",
+    youSaidYouWereSure: true,
+    andYouWere: "not",
+    misconception: "keyword-match-wins",
+    thetaBefore: 0,
+    thetaAfter: null,
+    ...over,
+  };
 }
 
 /** Drive one full round: receive an item, answer it, then receive the next (which settles θ-after). */
@@ -73,6 +91,70 @@ describe("recordAnswer", () => {
 
   it("throws rather than invent an entry when there is no current item", () => {
     expect(() => recordAnswer(INITIAL_DIAGNOSTIC, 0.5, verdict())).toThrow();
+  });
+
+  it("rests on the verdict instead of racing to the next question", () => {
+    const state = {
+      phase: "asking" as const,
+      current: {
+        itemId: "i1",
+        stem: "q",
+        evidenceType: null,
+        theta: 0,
+        standardError: 1,
+        confidentEnoughToStop: false,
+        passage: null,
+        options: null,
+        format: "MultipleChoice",
+      },
+      history: [],
+      stopSays: null,
+    };
+    const after = recordAnswer(state, 0.85, {
+      outcome: "Wrong",
+      misconception: "keyword-match-wins",
+      youSaidYouWereSure: true,
+      andYouWere: "not",
+    });
+    expect(after.phase).toBe("marked");
+    expect(lastAnswered(after)?.misconception).toBe("keyword-match-wins");
+  });
+});
+
+describe("verdictHeadline — the one sentence a learner cannot work out for themselves", () => {
+  it("names the gap when you were sure and wrong — the sentence PRAXIS exists to say", () => {
+    expect(verdictHeadline(answered())).toBe("You said 85% sure, and you were not right.");
+  });
+
+  it("does not scold when you were unsure and wrong", () => {
+    const h = verdictHeadline(answered({ statedConfidence: 0.55, youSaidYouWereSure: false }));
+    expect(h).toContain("55%");
+    expect(h).not.toContain("sure");
+  });
+
+  it("credits knowledge you are not spending when you were right but doubted it", () => {
+    const h = verdictHeadline(
+      answered({ outcome: "Correct", andYouWere: "right", statedConfidence: 0.6, youSaidYouWereSure: false }),
+    );
+    expect(h).toContain("Right");
+    expect(h).toContain("60%");
+  });
+
+  it("does not over-credit a confident right answer", () => {
+    const h = verdictHeadline(answered({ outcome: "Correct", andYouWere: "right" }));
+    expect(h).toContain("Right");
+  });
+});
+
+describe("lastAnswered", () => {
+  it("is null before anything is answered", () => {
+    expect(lastAnswered(INITIAL_DIAGNOSTIC)).toBeNull();
+  });
+
+  it("is the most recently answered item", () => {
+    let s = receiveItem(INITIAL_DIAGNOSTIC, ask({ itemId: "a" }));
+    s = recordAnswer(s, 0.9, verdict({ andYouWere: "not", outcome: "Wrong", misconception: "m1" }));
+    expect(lastAnswered(s)?.itemId).toBe("a");
   });
 });
 

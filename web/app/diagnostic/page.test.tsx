@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { fireEvent } from "@testing-library/dom";
 import type { AnswerResponse, ApiResult, NextItemResponse } from "@/lib/api";
 
@@ -73,6 +73,14 @@ async function answerCurrent() {
   });
 }
 
+// The verdict (M17, Task 12) rests between answering and the next item — the page no longer races
+// there on its own. This advances past it exactly the way a learner does: by asking for it.
+async function nextQuestion() {
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /next question/i }));
+  });
+}
+
 describe("DiagnosticPage", () => {
   beforeEach(() => {
     nextItem.mockReset();
@@ -98,9 +106,11 @@ describe("DiagnosticPage", () => {
 
     expect(await screen.findByText("What does a candlestick show?")).toBeInTheDocument();
     await answerCurrent();
+    await nextQuestion();
 
     expect(await screen.findByText("What is order flow?")).toBeInTheDocument();
     await answerCurrent();
+    await nextQuestion();
 
     // The closing screen the whole diagnostic exists to reach.
     expect(await screen.findByRole("heading", { name: /what you think you know but don/i })).toBeInTheDocument();
@@ -167,6 +177,7 @@ describe("DiagnosticPage", () => {
     expect(ensurePool).toHaveBeenCalledTimes(1);
 
     await answerCurrent();
+    await nextQuestion();
 
     expect(await screen.findByText("Second question")).toBeInTheDocument();
     expect(ensurePool).toHaveBeenCalledTimes(2);
@@ -250,8 +261,10 @@ describe("DiagnosticPage", () => {
       fireEvent.click(screen.getByRole("button", { name: /submit/i }));
     });
 
-    // The key never reached this browser, so there is nothing here that could name it.
-    expect(await screen.findByText(/keyword-match-wins/)).toBeInTheDocument();
+    // The key never reached this browser, so there is nothing here that could name it. The name
+    // itself legitimately appears twice once marked (Task 12): once in the verdict's named-belief
+    // block, once in the Twin sidebar's running list — hence `findAllByText`, not `findByText`.
+    expect((await screen.findAllByText(/keyword-match-wins/)).length).toBeGreaterThan(0);
     expect(screen.queryByText(/correct answer/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/the right answer/i)).not.toBeInTheDocument();
   });
@@ -262,5 +275,71 @@ describe("DiagnosticPage", () => {
 
     expect(await screen.findByRole("textbox")).toBeInTheDocument();
     expect(screen.queryAllByRole("radio")).toHaveLength(0);
+  });
+
+  // ── The verdict (M17, Task 12): the refusal, said out loud ──────────────────────────────
+
+  it("rests on the verdict and names the belief, without naming the key", async () => {
+    nextItem.mockResolvedValue(ok(READING_ITEM));
+    submitAnswer.mockResolvedValue(
+      ok(answer({ outcome: "Wrong", misconception: "keyword-match-wins", youSaidYouWereSure: true, andYouWere: "not" })),
+    );
+    render(<DiagnosticPage />);
+
+    fireEvent.click((await screen.findAllByRole("radio"))[0]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    });
+
+    expect(await screen.findByText(/you were not right/i)).toBeInTheDocument();
+    // Named once in the verdict's belief block and again in the Twin sidebar's running list —
+    // both are correct per the approved prototype, so this tolerates either or both.
+    expect(screen.getAllByText(/keyword-match-wins/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/never entered this browser/i)).toBeInTheDocument();
+
+    // The key is not here, on any path, in any casing.
+    expect(screen.queryByText(/correct answer/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/the right answer/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/option b/i)).not.toBeInTheDocument();
+  });
+
+  it("does not fetch the next item until the learner asks for it", async () => {
+    nextItem.mockResolvedValue(ok(READING_ITEM));
+    submitAnswer.mockResolvedValue(
+      ok(answer({ outcome: "Wrong", misconception: null, youSaidYouWereSure: false, andYouWere: "not" })),
+    );
+    render(<DiagnosticPage />);
+
+    fireEvent.click((await screen.findAllByRole("radio"))[0]);
+    const callsBefore = nextItem.mock.calls.length;
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    });
+
+    await screen.findByText(/not right/i);
+    expect(nextItem.mock.calls.length).toBe(callsBefore);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /next question/i }));
+    });
+    await waitFor(() => expect(nextItem.mock.calls.length).toBe(callsBefore + 1));
+  });
+
+  it("handles a wrong answer that caught no named belief", async () => {
+    // 7 of the 15 reading concepts declare no misconceptions. A verdict with nothing to name is a
+    // normal outcome, not a broken screen.
+    nextItem.mockResolvedValue(ok(READING_ITEM));
+    submitAnswer.mockResolvedValue(
+      ok(answer({ outcome: "Wrong", misconception: null, youSaidYouWereSure: true, andYouWere: "not" })),
+    );
+    render(<DiagnosticPage />);
+
+    fireEvent.click((await screen.findAllByRole("radio"))[0]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    });
+
+    expect(await screen.findByText(/you were not right/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /next question/i })).toBeInTheDocument();
   });
 });

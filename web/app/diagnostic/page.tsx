@@ -9,10 +9,12 @@ import {
   calibrationVerdict,
   CONFIDENT_AT,
   INITIAL_DIAGNOSTIC,
+  lastAnswered,
   misconceptions,
   moveOf,
   receiveItem,
   recordAnswer,
+  verdictHeadline,
   type AnsweredItem,
   type DiagnosticState,
 } from "@/lib/diagnostic";
@@ -108,15 +110,16 @@ export default function DiagnosticPage() {
       statedConfidence: confidence,
       seconds,
     });
+    setBusy(false);
     if (!res.ok) {
       // The oracle could not be reached. PRAXIS does not guess, and it never defaults to wrong.
-      setBusy(false);
       setError(res.message);
       return;
     }
-    const answered = recordAnswer(state, confidence, res.data);
-    setState(answered);
-    await loadNext(answered);
+    // Rest on the verdict. The screen that says "you were wrong, and here is the belief that
+    // caused it, and no, I will not tell you which one was right" needs a moment to be read —
+    // the next item is fetched only when the learner asks for it (Task 12).
+    setState(recordAnswer(state, confidence, res.data));
   }
 
   return (
@@ -162,6 +165,13 @@ export default function DiagnosticPage() {
               onConfidence={setConfidence}
               onSubmit={() => void submit()}
             />
+            <TwinSidebar state={state} />
+          </div>
+        ) : null}
+
+        {state.phase === "marked" ? (
+          <div className="grid gap-6 md:grid-cols-[1fr_260px]">
+            <MarkedCard state={state} busy={busy} onNext={() => void loadNext(state)} />
             <TwinSidebar state={state} />
           </div>
         ) : null}
@@ -339,8 +349,95 @@ function ConfidenceSlider({ value, onChange }: { value: number; onChange: (v: nu
   );
 }
 
+/*
+  The verdict (prototype §2, states 2–3): the moment PRAXIS tells a learner they were wrong, names
+  the reading habit that caused it, and says out loud that it will not tell them which option was
+  right. That refusal is not a policy choice rendered here — it is a structural fact: `AnsweredItem`
+  has no field the key could occupy, because the key was never sent to this browser (C-5). The
+  ability estimate's "after" is deliberately absent too (it only settles once the *next* item's
+  response lands) — showing it here would either lie or show yesterday's number wearing today's date.
+*/
+function MarkedCard({
+  state,
+  busy,
+  onNext,
+}: {
+  state: DiagnosticState;
+  busy: boolean;
+  onNext: () => void;
+}) {
+  const item = lastAnswered(state);
+  if (item === null) return null;
+
+  const right = item.andYouWere === "right";
+
+  return (
+    <div
+      role="status"
+      className={`rounded-lg border bg-surface p-5 ${right ? "border-good/45" : "border-critical/45"}`}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-line px-2.5 py-0.5 text-[11px] text-ink-3">
+          Question {state.history.length}
+        </span>
+        <span className="rounded-full border border-line px-2.5 py-0.5 text-[11px] text-ink-3">
+          marked
+        </span>
+      </div>
+
+      <p className="serif mt-4 text-[19px] leading-snug text-ink">{item.stem}</p>
+
+      <div className="mt-4 flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className={`mono grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full border text-[14px] ${
+            right
+              ? "border-good bg-[rgba(12,163,12,.14)] text-good"
+              : "border-critical bg-[rgba(208,59,59,.14)] text-critical"
+          }`}
+        >
+          {right ? "✓" : "×"}
+        </span>
+        <h2 className="serif text-[22px] leading-[1.2] text-ink">{verdictHeadline(item)}</h2>
+      </div>
+
+      <p className="mt-3.5 text-[14px] leading-relaxed text-ink-2">
+        {right
+          ? "One correct choice is not mastery on its own. The estimate moves by what a single item is worth and no more, and the uncertainty travels with it."
+          : "That gap is the most useful sentence PRAXIS can say to you, and it is only sayable because you stated the number before you found out."}
+      </p>
+
+      {item.misconception ? (
+        <div className="mt-4 rounded-sm border border-critical/40 bg-bg px-3.5 py-3">
+          <div className="mono text-[12px] text-critical">{item.misconception}</div>
+          <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-2">
+            Named in the pack before you existed — the distractor you picked is the diagnosis, not a
+            guess a model made about you.
+          </p>
+        </div>
+      ) : null}
+
+      <p className="mt-4 border-l-2 border-accent-line py-0.5 pl-3.5 text-[12.5px] leading-relaxed text-ink-3">
+        <b className="font-semibold text-ink-2">PRAXIS is not telling you which one was right.</b> The
+        key never entered this browser or the process that served it, so there is nothing here to
+        reveal, and a jailbreak would retrieve nothing. What you get instead is the belief that
+        produced your answer, and the next question will go hunting for it.
+      </p>
+
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onNext}
+        className="mt-5 inline-flex items-center justify-center rounded-md bg-accent px-5 py-2.5 text-[13.5px] font-medium text-accent-ink transition-[opacity] duration-[220ms] ease-brand hover:opacity-95 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-4"
+      >
+        {busy ? "Loading…" : "Next question →"}
+      </button>
+    </div>
+  );
+}
+
 function TwinSidebar({ state }: { state: DiagnosticState }) {
-  const theta = state.current?.theta ?? 0;
+  const theta = state.current?.theta ?? lastAnswered(state)?.thetaBefore ?? 0;
   const se = state.current?.standardError ?? 1;
   const misses = misconceptions(state);
   return (

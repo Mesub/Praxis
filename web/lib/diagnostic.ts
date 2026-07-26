@@ -50,7 +50,7 @@ export type CurrentItem = {
   format: string | null;
 };
 
-export type Phase = "loading" | "asking" | "stopped";
+export type Phase = "loading" | "asking" | "marked" | "stopped";
 
 export type DiagnosticState = {
   phase: Phase;
@@ -124,8 +124,36 @@ export function recordAnswer(
     thetaAfter: null,
   };
 
-  // The current item is cleared: the UI must fetch the next one, it cannot answer the same item twice.
-  return { ...state, current: null, history: [...state.history, answered] };
+  // The current item is cleared and the phase rests on "marked": the UI must fetch the next item
+  // itself, and only when the learner asks for it — it cannot answer the same item twice, and it
+  // does not race past the verdict to get there.
+  return { ...state, phase: "marked", current: null, history: [...state.history, answered] };
+}
+
+/**
+ * The one sentence PRAXIS can say that a learner cannot work out for themselves.
+ *
+ * It is only sayable because the confidence was stated *before* the outcome existed (C-6). Note
+ * what it never contains: which option was right. That is not withheld here — it was never in this
+ * browser, and there is no field on `AnsweredItem` it could have arrived in.
+ */
+export function verdictHeadline(item: AnsweredItem): string {
+  const pct = Math.round(item.statedConfidence * 100);
+
+  if (item.andYouWere === "right") {
+    return item.youSaidYouWereSure
+      ? `Right — and you said ${pct}% sure.`
+      : `Right — and you only said ${pct}%.`;
+  }
+
+  return item.youSaidYouWereSure
+    ? `You said ${pct}% sure, and you were not right.`
+    : `Not right — and you said ${pct}%, so you already suspected it.`;
+}
+
+/** The item just marked, for the screen that rests on it. Null before anything is answered. */
+export function lastAnswered(state: DiagnosticState): AnsweredItem | null {
+  return state.history.length === 0 ? null : state.history[state.history.length - 1];
 }
 
 /**
