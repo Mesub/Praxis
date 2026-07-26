@@ -150,6 +150,12 @@ export interface NextItemResponse {
   /** True when PRAXIS has stopped asking — a 200, never an error. */
   stopped: boolean;
   says: string | null;
+  /** The text under study, for a reading item. Null for everything else. */
+  passage: string | null;
+  /** The choices, in the order they must be shown. Null for a prose item — and never an index. */
+  options: string[] | null;
+  /** "Prose" | "MultipleChoice" — how this item wants to be answered. */
+  format: string | null;
 }
 
 /** The truth about the learner's *own* answer — right or not, and the belief that produced it. */
@@ -163,9 +169,10 @@ export interface AnswerResponse {
 
 export interface AnswerRequest {
   itemId: string;
-  /** The learner's words — data, sent to the oracle as a claim to check, never as instructions. */
-  claim: string;
-  /** Stated before they are told anything, 0..1. */
+  /** The learner's words, for a prose item. Absent when they chose instead. */
+  claim?: string;
+  /** The index of the option they picked. Absent when they typed instead. */
+  selectedOption?: number;
   statedConfidence: number;
   seconds: number;
 }

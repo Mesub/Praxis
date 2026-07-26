@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { diagnostics } from "@/lib/api";
 import {
+  answerIsReady,
   calibrate,
   calibrationVerdict,
   CONFIDENT_AT,
@@ -41,6 +42,7 @@ export default function DiagnosticPage() {
 
   const [state, setState] = useState<DiagnosticState>(INITIAL_DIAGNOSTIC);
   const [claim, setClaim] = useState("");
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [confidence, setConfidence] = useState(0.7);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export default function DiagnosticPage() {
       }
       setState(receiveItem(from, res.data));
       setClaim("");
+      setSelectedOption(null);
       setConfidence(0.7);
       askedAt.current = Date.now();
     },
@@ -93,13 +96,15 @@ export default function DiagnosticPage() {
   }, [session, concept, topUpPool]);
 
   async function submit() {
-    if (state.current === null || claim.trim() === "") return;
+    if (state.current === null || !answerIsReady({ claim, selectedOption }, state.current.format)) return;
     setBusy(true);
     setError(null);
     const seconds = Math.max(0, Math.round((Date.now() - askedAt.current) / 1000));
     const res = await diagnostics.submitAnswer(session, {
       itemId: state.current.itemId,
-      claim: claim.trim(),
+      ...(state.current.format === "MultipleChoice"
+        ? { selectedOption: selectedOption! }
+        : { claim: claim.trim() }),
       statedConfidence: confidence,
       seconds,
     });
@@ -144,11 +149,16 @@ export default function DiagnosticPage() {
             <QuestionCard
               stem={state.current.stem}
               evidenceType={state.current.evidenceType}
+              passage={state.current.passage}
+              options={state.current.options}
+              format={state.current.format}
               answered={state.history.length}
               claim={claim}
+              selectedOption={selectedOption}
               confidence={confidence}
               busy={busy}
               onClaim={setClaim}
+              onSelect={setSelectedOption}
               onConfidence={setConfidence}
               onSubmit={() => void submit()}
             />
@@ -165,21 +175,31 @@ export default function DiagnosticPage() {
 function QuestionCard({
   stem,
   evidenceType,
+  passage,
+  options,
+  format,
   answered,
   claim,
+  selectedOption,
   confidence,
   busy,
   onClaim,
+  onSelect,
   onConfidence,
   onSubmit,
 }: {
   stem: string;
   evidenceType: string | null;
+  passage: string | null;
+  options: string[] | null;
+  format: string | null;
   answered: number;
   claim: string;
+  selectedOption: number | null;
   confidence: number;
   busy: boolean;
   onClaim: (v: string) => void;
+  onSelect: (v: number) => void;
   onConfidence: (v: number) => void;
   onSubmit: () => void;
 }) {
@@ -196,28 +216,87 @@ function QuestionCard({
         ) : null}
       </div>
 
+      {passage ? (
+        <>
+          <p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-ink-4">The passage</p>
+          <div className="mt-2 max-h-[52vh] overflow-y-auto pr-2.5">
+            <div className="serif max-w-[66ch] text-[16.5px] leading-[1.75] text-ink">
+              {passage.split(/\n\s*\n/).map((para, i) => (
+                <p key={i} className="mb-[0.95em] last:mb-0">
+                  {para}
+                </p>
+              ))}
+            </div>
+          </div>
+          <p className="mt-3.5 border-t border-line-soft pt-3 text-[11.5px] leading-relaxed text-ink-4">
+            Re-read it as often as you like. Your time is recorded because it is data about you — it
+            is not a score, and reading slowly has never been marked down.
+          </p>
+        </>
+      ) : null}
+
       <p className="serif mt-4 text-[19px] leading-snug text-ink">{stem}</p>
 
-      <label
-        htmlFor="claim"
-        className="mt-5 block text-[11px] uppercase tracking-[0.14em] text-ink-4"
-      >
-        Your answer — in your own words
-      </label>
-      <textarea
-        id="claim"
-        value={claim}
-        onChange={(e) => onClaim(e.target.value)}
-        rows={4}
-        className="mt-2 w-full resize-y rounded-md border border-line bg-bg px-3 py-2.5 text-[14px] leading-relaxed text-ink placeholder:text-ink-4 focus:outline-none"
-        placeholder="Explain it as if the answer were not a multiple choice — PRAXIS grades the reasoning."
-      />
+      {options ? (
+        <fieldset className="mt-4 min-w-0 border-0 p-0">
+          <legend className="text-[11px] uppercase tracking-[0.14em] text-ink-4">Choose one</legend>
+          {options.map((option, index) => (
+            <label key={index} className="relative mt-2 block">
+              <input
+                type="radio"
+                name="option"
+                checked={selectedOption === index}
+                onChange={() => onSelect(index)}
+                className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+              <span
+                className={`flex min-h-12 items-start gap-3 rounded-md border px-3.5 py-2.5 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-accent peer-focus-visible:outline-offset-2 ${
+                  selectedOption === index
+                    ? "border-accent-line bg-[color:var(--accent-soft)]"
+                    : "border-line bg-bg"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`mono mt-px grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border text-[11px] ${
+                    selectedOption === index
+                      ? "border-accent bg-accent font-bold text-accent-ink"
+                      : "border-line bg-surface text-ink-3"
+                  }`}
+                >
+                  {String.fromCharCode(65 + index)}
+                </span>
+                <span className={`text-[14px] leading-normal ${selectedOption === index ? "text-ink" : "text-ink-2"}`}>
+                  {option}
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      ) : (
+        <>
+          <label
+            htmlFor="claim"
+            className="mt-5 block text-[11px] uppercase tracking-[0.14em] text-ink-4"
+          >
+            Your answer — in your own words
+          </label>
+          <textarea
+            id="claim"
+            value={claim}
+            onChange={(e) => onClaim(e.target.value)}
+            rows={4}
+            className="mt-2 w-full resize-y rounded-md border border-line bg-bg px-3 py-2.5 text-[14px] leading-relaxed text-ink placeholder:text-ink-4 focus:outline-none"
+            placeholder="Explain it as if the answer were not a multiple choice — PRAXIS grades the reasoning."
+          />
+        </>
+      )}
 
       <ConfidenceSlider value={confidence} onChange={onConfidence} />
 
       <button
         type="button"
-        disabled={busy || claim.trim() === ""}
+        disabled={busy || !answerIsReady({ claim, selectedOption }, format)}
         onClick={onSubmit}
         className="mt-4 inline-flex items-center justify-center rounded-md bg-accent px-5 py-2.5 text-[13.5px] font-medium text-accent-ink transition-[opacity] duration-[220ms] ease-brand hover:opacity-95 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-4"
       >

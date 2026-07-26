@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AnswerResponse, NextItemResponse } from "./api";
 import {
+  answerIsReady,
   calibrate,
   calibrationVerdict,
   INITIAL_DIAGNOSTIC,
@@ -126,6 +127,23 @@ describe("calibrate — what you think you know but don't", () => {
     expect(c.accuracy).toBeCloseTo(0.5);
     expect(c.averageConfidence).toBeCloseTo(0.8);
     expect(c.overconfidencePoints).toBe(30);
+  });
+});
+
+describe("answerIsReady", () => {
+  it("a fixed-key item needs a choice and ignores typed words", () => {
+    expect(answerIsReady({ claim: "", selectedOption: 2 }, "MultipleChoice")).toBe(true);
+    expect(answerIsReady({ claim: "some words", selectedOption: null }, "MultipleChoice")).toBe(false);
+  });
+
+  it("option zero is a real choice, not a missing one", () => {
+    // The bug this test exists to prevent: `if (selectedOption)` treats A as unanswered.
+    expect(answerIsReady({ claim: "", selectedOption: 0 }, "MultipleChoice")).toBe(true);
+  });
+
+  it("a prose item needs words", () => {
+    expect(answerIsReady({ claim: "because however reverses it", selectedOption: null }, "Prose")).toBe(true);
+    expect(answerIsReady({ claim: "   ", selectedOption: null }, "Prose")).toBe(false);
   });
 });
 

@@ -42,6 +42,12 @@ export type CurrentItem = {
   theta: number;
   standardError: number;
   confidentEnoughToStop: boolean;
+  /** The text under study, for a reading item. Null for everything else. */
+  passage: string | null;
+  /** The choices, in the order they must be shown. Null for a prose item. */
+  options: string[] | null;
+  /** "Prose" | "MultipleChoice" — how this item wants to be answered. */
+  format: string | null;
 };
 
 export type Phase = "loading" | "asking" | "stopped";
@@ -83,6 +89,9 @@ export function receiveItem(state: DiagnosticState, next: NextItemResponse): Dia
       theta: next.theta,
       standardError: next.standardError,
       confidentEnoughToStop: next.confidentEnoughToStop,
+      passage: next.passage,
+      options: next.options,
+      format: next.format,
     },
     history,
     stopSays: null,
@@ -117,6 +126,23 @@ export function recordAnswer(
 
   // The current item is cleared: the UI must fetch the next one, it cannot answer the same item twice.
   return { ...state, current: null, history: [...state.history, answered] };
+}
+
+/**
+ * Whether there is an answer worth submitting.
+ *
+ * Note the explicit `!== null` on the selection: option A is index 0, and `if (selectedOption)`
+ * would treat the first choice as no choice at all — a bug that would look like a broken button
+ * to every learner who reads the options top-down and agrees with the first one.
+ */
+export function answerIsReady(
+  state: { claim: string; selectedOption: number | null },
+  format: string | null,
+): boolean {
+  if (format === "MultipleChoice") {
+    return state.selectedOption !== null;
+  }
+  return state.claim.trim() !== "";
 }
 
 function settleLastTheta(
