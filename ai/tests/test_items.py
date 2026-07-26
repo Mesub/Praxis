@@ -25,6 +25,7 @@ from praxis_ai.items import (
     CAN_CROSS_THE_HOLD_THRESHOLD,
     EvidenceType,
     Item,
+    ItemFormat,
     ItemGenerator,
     ItemRejectedError,
     fingerprint_of,
@@ -38,6 +39,21 @@ THE_ANSWER = "Because term frequency saturates: the tenth occurrence adds far le
 
 QUESTION = "A document repeats 'jaguar' 60 times. Why does BM25 not rank it 6x above one with 10?"
 
+PASSAGE = (
+    "The new roster system goes live on Monday. Everyone who worked a Saturday shift last month "
+    "has already been moved across. However, if you swapped a Saturday with a colleague and did "
+    "not tell the office, the system has no record of it."
+)
+
+MCQ_QUESTION = "Whose roster is the system most likely to get wrong?"
+
+MCQ_OPTIONS = (
+    "Everyone who worked a Saturday shift last month.",
+    "Anyone who swapped a shift without telling the office.",
+    "All warehouse staff.",
+    "Anyone who calls the front desk.",
+)
+
 
 def _reply(question: str = QUESTION, answer: str = THE_ANSWER, **misconceptions: str) -> str:
     return json.dumps(
@@ -45,6 +61,30 @@ def _reply(question: str = QUESTION, answer: str = THE_ANSWER, **misconceptions:
             "question": question,
             "answer": answer,
             "misconceptions": misconceptions or {"thinks-tf-is-linear": "TF contributes linearly."},
+        }
+    )
+
+
+def _mcq_reply(
+    *,
+    passage: str = PASSAGE,
+    question: str = MCQ_QUESTION,
+    options: tuple[str, ...] = MCQ_OPTIONS,
+    correct: int = 1,
+    option_misconceptions: dict[str, str] | None = None,
+    misconceptions: dict[str, str] | None = None,
+    targets: str | None = None,
+) -> str:
+    return json.dumps(
+        {
+            "passage": passage,
+            "question": question,
+            "options": list(options),
+            "correct": correct,
+            "option_misconceptions": {} if option_misconceptions is None else option_misconceptions,
+            "answer": options[correct],
+            "misconceptions": {} if misconceptions is None else misconceptions,
+            "targets": targets,
         }
     )
 
@@ -132,6 +172,8 @@ def test_there_is_no_field_on_an_item_that_could_hold_an_answer() -> None:
         "evidence_type",
         "stem",
         "difficulty",
+        "passage",
+        "options",
         "fingerprint",
         "targets_misconception",
     }
@@ -320,6 +362,127 @@ async def test_no_declared_beliefs_means_no_target_and_no_prompt_section() -> No
     prompt = model.calls[-1]["messages"][0]["content"]
     assert "KNOWN WRONG BELIEFS" not in prompt  # capture the prompt the way the existing tests in
     # this file do — via the fake model's recorded call kwargs, not a second fake client.
+
+
+# ── The fixed-key shape: a passage, four options, and the index that never returns ──
+
+
+async def test_a_multiple_choice_item_carries_a_passage_and_options() -> None:
+    generator, _store, _model = _generator(
+        _mcq_reply(
+            option_misconceptions={"0": "keyword-match-wins", "2": "literal-only"},
+            misconceptions={
+                "keyword-match-wins": "I think the option repeating the text is right."
+            },
+            targets="keyword-match-wins",
+        )
+    )
+
+    item = await _generate(
+        generator,
+        item_format=ItemFormat.MULTIPLE_CHOICE,
+        known_misconceptions={"keyword-match-wins": "...", "literal-only": "..."},
+    )
+
+    assert item.passage is not None and "However" in item.passage
+    assert item.options == MCQ_OPTIONS
+
+
+async def test_the_correct_index_goes_to_the_store_and_not_to_the_caller() -> None:
+    """**The whole milestone, restated for the fixed-key shape.**"""
+    generator, store, _model = _generator(
+        _mcq_reply(
+            option_misconceptions={"0": "keyword-match-wins", "2": "literal-only"},
+            misconceptions={
+                "keyword-match-wins": "I think the option repeating the text is right."
+            },
+            targets="keyword-match-wins",
+        )
+    )
+
+    item = await _generate(
+        generator,
+        item_format=ItemFormat.MULTIPLE_CHOICE,
+        known_misconceptions={"keyword-match-wins": "...", "literal-only": "..."},
+    )
+
+    # The type has nowhere to put it, so this is belt and braces on the type's promise. ``Item`` is
+    # a slots dataclass, so ask ``dataclasses.fields`` — ``vars()`` raises on slots classes.
+    assert not any("correct" in f.name for f in fields(item))
+
+    key = store.get(item.id)
+    assert key is not None
+    assert key.correct_option == 1
+    assert key.option_misconceptions == {0: "keyword-match-wins", 2: "literal-only"}
+
+
+async def test_a_distractor_belief_outside_the_declared_set_is_discarded() -> None:
+    """The airlock, again: a distractor may only name a belief the caller declared in advance."""
+    generator, store, _model = _generator(
+        _mcq_reply(
+            option_misconceptions={"0": "keyword-match-wins", "2": "invented-on-the-spot"},
+            misconceptions={
+                "keyword-match-wins": "I think the option repeating the text is right."
+            },
+            targets="keyword-match-wins",
+        )
+    )
+
+    item = await _generate(
+        generator,
+        item_format=ItemFormat.MULTIPLE_CHOICE,
+        known_misconceptions={"keyword-match-wins": "..."},
+    )
+
+    assert store.get(item.id).option_misconceptions == {0: "keyword-match-wins"}
+
+
+async def test_a_multiple_choice_item_without_four_options_is_rejected() -> None:
+    # Three options, still valid JSON — so this fails the option-count rule, not the parser.
+    generator, _store, _model = _generator(_mcq_reply(options=MCQ_OPTIONS[:3]))
+
+    with pytest.raises(ItemRejectedError):
+        await _generate(generator, item_format=ItemFormat.MULTIPLE_CHOICE)
+
+
+async def test_a_multiple_choice_item_with_no_declared_misconceptions_still_generates() -> None:
+    """**A fixed-key item may have no declared misconceptions at all.**
+
+    Only 8 of the 15 Reading English concepts declare any — the rest still ship as
+    ``MULTIPLE_CHOICE``. A distractor with no named belief behind it is a supported, designed case:
+    it marks "wrong" and says nothing more. Neither the prompt nor the parser may require a
+    non-empty belief list.
+    """
+    generator, store, _model = _generator(_mcq_reply(option_misconceptions={}, misconceptions={}))
+
+    item = await _generate(
+        generator, item_format=ItemFormat.MULTIPLE_CHOICE, known_misconceptions={}
+    )
+
+    assert item.options == MCQ_OPTIONS
+
+    key = store.get(item.id)
+    assert key is not None
+    assert key.correct_option == 1
+    assert key.option_misconceptions == {}
+
+
+def test_a_prose_fingerprint_is_unchanged_by_the_passage_field() -> None:
+    """Every item already banked must keep the fingerprint it was banked with, or ``already_seen``
+    stops meaning anything and the bank fills with duplicates."""
+    assert fingerprint_of("What does 'however' do?") == fingerprint_of(
+        "What does 'however' do?", passage=None
+    )
+
+
+def test_two_questions_about_the_same_passage_do_not_collide_and_two_identical_ones_do() -> None:
+    passage = "A short passage about a roster."
+
+    assert fingerprint_of("Who acts?", passage=passage) != fingerprint_of("When?", passage=passage)
+    assert fingerprint_of("Who acts?", passage=passage) == fingerprint_of(
+        "Who acts?", passage=passage
+    )
+    assert fingerprint_of("Who acts?", passage=passage) != fingerprint_of("Who acts?")
 
 
 # ── Bias: the writer must not be the marker ──────────────────────────────────

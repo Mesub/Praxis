@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol
 
@@ -46,6 +46,10 @@ from praxis_ai.cost import Attribution, Cost
 from praxis_ai.models import Task
 
 log = logging.getLogger("praxis.ai.oracle")
+
+#: How many options a fixed-key item has. Fixed at four for v1, and not a number to vary casually:
+#: it *is* the guessing floor the estimator is told about (c = 1/4).
+OPTION_COUNT = 4
 
 
 class ClaimOutcome(StrEnum):
@@ -85,6 +89,14 @@ class AnswerKey:
     #: statement is here so the comparing model can recognise the error; only the *key* is ever
     #: returned, and only if it is one of these.
     misconceptions: dict[str, str]
+
+    #: The index of the correct option, or ``None`` for a prose item. **The only integer in PRAXIS
+    #: that is genuinely dangerous**, and it lives in this module and the store behind it.
+    correct_option: int | None = None
+
+    #: Option index → the **declared** wrong belief that choosing it reveals. Authored, not
+    #: inferred: a distractor is a diagnosis somebody wrote down in advance.
+    option_misconceptions: dict[int, str] = field(default_factory=dict)
 
 
 class AnswerKeyStore(Protocol):

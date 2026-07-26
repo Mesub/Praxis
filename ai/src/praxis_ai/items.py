@@ -38,7 +38,7 @@ from enum import StrEnum
 from praxis_ai.claude import ClaudeClient
 from praxis_ai.cost import Attribution, Cost
 from praxis_ai.models import Task
-from praxis_ai.oracle import AnswerKey, InMemoryAnswerKeyStore
+from praxis_ai.oracle import OPTION_COUNT, AnswerKey, InMemoryAnswerKeyStore
 
 log = logging.getLogger("praxis.ai.items")
 
@@ -63,6 +63,17 @@ class EvidenceType(StrEnum):
 CAN_CROSS_THE_HOLD_THRESHOLD = frozenset(
     {EvidenceType.APPLY, EvidenceType.BUILD, EvidenceType.PREDICT}
 )
+
+
+class ItemFormat(StrEnum):
+    """How an item is answered, and therefore how it is marked.
+
+    ``MULTIPLE_CHOICE`` is marked by comparing two integers — no model, no judgement, no cost. It
+    is the only marking in PRAXIS whose verdict is a *fact* rather than an opinion.
+    """
+
+    PROSE = "prose"
+    MULTIPLE_CHOICE = "multiple_choice"
 
 
 class ItemRejectedError(RuntimeError):
@@ -96,6 +107,17 @@ class Item:
     #: how learners actually do on it.
     difficulty: float
 
+    #: The text under study, for a reading item. The learner reads it; it is not a secret.
+    #:
+    #: Placed after ``difficulty`` rather than immediately after ``stem``: every field before this
+    #: one has no default, and a dataclass cannot put a defaulted field ahead of one that still
+    #: requires a value.
+    passage: str | None = None
+
+    #: The choices as shown, in order. **Not a secret** — they are on the screen. Which one is
+    #: correct is not here, and there is no field it could be put in.
+    options: tuple[str, ...] | None = None
+
     #: A stable fingerprint of the stem, so "have they seen this?" is a set lookup rather than an
     #: opinion.
     fingerprint: str = field(compare=False, default="")
@@ -106,14 +128,20 @@ class Item:
     targets_misconception: str | None = field(compare=False, default=None)
 
 
-def fingerprint_of(stem: str) -> str:
+def fingerprint_of(stem: str, passage: str | None = None) -> str:
     """A stem's identity, robust to the cosmetic edits a model makes when told to 'vary' something.
 
     Lowercased, punctuation stripped, whitespace collapsed. Two stems that differ only in phrasing
     still collide — which is the entire point, because a model handed "make it novel" will change
     the punctuation and the names and consider the job done.
+
+    When there is a passage it is part of the identity — otherwise a generator could hand back the
+    same passage with a reworded question forever and every one would look new. With no passage the
+    input is the stem alone, byte for byte as before, so **every fingerprint already banked stays
+    valid**.
     """
-    normalised = re.sub(r"[^a-z0-9\s]", "", stem.lower())
+    subject = stem if passage is None else f"{passage}\n{stem}"
+    normalised = re.sub(r"[^a-z0-9\s]", "", subject.lower())
     normalised = re.sub(r"\s+", " ", normalised).strip()
 
     return hashlib.sha256(normalised.encode()).hexdigest()[:32]
@@ -134,6 +162,7 @@ class ItemGenerator:
         attribution: Attribution,
         already_seen: frozenset[str] = frozenset(),
         known_misconceptions: dict[str, str] | None = None,
+        item_format: ItemFormat = ItemFormat.PROSE,
         attempts: int = 3,
     ) -> Item:
         """A never-seen item, and an answer key filed where the tutor cannot reach it.
@@ -145,7 +174,12 @@ class ItemGenerator:
         ``known_misconceptions`` is the concept's **declared** wrong beliefs, keyed by a short
         stable slug. The generator is told what they are and may name one in ``targets`` — but only
         a key from this map ever survives (M14.2). Free text the model invents is discarded, never
-        passed through.
+        passed through. A ``MULTIPLE_CHOICE`` item may be asked for with no declared beliefs at all
+        (``None`` or ``{}``) — a distractor need not name a diagnosis to be a valid wrong answer.
+
+        ``item_format`` chooses the shape: ``PROSE`` (the default) asks for a question and an answer
+        a marker can compare against; ``MULTIPLE_CHOICE`` asks for a passage and four options as
+        well, and the returned ``Item`` carries them — but never which one is correct.
         """
         if not 0.0 <= difficulty <= 1.0:
             raise ValueError(f"Difficulty is 0-1. {difficulty} is not a difficulty.")
@@ -161,6 +195,7 @@ class ItemGenerator:
                 attribution,
                 already_seen,
                 known_misconceptions,
+                item_format,
             )
 
             # **The check that makes "never-seen" a fact.** The model was asked for novelty; asking
@@ -211,21 +246,27 @@ class ItemGenerator:
         attribution: Attribution,
         already_seen: frozenset[str],
         known_misconceptions: dict[str, str] | None,
+        item_format: ItemFormat,
     ) -> tuple[Item, AnswerKey, Cost]:
+        system = _SYSTEM_MULTIPLE_CHOICE if item_format is ItemFormat.MULTIPLE_CHOICE else _SYSTEM
+
         completion = await self._client.complete(
             _prompt(
                 concept_summary, evidence_type, difficulty, len(already_seen), known_misconceptions
             ),
             task=Task.GENERATE_ITEM,
             attribution=attribution,
-            system=_SYSTEM,
+            system=system,
             max_tokens=2_048,
         )
 
         known_keys = frozenset((known_misconceptions or {}).keys())
-        drafted = _parse(completion.text, known_keys)
+        drafted = _parse(completion.text, known_keys, item_format)
 
-        item_id = f"item-{fingerprint_of(drafted['question'])[:16]}"
+        passage = drafted.get("passage")
+        options = drafted.get("options")
+
+        item_id = f"item-{fingerprint_of(drafted['question'], passage)[:16]}"
 
         targeted = drafted["targets"]
 
@@ -235,8 +276,10 @@ class ItemGenerator:
             evidence_type=evidence_type,
             stem=drafted["question"],
             difficulty=difficulty,
-            fingerprint=fingerprint_of(drafted["question"]),
+            fingerprint=fingerprint_of(drafted["question"], passage),
             targets_misconception=targeted,
+            passage=passage,
+            options=None if options is None else tuple(options),
         )
 
         # The union: the generator's own catches, plus the declared statement for whichever known
@@ -253,6 +296,8 @@ class ItemGenerator:
             question=drafted["question"],
             answer=drafted["answer"],
             misconceptions=misconceptions,
+            correct_option=drafted.get("correct"),
+            option_misconceptions=drafted.get("option_misconceptions", {}),
         )
 
         return item, key, completion.cost
@@ -279,6 +324,34 @@ valid; never invent one.
 Reply with ONLY a JSON object:
 {"question": "...", "answer": "...", "misconceptions": {"slug": "the wrong belief, stated"}, \
 "targets": "<declared key>" | null}
+
+Do not explain. Do not add commentary. The JSON object is your entire reply."""
+
+
+_SYSTEM_MULTIPLE_CHOICE = """You write reading-comprehension items. You produce a short passage, \
+one question about it, exactly four options of which exactly one is correct, the index of that \
+option, and — for each wrong option — which of the reader's known wrong habits it is built to catch.
+
+The passage and the options will be shown to a learner. Which option is correct will NOT be: it \
+goes to a marking oracle the tutor cannot read.
+
+Rules:
+- The passage is self-contained, 80-150 words, everyday or workplace English. Everything needed to \
+answer is in it. Never refer to anything outside it.
+- The question must be answerable ONLY by understanding the passage. A reader who has not read it \
+must not be able to guess from general knowledge.
+- Exactly four options. Exactly one correct. All four plausible to someone who misread; an option \
+nobody would pick is a wasted option.
+- Each wrong option should be built to catch a specific KNOWN WRONG HABIT from the list you are \
+given, named by its key in `option_misconceptions`. Only keys from that list are valid. If you are \
+given no known wrong habits, write plausible distractors anyway and leave `option_misconceptions` \
+empty — a distractor does not need a named diagnosis to be a valid wrong answer.
+- `correct` is the 0-based index of the correct option.
+
+Reply with ONLY a JSON object:
+{"passage": "...", "question": "...", "options": ["...", "...", "...", "..."], "correct": 0, \
+"option_misconceptions": {"1": "<declared key>"}, "answer": "the correct option's text", \
+"misconceptions": {"slug": "the wrong belief, stated"}, "targets": "<declared key>" | null}
 
 Do not explain. Do not add commentary. The JSON object is your entire reply."""
 
@@ -314,7 +387,9 @@ def _prompt(
     )
 
 
-def _parse(text: str, known_keys: frozenset[str]) -> dict:
+def _parse(
+    text: str, known_keys: frozenset[str], item_format: ItemFormat = ItemFormat.PROSE
+) -> dict:
     try:
         parsed = json.loads(_json_of(text))
     except (json.JSONDecodeError, ValueError) as bad:
@@ -356,11 +431,73 @@ def _parse(text: str, known_keys: frozenset[str]) -> dict:
         )
         targets = None
 
+    if item_format is not ItemFormat.MULTIPLE_CHOICE:
+        return {
+            "question": question.strip(),
+            "answer": answer.strip(),
+            "misconceptions": {k.strip(): v.strip() for k, v in misconceptions.items()},
+            "targets": targets,
+        }
+
+    # A reading item, on top of everything checked above: the answer key (``answer``, checked
+    # already) is still filed as the correct option's text, so the store's ``answer NOT NULL``
+    # column never goes empty for a fixed-key item either.
+    passage = parsed.get("passage")
+    options = parsed.get("options")
+    correct = parsed.get("correct")
+
+    if not isinstance(passage, str) or not passage.strip():
+        raise ItemRejectedError("A reading item with no passage is not a reading item.")
+
+    if (
+        not isinstance(options, list)
+        or len(options) != OPTION_COUNT
+        or not all(isinstance(o, str) and o.strip() for o in options)
+    ):
+        raise ItemRejectedError(
+            f"A fixed-key item needs exactly {OPTION_COUNT} non-empty options. Fewer is a "
+            "different item with a different guessing floor, and the estimator was told to expect "
+            "four."
+        )
+
+    if not isinstance(correct, int) or isinstance(correct, bool) or not 0 <= correct < OPTION_COUNT:
+        raise ItemRejectedError(
+            "The correct option must be an index into the four options. Without it the item is "
+            "unmarkable, and a learner would spend real effort on it for nothing."
+        )
+
+    # The airlock, again: a distractor may only name a belief the caller declared in advance. A
+    # fixed-key item may declare none at all — an empty ``known_keys`` is a supported case, not an
+    # error, and every proposed catch is simply discarded rather than raising.
+    catches: dict[int, str] = {}
+
+    for raw_index, key in (parsed.get("option_misconceptions") or {}).items():
+        try:
+            index = int(raw_index)
+        except (TypeError, ValueError):
+            continue
+
+        if index == correct or not 0 <= index < OPTION_COUNT:
+            continue
+
+        if key not in known_keys:
+            log.warning(
+                "Generator proposed a distractor belief outside the declared set. Discarded.",
+                extra={"key": key},
+            )
+            continue
+
+        catches[index] = key
+
     return {
         "question": question.strip(),
         "answer": answer.strip(),
         "misconceptions": {k.strip(): v.strip() for k, v in misconceptions.items()},
         "targets": targets,
+        "passage": passage.strip(),
+        "options": [o.strip() for o in options],
+        "correct": correct,
+        "option_misconceptions": catches,
     }
 
 
