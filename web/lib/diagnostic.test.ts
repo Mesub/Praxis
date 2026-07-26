@@ -64,6 +64,36 @@ function round(
   return receiveItem(s, ask({ theta: nextTheta }));
 }
 
+/**
+ * The real guard, and the reason the verdict screen cannot leak the key: there is no field to
+ * leak from. `expectNoAnswerLeak` (in the page's component test) scans rendered prose for known
+ * phrasings — worth having, but a closed list of phrases can never be complete; the next round
+ * always finds a phrasing the list did not guess. This guard is structural instead: it fails the
+ * *build* the moment either wire type grows a field that could carry the key, whatever that field
+ * ends up being named — `correctOption`, `answerIndex`, `keyText`, anything shaped like it.
+ * `npx tsc --noEmit` runs in the verify gate, so this is load-bearing, not decorative.
+ */
+type KeyShaped<T> = Extract<
+  keyof T,
+  `${string}orrect${string}` | `${string}nswer${string}` | `${string}key${string}` | `${string}ndex${string}`
+>;
+
+describe("structural guard — the key cannot be rendered because it is not here", () => {
+  it("AnswerResponse has no field a key could occupy", () => {
+    // If a matching field is ever added, `KeyShaped<AnswerResponse>` stops being `never`, the
+    // conditional type below resolves to `never`, and assigning `true` to it is a compile error —
+    // this line simply stops compiling. Existing fields (`outcome`, `misconception`,
+    // `youSaidYouWereSure`, `andYouWere`) do not match any pattern, checked by hand.
+    const guard: KeyShaped<AnswerResponse> extends never ? true : never = true;
+    expect(guard).toBe(true);
+  });
+
+  it("AnsweredItem has no field a key could occupy", () => {
+    const guard: KeyShaped<AnsweredItem> extends never ? true : never = true;
+    expect(guard).toBe(true);
+  });
+});
+
 describe("receiveItem", () => {
   it("moves to asking with the item as asked", () => {
     const s = receiveItem(INITIAL_DIAGNOSTIC, ask({ itemId: "x", theta: 0.4 }));

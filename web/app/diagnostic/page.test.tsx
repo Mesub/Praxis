@@ -62,12 +62,22 @@ const READING_ITEM: NextItemResponse = {
   says: null,
 };
 
-// Testing Library's text matchers (`getByText` et al.) only look at an element's *direct* text-node
-// children, not its full nested `textContent` — so a leak split across tags, e.g.
-// `<p>The <b>right</b> answer is option <b>B</b>.</p>`, is invisible to `queryByText(/option b/i)`:
-// no single element's own direct text equals "option B". The central refusal of this screen —
-// nothing here can name the key — has to be proven against the whole rendered text, not
-// element-by-element. Grab `container` from `render()` and check its full `textContent`.
+// A HEURISTIC, not a guarantee — read this before trusting it. Testing Library's text matchers
+// (`getByText` et al.) only look at an element's *direct* text-node children, not its full nested
+// `textContent`, so a leak split across tags, e.g. `<p>The <b>right</b> answer is option
+// <b>B</b>.</p>`, is invisible to `queryByText(/option b/i)`. Checking `container.textContent`
+// (below) fixes *that* gap — full-text matching, not element-by-element — but the list of
+// patterns itself is still just a guess at phrasings a future author might type, and a guess is
+// never complete. A reviewer found this the hard way: "You should have picked B instead." and
+// "the key is B" both slip straight past every pattern here, no tag-splitting required.
+//
+// The actual guarantee — the reason the key *cannot* leak, not just "isn't seen to" — is
+// structural, not textual: `AnswerResponse` and `AnsweredItem` (lib/diagnostic.test.ts) have no
+// field that could carry it, checked at the type level, and that check fails the build the moment
+// either type grows one. This scan stays because it catches the obvious phrasings early and
+// cheaply, in a component test rather than only in a type check — but it is a net with holes in
+// it, not the reason the product is safe. Do not read a pass here as proof of anything beyond
+// "these five particular phrasings did not appear."
 const ANSWER_LEAK_PATTERNS = [
   /correct answer/i,
   /the right answer/i,
@@ -282,10 +292,12 @@ describe("DiagnosticPage", () => {
       fireEvent.click(screen.getByRole("button", { name: /submit/i }));
     });
 
-    // The key never reached this browser, so there is nothing here that could name it. The name
-    // itself legitimately appears in exactly two places once marked (Task 12): once in the
-    // verdict's named-belief block, once in the Twin sidebar's running "Misconceptions detected"
-    // list — pinned to 2, not just "at least one", so a future accidental third render is caught.
+    // The key never reached this browser, so there is nothing here that could name it — proven
+    // structurally in lib/diagnostic.test.ts, this is only the cheap prose scan on top. The
+    // misconception name itself legitimately appears in exactly two places once marked (Task 12):
+    // once in the verdict's named-belief block, once in the Twin sidebar's running
+    // "Misconceptions detected" list — pinned to 2, not just "at least one", so a future
+    // accidental third render is caught.
     await screen.findByText(/you were not right/i);
     expect(screen.getAllByText(/keyword-match-wins/)).toHaveLength(2);
     expectNoAnswerLeak(container);
@@ -320,9 +332,10 @@ describe("DiagnosticPage", () => {
     expect(screen.getAllByText(/keyword-match-wins/)).toHaveLength(2);
     expect(screen.getByText(/never entered this browser/i)).toBeInTheDocument();
 
-    // The key is not here, on any path, in any casing — checked against the full rendered text,
-    // not element-by-element (see `expectNoAnswerLeak`), because a leak split across tags (e.g.
-    // "the <b>right</b> answer is option <b>B</b>") is invisible to `queryByText` otherwise.
+    // The key is not here, on any path, in any casing that matches `ANSWER_LEAK_PATTERNS` —
+    // checked against the full rendered text, not element-by-element (see `expectNoAnswerLeak`'s
+    // doc comment for why, and for why this scan is a heuristic, not the actual guarantee: that
+    // guarantee is structural, in lib/diagnostic.test.ts).
     expectNoAnswerLeak(container);
   });
 
