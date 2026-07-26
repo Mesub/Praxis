@@ -21,7 +21,7 @@ from praxis_ai.claude import ClaudeClient, ModelUnavailableError
 from praxis_ai.config import Settings, get_settings
 from praxis_ai.cost import Attribution
 from praxis_ai.grading import GradeOutcome, Grader
-from praxis_ai.items import EvidenceType, ItemGenerator, ItemRejectedError
+from praxis_ai.items import EvidenceType, ItemFormat, ItemGenerator, ItemRejectedError
 from praxis_ai.oracle import AnswerKeyStore
 from praxis_ai.routes.oracle import get_store
 from praxis_ai.rubric_store import (
@@ -129,6 +129,9 @@ class GenerateItemRequest(BaseModel):
 
     learner_id: str = Field(min_length=1)
 
+    #: How items for this concept are marked. Declared by the pack, carried by the core.
+    item_format: ItemFormat = ItemFormat.PROSE
+
     #: Fingerprints of what this learner has already been shown. **The core remembers; this service
     #: does not.** Novelty is checked against these, deterministically (M5.5).
     already_seen: list[str] = Field(default_factory=list)
@@ -152,6 +155,13 @@ class ItemResponse(BaseModel):
     evidence_type: EvidenceType
     stem: str
     difficulty: float
+
+    #: The text under study, for a reading item. The learner reads it; it is not secret.
+    passage: str | None = None
+
+    #: The choices as shown, in order. Which one is correct is not here and never will be.
+    options: list[str] | None = None
+
     fingerprint: str
 
     #: A key from `GenerateItemRequest.known_misconceptions`, or null. Never free text — the airlock
@@ -178,6 +188,7 @@ async def generate_item(
             ),
             already_seen=frozenset(request.already_seen),
             known_misconceptions=request.known_misconceptions,
+            item_format=request.item_format,
         )
     except ItemRejectedError as rejected:
         raise HTTPException(status_code=422, detail=str(rejected)) from rejected
@@ -190,6 +201,8 @@ async def generate_item(
         evidence_type=item.evidence_type,
         stem=item.stem,
         difficulty=item.difficulty,
+        passage=item.passage,
+        options=None if item.options is None else list(item.options),
         fingerprint=item.fingerprint,
         targets_misconception=item.targets_misconception,
     )

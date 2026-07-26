@@ -12,11 +12,33 @@ agree.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
 
 from praxis_ai.app import app
 
 CONTRACT = Path(__file__).resolve().parents[2] / "contracts" / "ai-plane.openapi.json"
+
+
+def _all_property_names(node: object) -> Iterator[str]:
+    """Every key that appears in every ``properties`` map in the schema, wherever it is nested.
+
+    A recursive walk, not a substring scan of the serialised JSON — because ``answer`` legitimately
+    appears in this document as a **path** (``/oracle/check-claim``) and inside docstrings promoted
+    to ``description``/``title`` text. Only a ``properties`` *key* names a field that will actually
+    cross the wire as a C# property, so only that is checked.
+    """
+    if isinstance(node, dict):
+        properties = node.get("properties")
+
+        if isinstance(properties, dict):
+            yield from properties.keys()
+
+        for value in node.values():
+            yield from _all_property_names(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _all_property_names(item)
 
 
 def test_the_committed_contract_matches_the_service() -> None:
@@ -123,4 +145,51 @@ def test_the_generator_can_be_handed_declared_misconceptions_and_names_one_back(
     response = committed["components"]["schemas"]["ItemResponse"]["properties"]
     assert "targets_misconception" in response, (
         "The item can no longer say which declared misconception it was built to catch."
+    )
+
+
+def test_a_fixed_key_item_carries_a_format_in_and_a_selection_back() -> None:
+    """Task 6 (M17), pinned explicitly. The core declares how an item is marked
+    (`GenerateItemRequest.item_format`) and gets a passage and options back on `ItemResponse` — but
+    never which option is correct. The oracle accepts a `selected_option` in place of a `claim` —
+    but never both, and never neither; that is enforced by the request validator, not by this test,
+    which only pins that the *fields* exist."""
+    committed = json.loads(CONTRACT.read_text(encoding="utf-8"))
+
+    request = committed["components"]["schemas"]["GenerateItemRequest"]["properties"]
+    assert "item_format" in request, "The core has no way to ask for a fixed-key item."
+
+    response = committed["components"]["schemas"]["ItemResponse"]["properties"]
+    assert "passage" in response, "A reading item's passage cannot reach the learner."
+    assert "options" in response, "A reading item's options cannot reach the learner."
+
+    check_claim = committed["components"]["schemas"]["CheckClaimRequest"]["properties"]
+    assert "selected_option" in check_claim, "The core has no way to submit a choice."
+
+    # `claim` is no longer required — a fixed-key answer is a `selected_option`, not words.
+    assert "claim" not in committed["components"]["schemas"]["CheckClaimRequest"]["required"]
+
+
+def test_the_published_contract_has_no_property_that_could_be_a_key() -> None:
+    """**The sweep, made exhaustive.** Every property name anywhere in the schema — not just the
+    ones this milestone happens to be thinking about — is checked against the vocabulary of an
+    answer key. This is what actually stands between a fixed-key item and a route that, someday,
+    hands back the index everyone was told never crosses the wire.
+    """
+    schema = json.loads(CONTRACT.read_text(encoding="utf-8"))
+
+    forbidden = {
+        "correct",
+        "correct_option",
+        "correct_index",
+        "answer",
+        "key",
+        "option_misconceptions",
+    }
+
+    found = [name for name in _all_property_names(schema) if name.lower() in forbidden]
+
+    assert not found, (
+        f"The published AI-plane contract advertises {found}. The contract is the thing other "
+        "people build against — a key in it is a key in every client that will ever be written."
     )

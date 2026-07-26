@@ -47,10 +47,11 @@ class _Response:
         self.stop_reason = "end_turn"
 
 
-def _client(reply: str) -> TestClient:
+def _client(reply: str, store: InMemoryAnswerKeyStore | None = None) -> TestClient:
     settings = Settings(anthropic_api_key="sk-ant-not-real")
 
-    store = InMemoryAnswerKeyStore({KEY.item_id: KEY})
+    if store is None:
+        store = InMemoryAnswerKeyStore({KEY.item_id: KEY})
 
     # Patch the one place the oracle is built, so the route runs for real against a fake model.
     import praxis_ai.routes.oracle as route
@@ -129,6 +130,82 @@ def test_an_unclear_reply_is_a_422_and_never_a_wrong() -> None:
     # "we'll call it wrong for now". The tutor has nothing to act on, which is correct — because
     # the learner may well have been right, and the failure was ours.
     assert "outcome" not in response.json()
+
+
+# ── Fixed-key marking (Task 6, M17) ─────────────────────────────────────────
+
+FIXED_KEY = AnswerKey(
+    item_id="item-mc-1",
+    concept_id="c1",
+    question="q",
+    answer="the second",
+    misconceptions={"keyword-match-wins": "Believes more repeats always wins."},
+    correct_option=1,
+    option_misconceptions={0: "keyword-match-wins"},
+)
+
+
+def test_a_selection_marks_without_a_claim() -> None:
+    """Two integers, no model. The reply text is never read, because a fixed-key item never calls
+    the model at all."""
+    store = InMemoryAnswerKeyStore({FIXED_KEY.item_id: FIXED_KEY})
+
+    try:
+        with _client("should never be read", store=store) as client:
+            response = client.post(
+                "/oracle/check-claim",
+                json={
+                    "item_id": FIXED_KEY.item_id,
+                    "selected_option": 0,
+                    "learner_id": "l1",
+                    "concept_id": "c1",
+                },
+            )
+    finally:
+        _reset()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "outcome": "wrong",
+        "misconception": "keyword-match-wins",
+        "usd": 0.0,
+    }
+
+
+def test_neither_a_claim_nor_a_selection_is_a_422() -> None:
+    """A caller that submits nothing is a caller that does not know what it is submitting."""
+    try:
+        with _client("unused") as client:
+            response = client.post(
+                "/oracle/check-claim",
+                json={"item_id": "item-1", "learner_id": "l1", "concept_id": "c1"},
+            )
+    finally:
+        _reset()
+
+    assert response.status_code == 422
+
+
+def test_both_a_claim_and_a_selection_is_a_422() -> None:
+    """``Oracle._mark_fixed_key`` does not inspect ``claim`` — if both a claim and a selection
+    arrived, it would silently ignore the claim and mark from the selection alone. The request
+    validator is the only thing that actually enforces one-or-the-other."""
+    try:
+        with _client("unused") as client:
+            response = client.post(
+                "/oracle/check-claim",
+                json={
+                    "item_id": "item-1",
+                    "claim": "I think it's the second one",
+                    "selected_option": 0,
+                    "learner_id": "l1",
+                    "concept_id": "c1",
+                },
+            )
+    finally:
+        _reset()
+
+    assert response.status_code == 422
 
 
 # ── The sweep ────────────────────────────────────────────────────────────────

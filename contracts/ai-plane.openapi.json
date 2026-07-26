@@ -4,8 +4,8 @@
       "CheckClaimRequest": {
         "properties": {
           "claim": {
+            "default": "",
             "maxLength": 8000,
-            "minLength": 1,
             "title": "Claim",
             "type": "string"
           },
@@ -23,11 +23,22 @@
             "minLength": 1,
             "title": "Learner Id",
             "type": "string"
+          },
+          "selected_option": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Option"
           }
         },
         "required": [
           "item_id",
-          "claim",
           "learner_id",
           "concept_id"
         ],
@@ -119,6 +130,10 @@
           },
           "evidence_type": {
             "$ref": "#/components/schemas/EvidenceType"
+          },
+          "item_format": {
+            "$ref": "#/components/schemas/ItemFormat",
+            "default": "prose"
           },
           "known_misconceptions": {
             "additionalProperties": {
@@ -266,6 +281,15 @@
         "title": "HintRung",
         "type": "integer"
       },
+      "ItemFormat": {
+        "description": "How an item is answered, and therefore how it is marked.\n\n``MULTIPLE_CHOICE`` is marked by comparing two integers \u2014 no model, no judgement, no cost. It\nis the only marking in PRAXIS whose verdict is a *fact* rather than an opinion.",
+        "enum": [
+          "prose",
+          "multiple_choice"
+        ],
+        "title": "ItemFormat",
+        "type": "string"
+      },
       "ItemResponse": {
         "description": "**Everything the core, the tutor and the learner ever see of an item.**\n\nThere is no `answer` field, and there must never be one. The answer exists \u2014 it went to the\noracle's store the moment the item was made \u2014 and the only thing that ever comes back out of it\nis one of three words (M5.3).",
         "properties": {
@@ -287,6 +311,31 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          },
+          "passage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passage"
           },
           "stem": {
             "title": "Stem",

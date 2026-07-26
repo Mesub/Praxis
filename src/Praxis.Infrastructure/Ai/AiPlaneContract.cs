@@ -209,4 +209,15 @@ public sealed record ItemResponse(
     /// A key from the `GenerateItemRequest.KnownMisconceptions` the core sent — or null. Never free
     /// text: the AI plane's airlock (M14.2) guarantees only a key the core itself declared in
     /// advance ever comes back here.
-    string? TargetsMisconception);
+    string? TargetsMisconception,
+
+    /// The text under study, for a reading item. The learner reads it; it is not a secret. Null for
+    /// a `Prose` item, which has no passage.
+    ///
+    /// Defaulted, not a new required position, so every prose-item call site written before M17
+    /// keeps compiling unchanged.
+    string? Passage = null,
+
+    /// The choices as shown, in order. **Not a secret** — they are on the screen. Which one is
+    /// correct is not here, and there is no field it could be put in.
+    IReadOnlyList<string>? Options = null);

@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from praxis_ai.claude import ClaudeClient, ModelUnavailableError
 from praxis_ai.config import Settings, get_settings
@@ -23,6 +23,7 @@ from praxis_ai.key_store import PostgresAnswerKeyStore
 from praxis_ai.oracle import (
     AnswerKeyStore,
     ClaimOutcome,
+    FormatMismatchError,
     InMemoryAnswerKeyStore,
     Oracle,
     OracleUnclearError,
@@ -54,11 +55,23 @@ def get_store(settings: Annotated[Settings, Depends(get_settings)]) -> AnswerKey
 class CheckClaimRequest(BaseModel):
     item_id: str = Field(min_length=1)
 
-    #: What the learner actually said. It goes to the oracle and nowhere else.
-    claim: str = Field(min_length=1, max_length=8_000)
+    #: What the learner actually said, for a prose item. It goes to the oracle and nowhere else.
+    claim: str = Field(default="", max_length=8_000)
+
+    #: The option they chose, for a fixed-key item. Exactly one of these two arrives.
+    selected_option: int | None = Field(default=None, ge=0)
 
     learner_id: str = Field(min_length=1)
     concept_id: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def exactly_one_answer(self) -> CheckClaimRequest:
+        if bool(self.claim.strip()) == (self.selected_option is not None):
+            raise ValueError(
+                "An answer is either words or a choice, and PRAXIS is told which. Both, or "
+                "neither, is a caller that does not know what it is submitting."
+            )
+        return self
 
 
 class CheckClaimResponse(BaseModel):
@@ -88,9 +101,13 @@ async def check_claim(
             request.item_id,
             request.claim,
             Attribution(learner_id=request.learner_id, concept_id=request.concept_id),
+            selected_option=request.selected_option,
         )
     except UnknownItemError as unknown:
         raise HTTPException(status_code=404, detail=str(unknown)) from unknown
+    except FormatMismatchError as mismatch:
+        # 422, never a fallback. See FormatMismatchError.
+        raise HTTPException(status_code=422, detail=str(mismatch)) from mismatch
     except OracleUnclearError as unclear:
         # 422, not 200-with-a-wrong. The tutor will tell the learner it could not check that and ask
         # them to say it another way. It will **not** tell them they were wrong, because they may

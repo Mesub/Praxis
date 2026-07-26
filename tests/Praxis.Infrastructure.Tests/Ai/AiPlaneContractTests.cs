@@ -133,6 +133,50 @@ public sealed class AiPlaneContractTests
             typeof(ItemResponse).GetProperties().Select(p => p.Name));
     }
 
+    /// **Pinned deliberately, Task 6 (M17).** The reflection-based drift tests above would catch it
+    /// if either side forgot its half of the wire — but a reviewer should not have to reconstruct
+    /// "what did this milestone actually add" from a diff of two hundred lines of JSON. This test
+    /// names the two fields the plan asked for: a fixed-key item's passage and options come back on
+    /// `ItemResponse`, and — deliberately absent from every assertion below — no index of which one
+    /// is correct ever does.
+    [Fact]
+    public void A_fixed_key_item_returns_a_passage_and_options_and_no_key()
+    {
+        var response = Schemas.GetProperty("ItemResponse").GetProperty("properties");
+        Assert.True(response.TryGetProperty("passage", out _));
+        Assert.True(response.TryGetProperty("options", out _));
+
+        Assert.Contains(
+            nameof(ItemResponse.Passage),
+            typeof(ItemResponse).GetProperties().Select(p => p.Name));
+
+        Assert.Contains(
+            nameof(ItemResponse.Options),
+            typeof(ItemResponse).GetProperties().Select(p => p.Name));
+    }
+
+    /// **The other half of the wire.** The core can now ask for a fixed-key item
+    /// (`GenerateItemRequest.item_format`) and submit a choice instead of a claim
+    /// (`CheckClaimRequest.selected_option`). Neither has a C# property yet — sending them is Task
+    /// 7/8's job — but the *contract* must offer both today, or those tasks have nothing to bind to.
+    [Fact]
+    public void The_contract_offers_a_format_in_and_a_selection_back()
+    {
+        var itemRequest = Schemas.GetProperty("GenerateItemRequest").GetProperty("properties");
+        Assert.True(itemRequest.TryGetProperty("item_format", out _));
+
+        var checkClaim = Schemas.GetProperty("CheckClaimRequest").GetProperty("properties");
+        Assert.True(checkClaim.TryGetProperty("selected_option", out _));
+
+        // `claim` is no longer required — a fixed-key answer is a selection, not words.
+        var required = Schemas.GetProperty("CheckClaimRequest").GetProperty("required")
+            .EnumerateArray()
+            .Select(v => v.GetString()!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.DoesNotContain("claim", required);
+    }
+
     // ── The refusals, at the seam ────────────────────────────────────────────
 
     /// **The most dangerous place in the system for an `answer` field.**

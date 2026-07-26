@@ -121,3 +121,43 @@ def test_a_target_outside_the_declared_set_comes_back_null(client: TestClient) -
 
     assert resp.status_code == 200
     assert resp.json()["targets_misconception"] is None
+
+
+def test_a_multiple_choice_request_returns_a_passage_and_options_and_no_key(
+    client: TestClient,
+) -> None:
+    """Task 6 (M17): the core can ask for a fixed-key item over the wire, and gets back a passage
+    and four options — never which one is correct."""
+    reply = json.dumps(
+        {
+            "passage": "Term frequency saturates because the tenth mention adds far less signal "
+            "than the second.",
+            "question": "Why does BM25 not rank a document with 60 mentions 6x higher?",
+            "options": ["A", "B", "C", "D"],
+            "correct": 1,
+            "option_misconceptions": {"0": "keyword-match-wins"},
+            "answer": "B",
+            "misconceptions": {"keyword-match-wins": "Believes more repeats always ranks higher."},
+            "targets": None,
+        }
+    )
+
+    with patch("praxis_ai.routes.assessment.ClaudeClient", _fake_claude(reply)):
+        resp = client.post(
+            "/assessment/items",
+            json=_request(
+                item_format="multiple_choice",
+                known_misconceptions={"keyword-match-wins": "Believes more repeats always wins."},
+            ),
+        )
+
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert body["passage"]
+    assert len(body["options"]) == 4
+
+    # Structural, not a substring scan: no *property* on the way out may be a key.
+    assert not any(
+        k in body for k in ("correct", "correct_option", "answer", "key", "option_misconceptions")
+    )
