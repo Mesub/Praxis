@@ -124,15 +124,42 @@ public sealed class SubmitAnswerTests
         Assert.False(result.IsSuccess);
     }
 
+    /// **The guard the review found missing.** `picked >= item.Options.Count` alone lets a negative
+    /// index through the shape and range checks; the only thing that stopped it was the validator —
+    /// which, per `DiagnosticsController`'s own M6.5b note, never runs on the real HTTP path. This
+    /// calls the handler directly, exactly as every other test in this file does, so it proves the
+    /// handler's *own* guard, not the validator's. Wrong == oracle names a misconception, which is the
+    /// branch that used to index `item.Options[-1]` and throw — so without the fix this test does not
+    /// merely fail an assertion, it errors out with an unhandled exception.
+    [Fact]
+    public async Task A_negative_option_is_refused_before_it_ever_reaches_an_index()
+    {
+        var item = await BankFixedKeyItem();
+        var ai = new StubAiPlane(ClaimOutcome.Wrong, misconception: "keyword-match-wins");
+
+        var result = await HandlerWith(ai).HandleAsync(
+            new SubmitAnswer.Command(SessionId, item.Id, Claim: null, 0.85, 30, SelectedOption: -1),
+            default);
+
+        Assert.False(result.IsSuccess);
+
+        // Refused before the oracle was ever asked — same as the wrong-shape and out-of-range guards.
+        Assert.Null(ai.LastCheck);
+        Assert.Empty(await EventsFor(LearnerId).ToListAsync());
+    }
+
     [Theory]
-    [InlineData(null, null)]
-    [InlineData("words", 1)]
-    public void An_answer_is_words_or_a_choice_and_never_both_or_neither(string? claim, int? option)
+    [InlineData(null, null, false)]
+    [InlineData("words", 1, false)]
+    [InlineData("words", null, true)]
+    [InlineData(null, 1, true)]
+    public void An_answer_is_words_or_a_choice_and_never_both_or_neither(
+        string? claim, int? option, bool valid)
     {
         var result = new SubmitAnswer.Validator().Validate(
             new SubmitAnswer.Command(Guid.NewGuid(), Guid.NewGuid(), claim, 0.7, 10, option));
 
-        Assert.False(result.IsValid);
+        Assert.Equal(valid, result.IsValid);
     }
 
     // ── The world ────────────────────────────────────────────────────────────

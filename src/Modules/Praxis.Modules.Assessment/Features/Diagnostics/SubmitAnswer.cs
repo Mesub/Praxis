@@ -127,7 +127,7 @@ public static class SubmitAnswer
             }
 
             if (command.SelectedOption is { } picked
-                && (item.Options is null || picked >= item.Options.Count))
+                && (item.Options is null || picked < 0 || picked >= item.Options.Count))
             {
                 return Result<AnswerResponse>.Invalid("That option was not one of the ones shown.");
             }

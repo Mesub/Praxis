@@ -57,7 +57,8 @@ public sealed class DiagnosticsController : ControllerBase
                 request.ItemId,
                 request.Claim,
                 request.StatedConfidence,
-                request.Seconds),
+                request.Seconds,
+                request.SelectedOption),
             ct))
             .ToApiResponse();
     }
@@ -91,13 +92,22 @@ public sealed record AnswerRequest(
     Guid ItemId,
 
     /// **Their words are data.** They go to the oracle as a claim to check, never as instructions.
-    string Claim,
+    /// Absent when they chose instead — see `SelectedOption`, and the exactly-one rule below.
+    string? Claim,
 
     /// **Stated before they find out.**
     double StatedConfidence,
 
-    int Seconds);
+    int Seconds,
 
+    /// The option they chose, for a fixed-key item. **Exactly one** of this and `Claim` arrives —
+    /// mirrors `SubmitAnswer.Command.SelectedOption` exactly, because this is the DTO the wire
+    /// actually binds and therefore the shape the rule must hold on to mean anything.
+    int? SelectedOption = null);
+
+/// **The rule that actually runs.** `DiagnosticsController.Answer` builds `SubmitAnswer.Command` by
+/// hand rather than binding it (see the note above), so `SubmitAnswer.Validator`'s copy of this rule
+/// never sees a real request — only this one does. It must not be allowed to drift from that copy.
 public sealed class AnswerRequestValidator : AbstractValidator<AnswerRequest>
 {
     public AnswerRequestValidator()
@@ -105,9 +115,18 @@ public sealed class AnswerRequestValidator : AbstractValidator<AnswerRequest>
         RuleFor(r => r.ItemId).NotEmpty();
 
         RuleFor(r => r.Claim)
-            .NotEmpty()
-            .WithMessage("An empty answer is not an answer, and PRAXIS will not mark one.")
             .MaximumLength(20_000);
+
+        RuleFor(r => r.SelectedOption)
+            .GreaterThanOrEqualTo(0)
+            .When(r => r.SelectedOption.HasValue);
+
+        RuleFor(r => r)
+            .Must(r => string.IsNullOrWhiteSpace(r.Claim) != (r.SelectedOption is null))
+            .WithMessage(
+                "An answer is either words or a choice. Both, or neither, is a client that "
+                + "does not know what it is submitting — and PRAXIS will not guess which half "
+                + "of it to mark a person on.");
 
         RuleFor(r => r.StatedConfidence)
             .InclusiveBetween(0.0, 1.0)

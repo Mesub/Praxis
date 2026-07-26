@@ -1600,7 +1600,7 @@ public async Task A_distractor_records_the_named_belief_with_the_chosen_option_a
 
     var detected = await EventsFor(LearnerId).OfType<MisconceptionDetected>().SingleAsync();
 
-    Assert.Equal("keyword-match-wins", detected.Key);
+    Assert.Equal("keyword-match-wins", detected.Name);
 
     // The evidence is what they actually did: the option they picked, in their words as shown.
     Assert.Equal("Everyone who worked a Saturday shift last month.", detected.Evidence);
