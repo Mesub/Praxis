@@ -26,10 +26,13 @@
 #   contrasts   The confusable pair — where the Assessment engine hunts distractors.
 #   proof       CEILING: model-graded evidence (explain, critique) can never sum to hold.
 #               FLOOR: apply alone is always sufficient. Apply, for reading, means: a NEVER-SEEN
-#               passage answered against a FIXED KEY (multiple choice, true/false/not-given, span
-#               selection, ordering) — deterministic, unfakeable, and the key is never in the
-#               tutor's context (C-5). No build/predict; a comprehension answer cannot run against
-#               hidden tests. No recall; there is nothing here to memorize.
+#               passage answered against a FIXED KEY, marked by comparing the chosen option to the
+#               key -- deterministic, unfakeable, and the key is never in the tutor's context (C-5).
+#               Today that means four-option MULTIPLE CHOICE, and only that. True/false/not-given,
+#               span selection and ordering are named, deliberate follow-ups (M19); they are not
+#               described here as if they existed, because for a while this file described a marking
+#               scheme the product did not have. No build/predict; a comprehension answer cannot run
+#               against hidden tests. No recall; there is nothing here to memorize.
 
 domain: english-reading
 version: 1
@@ -61,7 +64,7 @@ concepts:
       hold: 0.75
       evidence:
         - { type: Critique, min-score: 0.7, max: 0.15 }
-        - { type: Apply, min-score: 0.8, max: 0.75 }
+        - { type: Apply, min-score: 0.8, max: 0.75, format: MultipleChoice }
 
   - slug: embedded-clauses
     title: "Embedded clauses: the subject and verb split apart"
@@ -98,7 +101,7 @@ concepts:
       hold: 0.78
       evidence:
         - { type: Critique, min-score: 0.7, max: 0.15 }
-        - { type: Apply, min-score: 0.8, max: 0.78 }
+        - { type: Apply, min-score: 0.8, max: 0.78, format: MultipleChoice }
 
   - slug: connectives-that-flip
     title: "Connectives that flip the meaning"
@@ -120,7 +123,7 @@ concepts:
       hold: 0.78
       evidence:
         - { type: Critique, min-score: 0.7, max: 0.15 }
-        - { type: Apply, min-score: 0.8, max: 0.78 }
+        - { type: Apply, min-score: 0.8, max: 0.78, format: MultipleChoice }
 
   - slug: phrasal-verbs-in-context
     title: "Phrasal verbs: read them, don't translate them"
@@ -177,7 +180,7 @@ concepts:
       hold: 0.75
       evidence:
         - { type: Critique, min-score: 0.7, max: 0.15 }
-        - { type: Apply, min-score: 0.8, max: 0.75 }
+        - { type: Apply, min-score: 0.8, max: 0.75, format: MultipleChoice }
 
   - slug: main-idea
     title: "Main idea: the point, not a line of it"
@@ -200,7 +203,7 @@ concepts:
       hold: 0.78
       evidence:
         - { type: Critique, min-score: 0.7, max: 0.15 }
-        - { type: Apply, min-score: 0.8, max: 0.78 }
+        - { type: Apply, min-score: 0.8, max: 0.78, format: MultipleChoice }
 
   - slug: inference
     title: "Inference: the safe step past what is printed"
@@ -221,7 +224,7 @@ concepts:
       hold: 0.80
       evidence:
         - { type: Critique, min-score: 0.7, max: 0.15 }
-        - { type: Apply, min-score: 0.8, max: 0.80 }
+        - { type: Apply, min-score: 0.8, max: 0.80, format: MultipleChoice }
 
   - slug: authors-stance
     title: "Author's stance: fact, opinion, and which side"
@@ -243,7 +246,7 @@ concepts:
       hold: 0.80
       evidence:
         - { type: Critique, min-score: 0.7, max: 0.15 }
-        - { type: Apply, min-score: 0.8, max: 0.80 }
+        - { type: Apply, min-score: 0.8, max: 0.80, format: MultipleChoice }
 
   - slug: vocab-from-context
     title: "Vocabulary from context: no dictionary"
@@ -265,7 +268,7 @@ concepts:
       hold: 0.75
       evidence:
         - { type: Critique, min-score: 0.7, max: 0.15 }
-        - { type: Apply, min-score: 0.8, max: 0.75 }
+        - { type: Apply, min-score: 0.8, max: 0.75, format: MultipleChoice }
 
   - slug: reading-tone-register
     title: "Reading tone and register"
