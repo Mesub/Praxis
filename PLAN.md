@@ -8,8 +8,8 @@
 
 ## Status
 
-**Current milestone:** ✅ **PLAN COMPLETE** — every box in this file is ticked, including the post-Phase-0 item bank (M14). The Phase 0 slice (E1 Twin · E2 Graph · E3 Compiler · E4 Scheduler · E5 Tutor · E6 Assessment · E7 Memory · E8 Reality Loop · E16 Ledger · E15 Analytics) is built, on the web, with the refusals enforced in code (no mark-as-complete · the tutor never holds the answer · the Evidence Ceiling · the Decay Wall) and proven end to end (M13.3), on a complete replayable event log (M13.4). The item bank was deferred at Phase 0 close (M13.1) and has since been wired end to end (M14): an empty bank now fills itself via the AI plane, whose generated answer keys survive a restart (M14.1), and the adaptive diagnostic runs on those items through the real host, proven M14.7. The 180-concept pack expansion remains out of scope.
-**Last completed task:** M14.7 — **The end-to-end proof: an empty bank fills itself, the diagnostic runs, and the answer never crosses the wire.** New `ItemBankE2ETests` (through the real host, `WebApplicationFactory`, with only `IAiPlane` faked by a scripted, capturing `ScriptedAiPlane` modelled on `LeakingAiPlane`) drives the whole M14 chain as a learner would: register → confirm the bank is empty for `grounded-generation` (next-item honestly refuses, 404) → `POST .../pool` tops it up to the floor (5 generated, 5 banked) → `GET .../next-item` serves one of the freshly generated stems → `POST .../answers` marks it `Correct` → the oracle is shown to have been asked under the generated item's own name (`item-e2e-1`), never the row's Guid → the immutable log carries the `AnswerGiven` for this learner and concept. The closing **adversarial sweep** parses every captured AI-plane request and every response body as JSON and checks *property names*, not substrings — deliberately choosing `grounded-generation` because its own declared misconception, `models-should-always-answer`, would trip a naive text scan for `"answer"` the moment its key crosses the wire; the structural sweep passes because it only inspects keys, never the free text of a value, which is where a wrong-belief statement legitimately lives. A second test, `Pool_generation_failure_banks_nothing_and_the_diagnostic_refuses_honestly`, proves the other half: a generator that fails leaves the failure on the pool response and the diagnostic still refuses rather than invent an item. Both tests passed on the first run — every M14.1–M14.6 wiring seam held with no fix-forward needed. **1042 .NET tests** (was 1040; +2), 233 AI tests and 172 web tests unchanged (neither stack touched). Full gate: **PASSED — every stage ran and passed** (1042 .NET + 233 AI + 172 web). **This completes M14 and, again, the entire PLAN.**
+**Current milestone:** ✅ **PLAN COMPLETE** — every box in this file is ticked. The Phase 0 slice (E1 Twin · E2 Graph · E3 Compiler · E4 Scheduler · E5 Tutor · E6 Assessment · E7 Memory · E8 Reality Loop · E16 Ledger · E15 Analytics) is built, on the web, with the refusals enforced in code (no mark-as-complete · the tutor never holds the answer · the Evidence Ceiling · the Decay Wall) and proven end to end (M13.3), on a complete replayable event log (M13.4). The item bank was deferred at Phase 0 close (M13.1) and has since been wired end to end (M14). Packs have proven the "zero engine changes" claim twice since (M15 everyday English, M16 reading English) and once falsified it honestly: the reading pack described a fixed-key marking scheme the product did not have, and M17 built it — a passage, four choices, and an answer key genuinely unreachable from the .NET core, proven end to end M17.1 against the real shipped pack. The 180-concept pack expansion, Listening English (now M18), the other reading forms (now M19), and the onboarding→objective→diagnostic wiring + sign-in (M20) all remain out of scope.
+**Last completed task:** M17.1 — **The fixed-key reading item, proven end to end against the real shipped pack.** New `ItemBankE2ETests` fact drives the whole M17 chain through the real host exactly as M14.7 drove the prose one, but against `packs/english-reading/pack.yaml`'s own `main-idea` concept (its Apply clause genuinely declares `format: MultipleChoice`; its one declared misconception is `keyword-match-wins`) rather than a synthetic stand-in: register → the bank is empty and the diagnostic refuses honestly (404) → `POST .../pool` tops it up (5 generated, 5 banked, every generation call asking for `MultipleChoice`, never the prose default) → `GET .../next-item` serves a real passage and four options, never a key → choosing the keyword-matching distractor is marked `Wrong` by **comparing two integers, no model call**, and names the belief that produced it → the immutable log carries both the `AnswerGiven` and the `MisconceptionDetected` (evidence = the option's own text, not an empty claim) → the closing property-name sweep, now also forbidding `correct_option`/`correct_index` while confirming `selectedOption` legitimately crosses the wire as the learner's own choice, finds nothing answer-shaped anywhere this process sent or read. `ScriptedAiPlane` was extended to honour `ItemFormat.MultipleChoice` (a passage + four options back, no index) and `SelectedOption` (deterministic marking, zero cost) — every assertion round-trip-verified by sabotaging the marking branch and watching the test fail for the right reason, then reverting. This closes out the whole M17 chain: the item grows `Format`/`Passage`/`Options` with `SchemaTests`' forbidden list widened and a schema-independent allowlist guard proven against real Postgres; the generator writes passages and airlocks distractor misconceptions against the concept's declared set; the oracle marks fixed-key items with `Partial` structurally unreachable; the wire carries `ItemFormat` out and `SelectedOption` back behind a contract-drift guard; the core reads the pack's declared Apply format through `GraphConceptIntel` and banks with an honest guessing floor (`1/N`, never hardcoded); `SubmitAnswer`'s exactly-one-of-`Claim`/`SelectedOption` rule was found dead on every live HTTP path (the controller builds the command by hand, so only the DTO's own copy of the rule ever runs) and fixed by mirroring it byte-for-byte onto the DTO validator that actually does; the tutor is handed the real `ConceptSummary` and `Passage` and structurally cannot be handed `Options` (verified by reflection and a jailbreak suite re-run against both the buffered and the streamed path, because a stream has no schema to protect it); `/diagnostic` renders a serif passage pane and an accessible radio fieldset, then rests on a `"marked"` verdict phase — added mid-milestone by owner ruling as **M17.2** below — that names the belief and states the refusal out loud rather than racing to the next question. **M17.2's own review found the milestone's most serious defect**: the guard asserting the verdict never named the correct option did not actually guard (Testing Library matches direct text nodes only, so a leak split across a `<b>` tag sailed through undetected on two separate probes) and, once replaced with a real structural guard — a TypeScript type that is *uninhabitable* if `AnswerResponse`/`AnsweredItem` ever grow a key-shaped field, so the build itself fails — that guard turned out to never run in `verify.ps1` at all (`lint`/`test`/`build` each individually skip type-checking test files); fixed by adding a `Web typecheck` stage, now the gate's eighth, proven by leaving a violating field in place and watching the gate fail by name while every other stage still passed. **1089 .NET tests, 267 AI tests (2 pre-existing skips) and 199 web tests.** Full gate: **PASSED — every stage ran and passed, 8/8** (.NET build · .NET test · AI lint · AI test · Web lint · Web typecheck · Web test · Web build). **Not performed:** the live-model step (Step 5 of the M17 plan — top up a pool and fetch one real item from the Claude API) — `ANTHROPIC_API_KEY` is missing from `ai/.env` on this machine, so it was neither run nor simulated; every other claim above is proven by the automated gate, not by eye. **Also not yet true:** the reading item is reachable through the API and the test suite but **not yet by clicking through the browser** — picking "Reading English" in onboarding still persists nothing and the console still sends no bearer token (M20).
 _Previously — M13.6b-iii-2:_ **The SVG map on `/graph`, the last box.** The node-link map now leads the Graph page: concepts as nodes at their `(layer, row)`, prerequisites as bezier arrows, each node shaded by Twin belief (held / in-progress / decaying / lapsed / not-started) with the frontier ringed. Colour is never the only signal — every node carries its title and state in the accessible name, there is a legend, and the model's summary is the SR label and caption; nodes are keyboard-reachable, the wide map scrolls in its own container, no motion. Best-effort belief (a Twin hiccup still draws the terrain), honest error + retry, empty state. 5 component tests. Full gate **PASSED** (1035 .NET + 224 AI + 169 web). This completed M13.6, M13, and the Phase 0 PLAN.
 _The build:_ M0–M11 (foundations → the twelve-screen web console) · M12 (E15 Analytics: MPM + the honest dashboard, calibration trend · consistency · decay debt) · M13 (the misconception library declared→persisted→wired; the end-to-end proof; the instrumented log verified; C-4 proven end to end; the Graph node-link map). `/analytics` leads with Mastery-per-hour over the honest verdict (a real rate is "the number that matters"; a gained-nothing stretch is said out loud; no time invested is "a blank page, not a zero"), and when the number is bad the next line is a next step to Today (R-3), not shame. Calibration folds in from the Twin (best-effort). Pure `lib/analytics.ts`; 11 web tests. **121 web tests total.** **M11 (the web console) is complete** — 12 screens + the shell, and 4 features grown from pure code into full API surfaces. (A flaky Docker-sandbox test tripped once under the new test assembly's load, passed on re-run — not a regression.) Full gate: **PASSED — every stage ran and passed** (992 .NET + 224 AI + 121 web).
 _Previously — M11.12a-ii:_ **The MPM number assembled: minutes from the log over mastery from the Twin.** `GET /api/analytics/me` folds minutes invested from the event log (completed **and** abandoned sessions — abandoned time is still time; planned time never counts) over the Twin's decay-adjusted mastery credit, through the pure `MasteryPerMinute`. A learner who invested nothing gets *no rate, not a fake zero*. 6 tests incl. 2 through the real host; reads the learner off the token, no `?learnerId=`. Full gate: **PASSED — every stage ran and passed** (992 .NET + 224 AI + 110 web). Only the Analytics screen (M11.12b) remains to close M11.
@@ -595,6 +595,81 @@ match it, don't reinvent it.
       shipped YAML to the pack standard in CI (validator gate, 15-count, every-concept-holdable,
       misconception keys pinned). "Reading English" card in `web/lib/onboarding.ts` (+2 web tests).
       Listening deferred to M17 (needs audio). Dev DB now carries three packs. Full gate PASSED.
+
+---
+
+## M17 — The fixed-key reading item
+
+> The reading pack described a marking scheme the product did not have. This builds it. Spec:
+> `docs/superpowers/specs/2026-07-26-fixed-key-reading-item-design.md` · plan:
+> `docs/superpowers/plans/2026-07-26-fixed-key-reading-item.md`. Listening English, pencilled into
+> M17 by the M16 spec, moves to **M18** (it needs audio infrastructure this milestone doesn't
+> touch); the other three Apply forms the pack's comment block names — true/false/not-given, span
+> selection, ordering — are named, deliberate follow-ups as **M19**, fixing four-option multiple
+> choice as the only shipped form for now.
+
+- [x] **M17.1** A passage, four choices, and a key the core cannot reach — proven end to end.
+      → The item grows `Format`/`Passage`/`Options` (`SchemaTests`' forbidden list widened,
+      a schema-independent allowlist guard proven against real Postgres so the detector itself
+      can't go quietly dead). The AI-plane generator writes a passage and four options for a
+      `multiple_choice` request and airlocks each distractor's declared misconception against the
+      concept's own set; the oracle marks a fixed-key answer by **comparing two integers — no
+      model call, no cost, `Partial` structurally unreachable**. The wire carries `ItemFormat` out
+      and `SelectedOption` back behind a contract-drift guard that a reviewer proved real (injected
+      `correct_option` into the response type and watched the guard catch it). The core reads the
+      pack's declared Apply format through `GraphConceptIntel` and banks with an honest guessing
+      floor (`1/N`, derived from the real option count, never hardcoded). `SubmitAnswer` accepts
+      exactly one of `Claim`/`SelectedOption` — a real defect surfaced here: the controller builds
+      the command by hand rather than binding it, so the rule was correct, unit-tested, and **dead
+      on every live HTTP path** until mirrored onto the DTO validator that the request actually
+      reaches. The tutor is handed the real `ConceptSummary` and `Passage` (two placeholders that
+      sent a raw GUID and the literal string `"the current problem"` are gone) and structurally
+      cannot be handed `Options` — verified by reflection and a jailbreak suite re-run against both
+      the buffered turn and the token stream, because a stream has no schema to protect it.
+      `/diagnostic` renders a serif passage pane and an accessible radio fieldset, then **rests on
+      a verdict** instead of racing to the next question (see M17.2). Proven end to end by a new
+      `ItemBankE2ETests` fact run against the *real shipped* `packs/english-reading/pack.yaml`'s
+      own `main-idea` concept (genuine `format: MultipleChoice`, genuine declared misconception
+      `keyword-match-wins`) rather than a synthetic fixture: empty bank refuses honestly → pool
+      tops up 5 fixed-key items → next-item serves a real passage and four options → choosing the
+      keyword-matching distractor marks `Wrong` and names the belief → the log carries both
+      `AnswerGiven` and `MisconceptionDetected` (evidence = the chosen option's own text) → the
+      adversarial property-name sweep, now also forbidding `correct_option`/`correct_index` while
+      confirming `selectedOption` legitimately crosses the wire, finds nothing answer-shaped
+      anywhere sent or read. Every new assertion was round-trip-verified by sabotaging the marking
+      branch and watching the test fail for the right reason, then reverting. **Reachable through
+      the API and the test suite — not yet by clicking through the browser**: picking "Reading
+      English" in onboarding still persists nothing and the console still sends no bearer token
+      (M20). **The live-model step (plan Step 5 — fetch one real item from the Claude API) was
+      not performed**: `ANTHROPIC_API_KEY` is missing from `ai/.env` on this machine, so it was
+      neither run nor simulated; everything else here is proven by the automated gate. **1089 .NET
+      tests, 267 AI tests (2 pre-existing skips), 199 web tests.** Full gate: **PASSED — every
+      stage ran and passed, 8/8** (.NET build/test · AI lint/test · Web lint/typecheck/test/build).
+
+- [x] **M17.2** The verdict panel — the third state the approved prototype had and the plan never
+      scheduled, added mid-milestone by owner ruling.
+      → `/diagnostic` gains a `"marked"` phase: submitting an answer no longer auto-advances —
+      it rests on a panel naming the outcome, the confidence gap, and (when PRAXIS can name one)
+      the belief that produced a wrong answer, then states the refusal **out loud**: the key never
+      entered this browser or the process that served it, so there is nothing here to reveal.
+      No θ-after and no "how the estimate moved" render here — the number only settles once the
+      *next* item's response lands, and showing it early would be a fabricated reading. **This
+      review found the milestone's most serious defect**: the first guard asserting the verdict
+      never named the correct option did not actually guard — Testing Library matches an element's
+      *direct* text nodes only, so a leak split across a `<b>` tag (the same idiom the refusal
+      paragraph itself already used one line away) sailed through undetected on two independent
+      reviewer probes. Replaced with a **structural, compile-time** guard: a TypeScript type that
+      is uninhabitable the moment `AnswerResponse` or `AnsweredItem` grows a field shaped like
+      `correct`/`answer`/`key`/`index`, so the build itself fails rather than a test merely
+      asserting a wording. That guard then turned out to **never run in the gate at all** —
+      `npm run lint`/`test`/`build` each individually skip type-checking test files — so a doc
+      comment claiming it was load-bearing was quietly false; fixed by adding a `typecheck` script
+      and a new **`Web typecheck`** stage to `scripts/verify.ps1` (now the gate's eighth), proven
+      by leaving a violating field in place and watching the gate fail by name while every other
+      stage still passed, then reverting. Also fixed: the sidebar's estimate pip no longer claims
+      "held" for the item just answered (θ-after is genuinely unsettled until the next response),
+      and focus moves into the verdict panel when it replaces the question. **199 web tests** (was
+      185 before this task). Full gate: **PASSED — every stage ran and passed, 8/8.**
 
 ---
 

@@ -47,6 +47,12 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
     /// where a declared wrong belief's slug — `models-should-always-answer`, on this very concept —
     /// crosses the wire as a JSON object key. That is data wearing a key's clothes, not a schema
     /// field, and the walker spares that map's keys (and only them).
+    ///
+    /// **M17 adds two fragments and deliberately withholds a third.** `correct_option` and
+    /// `correct_index` are the shape a fixed-key item's answer would take if it ever leaked — the
+    /// oracle's own `answer_keys.correct_option` column, named exactly. `selected_option` is *not*
+    /// here: it is the learner's own choice, not the key, and it legitimately rides on
+    /// `CheckClaimRequest` and `SubmitAnswer.Command` every time a multiple-choice item is answered.
     private static readonly string[] ForbiddenNameFragments =
     [
         "answer",
@@ -56,6 +62,8 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
         "key_text",
         "ground_truth",
         "rubric",
+        "correct_option",
+        "correct_index",
     ];
 
     private readonly ApiFixture _api;
@@ -242,6 +250,145 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
         }
     }
 
+    /// **The reading item, proven the same way as M14's prose item — same refusal-when-empty, same
+    /// pool top-up, same sweep — but marked by comparing two integers instead of asking a model.**
+    ///
+    /// `main-idea` is the shipped Reading English pack's own concept (`packs/english-reading/
+    /// pack.yaml`): its Apply clause declares `format: MultipleChoice`, and it declares exactly one
+    /// wrong reading habit, `keyword-match-wins` — picking the option that merely repeats the
+    /// passage's words instead of the one that is actually its point. `ScriptedAiPlane` is scripted
+    /// to catch precisely that: option 1 is correct, option 0 is the keyword-matching distractor.
+    [Fact]
+    public async Task A_reading_concept_fills_its_bank_serves_a_passage_and_marks_a_distractor_by_name()
+    {
+        var ai = new ScriptedAiPlane();
+        using var factory = BuildFactory(ai);
+
+        var responseBodies = new List<string>();
+
+        var client = factory.CreateClient();
+        var learner = await Register(client, responseBodies);
+
+        var concept = await SeedReadingConceptAsync();
+        var sessionId = Guid.CreateVersion7();
+
+        // ── 1. The bank is empty, and the diagnostic says so rather than invent a passage ────────
+        using (var empty = await client.GetAsync(NextItemUri(sessionId, concept)))
+        {
+            var body = await empty.Content.ReadAsStringAsync();
+            responseBodies.Add(body);
+
+            Assert.Equal(HttpStatusCode.NotFound, empty.StatusCode);
+            Assert.Contains("will not invent one", body, StringComparison.Ordinal);
+        }
+
+        // ── 2. POST .../pool → 200, five fixed-key items generated and banked ────────────────────
+        PoolBody pool;
+        using (var response = await client.PostAsJsonAsync(
+            PoolUri(), new { conceptId = concept }, Json))
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            responseBodies.Add(body);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            pool = (await ReadFrom<PoolBody>(body)).Data!;
+        }
+
+        Assert.Equal(5, pool.Generated);
+        Assert.Equal(5, pool.PoolSize);
+        Assert.Equal(5, ai.GenerateCalls.Count);
+
+        // Every generation call asked for the shape the pack declared — never the prose default.
+        Assert.All(
+            ai.GenerateCalls, call => Assert.Equal(ItemFormat.MultipleChoice, call.ItemFormat));
+
+        // ── 3. GET next-item → a passage and four choices, never a key ──────────────────────────
+        NextItemBody served;
+        using (var response = await client.GetAsync(NextItemUri(sessionId, concept)))
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            responseBodies.Add(body);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            served = (await ReadFrom<NextItemBody>(body)).Data!;
+        }
+
+        Assert.Equal("MultipleChoice", served.Format);
+        Assert.False(string.IsNullOrWhiteSpace(served.Passage));
+        Assert.Equal(4, served.Options!.Count);
+
+        // ── 4. POST answers, choosing the keyword-matching distractor → WRONG, named by belief ──
+        AnswerBody marked;
+        using (var response = await client.PostAsJsonAsync(
+            AnswersUri(sessionId),
+            new
+            {
+                itemId = Guid.Parse(served.ItemId!),
+                selectedOption = 0,
+                statedConfidence = 0.85,
+                seconds = 30,
+            },
+            Json))
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            responseBodies.Add(body);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            marked = (await ReadFrom<AnswerBody>(body)).Data!;
+        }
+
+        Assert.Equal("Wrong", marked.Outcome);
+        Assert.Equal("keyword-match-wins", marked.Misconception);
+
+        // ── 5. The oracle was asked under the generated item's own name, and the choice, not a ──
+        // ──    claim, is what travelled — and it was marked by comparison, not by a model ───────
+        var checkedClaim = Assert.Single(ai.CheckClaimCalls);
+        Assert.NotEqual(served.ItemId, checkedClaim.ItemId);
+        Assert.StartsWith("item-e2e-", checkedClaim.ItemId, StringComparison.Ordinal);
+        Assert.Equal(0, checkedClaim.SelectedOption);
+
+        // ── 6. The immutable log carries both facts: the wrong answer, and the belief it named ──
+        await using (var scope = _api.Factory.Services.CreateAsyncScope())
+        {
+            var store = scope.ServiceProvider.GetRequiredService<IEventStore>();
+            var stream = await store.ReadStreamAsync(learner);
+
+            var answerEvent = Assert.Single(
+                stream, e => e.Type == LearningEventType.AnswerGiven && e.ConceptId == concept);
+            var answerPayload = EventCatalogue.Deserialize<AnswerGiven>(answerEvent);
+            Assert.Equal(Guid.Parse(served.ItemId!), answerPayload.ItemId);
+            Assert.False(answerPayload.Correct);
+
+            var beliefEvent = Assert.Single(
+                stream,
+                e => e.Type == LearningEventType.MisconceptionDetected && e.ConceptId == concept);
+            var beliefPayload = EventCatalogue.Deserialize<MisconceptionDetected>(beliefEvent);
+            Assert.Equal("keyword-match-wins", beliefPayload.Name);
+
+            // The evidence is the option's own text — what the learner actually picked — not the
+            // empty claim that rode alongside a selection.
+            Assert.Equal(served.Options![0], beliefPayload.Evidence);
+        }
+
+        // ── 7. The adversarial sweep — property names, over every request and response this ────
+        // ──    process sent or read. `correct_option`/`correct_index` are now in the forbidden ───
+        // ──    set (M17); `selectedOption` is the learner's own choice and legitimately crosses ──
+        foreach (var request in ai.GenerateCalls)
+        {
+            AssertNoAnswerShapedField(JsonSerializer.Serialize(request, Json));
+        }
+
+        foreach (var request in ai.CheckClaimCalls)
+        {
+            AssertNoAnswerShapedField(JsonSerializer.Serialize(request, Json));
+        }
+
+        foreach (var body in responseBodies)
+        {
+            AssertNoAnswerShapedField(body);
+        }
+    }
+
     /// The sweep, swept. `SchemaTests` proves no *column* can be answer-shaped; this proves the
     /// wire sweep above holds the same standard — compound names are caught, and the one lawful
     /// appearance of a fragment in a key (a declared wrong-belief slug in the misconceptions map)
@@ -257,6 +404,19 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
 
         AssertNoAnswerShapedField(
             """{"knownMisconceptions": {"models-should-always-answer": "a stated wrong belief"}}""");
+
+        // **M17's own pair.** `correct_option`/`correct_index` are the oracle's own column names
+        // for the fixed-key answer; if either ever crossed the wire, this is what would catch it.
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(
+            () => AssertNoAnswerShapedField("""{"correct_option": 1}"""));
+
+        Assert.ThrowsAny<Xunit.Sdk.XunitException>(
+            () => AssertNoAnswerShapedField("""{"data": {"correct_index": 1}}"""));
+
+        // `selectedOption` is deliberately absent from the forbidden set: it is the learner's own
+        // choice, not the key, and it legitimately rides on `CheckClaimRequest` and
+        // `SubmitAnswer.Command` every time a fixed-key item is answered.
+        AssertNoAnswerShapedField("""{"selectedOption": 0}""");
     }
 
     // ── Plumbing ───────────────────────────────────────────────────────────────
@@ -359,6 +519,42 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
         return File.ReadAllText(Path.Combine(root!.FullName, "packs", "ai-engineering", "pack.yaml"));
     }
 
+    /// **The real shipped Reading English pack** (`packs/english-reading/pack.yaml`) — not a
+    /// synthetic stand-in built just for this test. It ships a genuine `format: MultipleChoice`
+    /// Apply clause, so loading it is the only way this test can prove the pack's own declaration
+    /// actually reaches the generator (`GraphConceptIntel.ApplyFormat`) rather than a fixture that
+    /// merely asserts the code path exists. Loading is idempotent, the same as `SeedPack()` above:
+    /// another test class in this collection (`ConceptIntelTests`, `EnglishReadingPackTests`'
+    /// sibling suites) may already have loaded it.
+    private async Task<Guid> SeedReadingConceptAsync()
+    {
+        await using var scope = _api.Factory.Services.CreateAsyncScope();
+        var loader = scope.ServiceProvider.GetRequiredService<PackLoader>();
+
+        var loaded = await loader.LoadAsync(SeedReadingPack());
+        Assert.True(
+            loaded.IsSuccess || loaded.Status == ResultStatus.Conflict,
+            string.Join(Environment.NewLine, loaded.Errors));
+
+        var graph = scope.ServiceProvider.GetRequiredService<GraphDbContext>();
+
+        // "main-idea": the pack's own concept whose Apply clause declares `format: MultipleChoice`
+        // and whose one declared misconception is `keyword-match-wins`.
+        return graph.Concepts.Single(c => c.Slug == "main-idea").Id;
+    }
+
+    private static string SeedReadingPack()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "packs")))
+        {
+            root = root.Parent;
+        }
+
+        return File.ReadAllText(Path.Combine(root!.FullName, "packs", "english-reading", "pack.yaml"));
+    }
+
     // ── Bodies ─────────────────────────────────────────────────────────────────
 
     private sealed record AuthBody(
@@ -374,7 +570,17 @@ public sealed class ItemBankE2ETests : IAsyncLifetime
         double StandardError,
         bool ConfidentEnoughToStop,
         bool Stopped,
-        string? Says);
+        string? Says,
+
+        /// The text under study, for a reading item — null for the M14 prose journey above.
+        string? Passage = null,
+
+        /// The choices, in the order they must be shown — null for a prose item. There is no index
+        /// here, no `correct`, and no `answer`.
+        IReadOnlyList<string>? Options = null,
+
+        /// "Prose" or "MultipleChoice" — null on the `Stopped` path, where there is no item at all.
+        string? Format = null);
 
     private sealed record AnswerBody(
         string Outcome, string? Misconception, bool YouSaidYouWereSure, string AndYouWere);
@@ -416,6 +622,45 @@ internal sealed class ScriptedAiPlane : IAiPlane
 
         _generated++;
         var n = _generated;
+
+        // **The fixed-key branch (M17).** A passage, a question, and four options come back — the
+        // index of the correct one does not, because `ItemResponse` has no field it could sit in.
+        // The distractor-to-misconception mapping stays server-side too (the oracle's own store);
+        // this fake only needs to remember that *option 1* is the one it will call correct when
+        // `CheckClaimAsync` is asked about it later.
+        if (request.ItemFormat == ItemFormat.MultipleChoice)
+        {
+            var passage =
+                $"Generated passage {n}: a short paragraph nobody in this process has read the "
+                + "key to, under study for a reading item this test itself asked for.";
+            var question = $"Generated question {n}: which choice is actually the passage's point?";
+
+            GeneratedStems.Add(question);
+
+            return Task.FromResult(Result<ItemResponse>.Success(new ItemResponse(
+                // A distinct prefix from the prose branch below (`item-e2e-mc-`, `fp-e2e-mc-`) —
+                // `Fingerprint` is unique across the *whole* bank, not scoped per concept
+                // (`AssessmentDbContext`'s `HasIndex(i => i.Fingerprint).IsUnique()`), and this
+                // fake's counter restarts at 1 in every fresh instance, so a shared prefix with the
+                // M14 prose journey's own `fp-e2e-{n}` would collide the moment both tests bank
+                // items against the same real database in the same run.
+                Id: $"item-e2e-mc-{n}",
+                ConceptId: request.ConceptId,
+                EvidenceType: request.EvidenceType,
+                Stem: question,
+                Difficulty: request.Difficulty,
+                Fingerprint: $"fp-e2e-mc-{n}",
+                TargetsMisconception: null,
+                Passage: passage,
+                Options:
+                [
+                    $"Option A-{n}: repeats words from the passage without being its point.",
+                    $"Option B-{n}: the passage's actual point.",
+                    $"Option C-{n}: a plausible but unsupported claim.",
+                    $"Option D-{n}: a detail the passage mentions in passing.",
+                ])));
+        }
+
         var stem = $"Generated item {n}: a stem nobody in this process has read the answer to.";
 
         GeneratedStems.Add(stem);
@@ -436,6 +681,18 @@ internal sealed class ScriptedAiPlane : IAiPlane
         ArgumentNullException.ThrowIfNull(request);
 
         CheckClaimCalls.Add(request);
+
+        // **Deterministic marking (M17): comparing two integers, no model touched.** Option 1 is
+        // scripted correct; anything else is wrong and names the one distractor this fake knows
+        // about, `keyword-match-wins` — the reading pack's own declared habit of picking the option
+        // that merely repeats the passage's words.
+        if (request.SelectedOption is { } selected)
+        {
+            return Task.FromResult(Result<CheckClaimResponse>.Success(
+                selected == 1
+                    ? new CheckClaimResponse(ClaimOutcome.Correct, null, 0.0)
+                    : new CheckClaimResponse(ClaimOutcome.Wrong, "keyword-match-wins", 0.0)));
+        }
 
         return Task.FromResult(Result<CheckClaimResponse>.Success(
             new CheckClaimResponse(ClaimOutcome.Correct, null, 0.001)));
