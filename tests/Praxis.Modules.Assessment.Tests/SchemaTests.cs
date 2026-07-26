@@ -81,11 +81,50 @@ public sealed class SchemaTests
              """);
     }
 
+    /// Words that, appearing anywhere in an `items` column name, suggest the column might hold or
+    /// point at the correct choice. Broader and noisier on purpose than `Forbidden`: this list is not
+    /// substring-safe against real column names (real columns here are PascalCase with no
+    /// underscores), which is exactly what made the first version of this guard toothless — it banned
+    /// `correct_option` when the column that would actually get added is `CorrectOption`.
+    ///
+    /// This runs only against `items`, so its false positives are cheap: add the column to
+    /// `KnownInnocent` below with a one-line reason. Its false negatives are the ones that matter, and
+    /// an exact-name blocklist has one for every name nobody thought to type in advance — which is why
+    /// this is a "does it brush against a suspicious word" check with an allowlist, not the reverse.
+    private static readonly string[] KeyLike =
+    [
+        "correct", "right", "key", "answer", "index", "option",
+    ];
+
+    /// Columns whose names brush against a word in `KeyLike` but are demonstrably not a key.
+    /// **Adding to this list is a deliberate act.** That is the point: a new column with a suspicious
+    /// name fails the build until somebody consciously argues it is innocent, which is the only way a
+    /// guard catches the case nobody thought of.
+    private static readonly string[] KnownInnocent =
+    [
+        "Id", "ConceptId", "FamilyId", "OracleId",  // identifiers, not keys
+        "TimesCorrect",                             // a count of attempts, not a key
+        "Options",                                  // the choices, which the learner is looking at
+        "TargetsMisconception",                     // a named wrong belief -- the opposite of an answer
+    ];
+
+    /// The detection logic itself, pulled out of the test so it can be exercised directly against a
+    /// hand-picked list of names — the only way to prove it catches a name nobody enumerated, rather
+    /// than merely proving the four names somebody thought to write down are absent.
+    private static List<string> KeyLikeSuspects(IEnumerable<string> columnNames)
+        => columnNames
+            .Where(c => KeyLike.Any(w => c.Contains(w, StringComparison.OrdinalIgnoreCase)))
+            .Where(c => !KnownInnocent.Contains(c, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+
     /// **The options are not a secret and the index is.**
     ///
     /// A learner is looking at all four choices; hiding them would be theatre. Which one is right is a
     /// different kind of thing entirely, and it is not here — it went to `praxis_oracle`, a separate
     /// database this process has no connection string for.
+    ///
+    /// This item is the reason this guard exists in its current, allowlisted shape: options make
+    /// "also store which one is right" the single most tempting column to add to this table, ever.
     [Fact]
     public async Task The_item_bank_holds_the_choices_and_never_which_one_is_right()
     {
@@ -98,12 +137,22 @@ public sealed class SchemaTests
         Assert.Contains("Options", columns);
         Assert.Contains("Format", columns);
 
-        foreach (var forbidden in new[] { "CorrectOption", "CorrectIndex", "Key", "AnswerIndex" })
-        {
-            Assert.DoesNotContain(
-                columns,
-                c => c.Equals(forbidden, StringComparison.OrdinalIgnoreCase));
-        }
+        var suspects = KeyLikeSuspects(columns);
+
+        Assert.True(
+            suspects.Count == 0,
+            $"""
+             A column on `items` brushes against a word that suggests it might hold or point at the
+             correct choice, and it is not on `KnownInnocent`:
+
+                 {string.Join("\n    ", suspects)}
+
+             Options exist on this item now, which makes "just also store which one is right" the
+             single most tempting column to add to this table. If this column is genuinely innocent,
+             say so by adding it to `KnownInnocent` with a one-line reason. If it is not innocent, it
+             does not belong here — it belongs behind the oracle, in `praxis_oracle`, a database this
+             process has no connection string for.
+             """);
     }
 
     /// The bank has a stem, and a stem is **not** a secret. The learner is looking at it.
