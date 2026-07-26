@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Praxis.Infrastructure.Ai;
+using Praxis.Shared;
 
 namespace Praxis.Infrastructure.Tests.Ai;
 
@@ -231,6 +233,33 @@ public sealed class AiPlaneContractTests
         Assert.Equal(
             declared,
             Enum.GetNames<GradeOutcome>().Select(SnakeCase).ToHashSet(StringComparer.Ordinal));
+    }
+
+    /// **Pinned exactly, Task 7 (M17).** The reflection-based drift tests above check property
+    /// *names* only — nothing here catches a renamed enum *member*. `ItemFormat.MultipleChoice`
+    /// becoming, say, `ItemFormat.FixedKey` compiles clean, breaks nothing else in this file, and
+    /// every other existing test stays green. The AI plane then 422s every generate call for a
+    /// fixed-key concept, and `AiPlaneClient` turns that into a `Result.Invalid` rather than a
+    /// crash — loud eventually, silent in CI.
+    ///
+    /// These two strings are a contract with a Python `StrEnum` (`ai/src/praxis_ai/items.py`) on the
+    /// far side of a network hop, so this test does not inspect a name — it actually serializes and
+    /// deserializes through the converter `AiPlaneClient` uses (`JsonStringEnumConverter` with
+    /// `JsonNamingPolicy.SnakeCaseLower`) and pins the exact wire strings both languages agree on.
+    [Fact]
+    public void ItemFormat_serializes_and_round_trips_the_strings_the_ai_plane_expects()
+    {
+        var options = new JsonSerializerOptions
+        {
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
+        };
+
+        Assert.Equal("\"prose\"", JsonSerializer.Serialize(ItemFormat.Prose, options));
+        Assert.Equal("\"multiple_choice\"", JsonSerializer.Serialize(ItemFormat.MultipleChoice, options));
+
+        Assert.Equal(ItemFormat.Prose, JsonSerializer.Deserialize<ItemFormat>("\"prose\"", options));
+        Assert.Equal(
+            ItemFormat.MultipleChoice, JsonSerializer.Deserialize<ItemFormat>("\"multiple_choice\"", options));
     }
 
     /// The AI plane is stateless. It cannot know who is calling unless the call says so — and

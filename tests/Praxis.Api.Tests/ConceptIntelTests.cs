@@ -56,6 +56,40 @@ public sealed class ConceptIntelTests : IAsyncLifetime
         Assert.True(result.DifficultyTarget is > 0.0 and < 1.0);
 
         Assert.Contains("bm25-is-obsolete", result.DeclaredMisconceptions.Keys);
+
+        // bm25's Apply clause declares no format, so the contract's default — Prose — is what
+        // `GraphConceptIntel` must read back. The sibling test below is the other half of the pair:
+        // a concept whose Apply clause *does* declare a format.
+        Assert.Equal(ItemFormat.Prose, result.ApplyFormat);
+    }
+
+    /// **The other half of the pair.** The Prose test above proves the query does not throw on the
+    /// default path — every concept before M17 has no format on its Apply clause at all. This proves
+    /// the query actually *reads* a declared format rather than always falling through to the
+    /// default: every concept in the shipped Reading English pack declares `format: MultipleChoice`
+    /// on its Apply clause (`packs/english-reading/pack.yaml`), because a fixed-key reading item is
+    /// exactly what that pack's proof contracts ask for.
+    [Fact]
+    public async Task A_concept_whose_apply_clause_declares_multiple_choice_returns_that_format()
+    {
+        await using var scope = _api.Factory.Services.CreateAsyncScope();
+        var loader = scope.ServiceProvider.GetRequiredService<PackLoader>();
+
+        var loaded = await loader.LoadAsync(SeedReadingPack());
+
+        Assert.True(
+            loaded.IsSuccess || loaded.Status == ResultStatus.Conflict,
+            string.Join("\n", loaded.Errors));
+
+        var graph = scope.ServiceProvider.GetRequiredService<GraphDbContext>();
+        var concept = graph.Concepts.Single(c => c.Slug == "long-noun-phrases");
+
+        var intel = scope.ServiceProvider.GetRequiredService<IConceptIntel>();
+
+        var result = await intel.ForAsync(concept.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(ItemFormat.MultipleChoice, result!.ApplyFormat);
     }
 
     [Fact]
@@ -80,5 +114,17 @@ public sealed class ConceptIntelTests : IAsyncLifetime
         }
 
         return File.ReadAllText(Path.Combine(root!.FullName, "packs", "ai-engineering", "pack.yaml"));
+    }
+
+    private static string SeedReadingPack()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "packs")))
+        {
+            root = root.Parent;
+        }
+
+        return File.ReadAllText(Path.Combine(root!.FullName, "packs", "english-reading", "pack.yaml"));
     }
 }
