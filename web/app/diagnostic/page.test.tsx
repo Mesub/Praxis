@@ -62,6 +62,27 @@ const READING_ITEM: NextItemResponse = {
   says: null,
 };
 
+// Testing Library's text matchers (`getByText` et al.) only look at an element's *direct* text-node
+// children, not its full nested `textContent` — so a leak split across tags, e.g.
+// `<p>The <b>right</b> answer is option <b>B</b>.</p>`, is invisible to `queryByText(/option b/i)`:
+// no single element's own direct text equals "option B". The central refusal of this screen —
+// nothing here can name the key — has to be proven against the whole rendered text, not
+// element-by-element. Grab `container` from `render()` and check its full `textContent`.
+const ANSWER_LEAK_PATTERNS = [
+  /correct answer/i,
+  /the right answer/i,
+  /option [a-d]\b/i,
+  /the answer is/i,
+  /answer was/i,
+];
+
+function expectNoAnswerLeak(container: HTMLElement) {
+  const text = (container.textContent ?? "").replace(/\s+/g, " ");
+  for (const pattern of ANSWER_LEAK_PATTERNS) {
+    expect(text).not.toMatch(pattern);
+  }
+}
+
 async function answerCurrent() {
   fireEvent.change(await screen.findByLabelText(/your answer/i), {
     target: { value: "my reasoning" },
@@ -254,7 +275,7 @@ describe("DiagnosticPage", () => {
     submitAnswer.mockResolvedValue(
       ok({ outcome: "Wrong", misconception: "keyword-match-wins", youSaidYouWereSure: true, andYouWere: "not" }),
     );
-    render(<DiagnosticPage />);
+    const { container } = render(<DiagnosticPage />);
 
     fireEvent.click((await screen.findAllByRole("radio"))[0]);
     await act(async () => {
@@ -262,11 +283,12 @@ describe("DiagnosticPage", () => {
     });
 
     // The key never reached this browser, so there is nothing here that could name it. The name
-    // itself legitimately appears twice once marked (Task 12): once in the verdict's named-belief
-    // block, once in the Twin sidebar's running list — hence `findAllByText`, not `findByText`.
-    expect((await screen.findAllByText(/keyword-match-wins/)).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/correct answer/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/the right answer/i)).not.toBeInTheDocument();
+    // itself legitimately appears in exactly two places once marked (Task 12): once in the
+    // verdict's named-belief block, once in the Twin sidebar's running "Misconceptions detected"
+    // list — pinned to 2, not just "at least one", so a future accidental third render is caught.
+    await screen.findByText(/you were not right/i);
+    expect(screen.getAllByText(/keyword-match-wins/)).toHaveLength(2);
+    expectNoAnswerLeak(container);
   });
 
   it("still renders the typing box for a prose item", async () => {
@@ -284,7 +306,7 @@ describe("DiagnosticPage", () => {
     submitAnswer.mockResolvedValue(
       ok(answer({ outcome: "Wrong", misconception: "keyword-match-wins", youSaidYouWereSure: true, andYouWere: "not" })),
     );
-    render(<DiagnosticPage />);
+    const { container } = render(<DiagnosticPage />);
 
     fireEvent.click((await screen.findAllByRole("radio"))[0]);
     await act(async () => {
@@ -292,15 +314,16 @@ describe("DiagnosticPage", () => {
     });
 
     expect(await screen.findByText(/you were not right/i)).toBeInTheDocument();
+    expect(screen.getByTestId("belief-block")).toBeInTheDocument();
     // Named once in the verdict's belief block and again in the Twin sidebar's running list —
-    // both are correct per the approved prototype, so this tolerates either or both.
-    expect(screen.getAllByText(/keyword-match-wins/).length).toBeGreaterThan(0);
+    // pinned to exactly 2, not "at least one", so a future accidental third render is caught.
+    expect(screen.getAllByText(/keyword-match-wins/)).toHaveLength(2);
     expect(screen.getByText(/never entered this browser/i)).toBeInTheDocument();
 
-    // The key is not here, on any path, in any casing.
-    expect(screen.queryByText(/correct answer/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/the right answer/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/option b/i)).not.toBeInTheDocument();
+    // The key is not here, on any path, in any casing — checked against the full rendered text,
+    // not element-by-element (see `expectNoAnswerLeak`), because a leak split across tags (e.g.
+    // "the <b>right</b> answer is option <b>B</b>") is invisible to `queryByText` otherwise.
+    expectNoAnswerLeak(container);
   });
 
   it("does not fetch the next item until the learner asks for it", async () => {
@@ -341,5 +364,49 @@ describe("DiagnosticPage", () => {
 
     expect(await screen.findByText(/you were not right/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /next question/i })).toBeInTheDocument();
+    // The common path — 7 of 15 concepts declare no misconceptions — must render no belief box at
+    // all, not an empty one.
+    expect(screen.queryByTestId("belief-block")).not.toBeInTheDocument();
+  });
+
+  it("does not claim the just-marked item's estimate held before the next response settles it", async () => {
+    // `thetaAfter` for the item just answered is still null — it only settles when the *next*
+    // item's response lands (`settleLastTheta` in lib/diagnostic.ts). `moveOf` reports null as
+    // "held", which is correct for its own purpose but wrong here: the verdict screen must not
+    // claim "no change" when the truth is "not yet known".
+    nextItem.mockResolvedValue(ok(READING_ITEM));
+    submitAnswer.mockResolvedValue(
+      ok(answer({ outcome: "Wrong", misconception: null, youSaidYouWereSure: true, andYouWere: "not" })),
+    );
+    render(<DiagnosticPage />);
+
+    fireEvent.click((await screen.findAllByRole("radio"))[0]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    });
+
+    await screen.findByText(/you were not right/i);
+    expect(screen.queryByTitle(/estimate held/i)).not.toBeInTheDocument();
+    expect(screen.getByTitle(/not yet settled/i)).toBeInTheDocument();
+  });
+
+  it("moves focus into the verdict panel when it replaces the question", async () => {
+    // The focused "Submit answer" button unmounts with the question. `role="status"` gets the
+    // panel announced, but announcement is not focus — without moving it explicitly, a keyboard
+    // user lands back at <body> and has to tab from the top of the document to reach "Next
+    // question".
+    nextItem.mockResolvedValue(ok(READING_ITEM));
+    submitAnswer.mockResolvedValue(
+      ok(answer({ outcome: "Wrong", misconception: null, youSaidYouWereSure: true, andYouWere: "not" })),
+    );
+    render(<DiagnosticPage />);
+
+    fireEvent.click((await screen.findAllByRole("radio"))[0]);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    });
+
+    const panel = await screen.findByRole("status");
+    expect(panel).toHaveFocus();
   });
 });

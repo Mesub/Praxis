@@ -367,13 +367,25 @@ function MarkedCard({
   onNext: () => void;
 }) {
   const item = lastAnswered(state);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // The control that had focus ("Submit answer") just unmounted along with the question. Move
+  // focus into the panel that replaced it — `role="status"` gets this *announced*, but
+  // announcement is not focus: without this, a keyboard user is left at <body> and has to tab
+  // from the top of the document to reach "Next question".
+  useEffect(() => {
+    panelRef.current?.focus();
+  }, [item?.itemId]);
+
   if (item === null) return null;
 
   const right = item.andYouWere === "right";
 
   return (
     <div
+      ref={panelRef}
       role="status"
+      tabIndex={-1}
       className={`rounded-lg border bg-surface p-5 ${right ? "border-good/45" : "border-critical/45"}`}
     >
       <div className="flex flex-wrap items-center gap-2">
@@ -408,7 +420,7 @@ function MarkedCard({
       </p>
 
       {item.misconception ? (
-        <div className="mt-4 rounded-sm border border-critical/40 bg-bg px-3.5 py-3">
+        <div data-testid="belief-block" className="mt-4 rounded-sm border border-critical/40 bg-bg px-3.5 py-3">
           <div className="mono text-[12px] text-critical">{item.misconception}</div>
           <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-2">
             Named in the pack before you existed — the distractor you picked is the diagnosis, not a
@@ -495,13 +507,31 @@ function TwinSidebar({ state }: { state: DiagnosticState }) {
 }
 
 function MovePip({ item }: { item: AnsweredItem }) {
+  const outcome = item.andYouWere === "right" ? "right" : "not right";
+
+  // The next item's response has not landed yet, so `thetaAfter` is still null — there is no
+  // "after" to compare against. `moveOf` would report this as "held", which is correct for a
+  // settled item whose estimate genuinely did not move, but wrong here: "held" claims a fact
+  // ("no change") that is not yet known, exactly the kind of overclaim the verdict headline is
+  // careful to avoid. Say "not yet settled" instead — its own glyph, its own tone, its own name.
+  if (item.thetaAfter === null) {
+    return (
+      <span
+        title={`${outcome} · estimate not yet settled`}
+        className="mono grid h-6 w-6 place-items-center rounded border border-line text-[12px] text-ink-4"
+      >
+        …
+      </span>
+    );
+  }
+
   const move = moveOf(item);
   const glyph = move === "rose" ? "↑" : move === "fell" ? "↓" : "→";
   const tone =
     item.andYouWere === "right" ? "border-good/45 text-good" : "border-serious/45 text-serious";
   return (
     <span
-      title={`${item.andYouWere === "right" ? "right" : "not right"} · estimate ${move}`}
+      title={`${outcome} · estimate ${move}`}
       className={`mono grid h-6 w-6 place-items-center rounded border text-[12px] ${tone}`}
     >
       {glyph}
