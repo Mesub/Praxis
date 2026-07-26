@@ -509,19 +509,29 @@ public sealed class PackValidatorTests
     [Fact]
     public void A_format_may_only_be_declared_on_apply_evidence()
     {
-        var doc = OneConcept(evidence: new PackEvidence
-        {
-            Type = EvidenceType.Explain,
-            MinScore = 0.7,
-            Max = 0.20,
-            Count = 1,
-            Format = ItemFormat.MultipleChoice,
-        });
+        // The Apply clause alone already clears the Evidence Ceiling (max 0.85 >= hold 0.80), so
+        // PoMContract.Create raises nothing on its own. If this pack is Invalid at all, it can only
+        // be because of the format rule under test — not because of the unrelated "needs at least
+        // one of APPLY, BUILD or PREDICT" floor check, whose message also happens to contain the
+        // substring "APPLY" and would otherwise make this test pass for the wrong reason.
+        var doc = OneConcept(evidence:
+        [
+            new PackEvidence { Type = EvidenceType.Apply, MinScore = 0.8, Max = 0.85, Count = 1 },
+            new PackEvidence
+            {
+                Type = EvidenceType.Explain,
+                MinScore = 0.7,
+                Max = 0.20,
+                Count = 1,
+                Format = ItemFormat.MultipleChoice,
+            },
+        ]);
 
         var result = PackValidator.Validate(doc);
 
         Assert.Equal(ResultStatus.Invalid, result.Status);
-        Assert.Contains(result.Errors, e => e.Contains("apply", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(result.Errors, e =>
+            e.Contains("is marked against a fixed key", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -530,14 +540,17 @@ public sealed class PackValidatorTests
         // Distractors exist to catch a named wrong belief. With none declared there is nothing to
         // build them out of, and three of the four options would be noise.
         var doc = OneConcept(
-            evidence: new PackEvidence
-            {
-                Type = EvidenceType.Apply,
-                MinScore = 0.7,
-                Max = 0.85,
-                Count = 1,
-                Format = ItemFormat.MultipleChoice,
-            },
+            evidence:
+            [
+                new PackEvidence
+                {
+                    Type = EvidenceType.Apply,
+                    MinScore = 0.7,
+                    Max = 0.85,
+                    Count = 1,
+                    Format = ItemFormat.MultipleChoice,
+                },
+            ],
             misconceptions: []);
 
         var result = PackValidator.Validate(doc);
@@ -550,21 +563,24 @@ public sealed class PackValidatorTests
     public void Multiple_choice_apply_with_a_declared_misconception_is_accepted()
     {
         var doc = OneConcept(
-            evidence: new PackEvidence
-            {
-                Type = EvidenceType.Apply,
-                MinScore = 0.7,
-                Max = 0.85,
-                Count = 1,
-                Format = ItemFormat.MultipleChoice,
-            },
+            evidence:
+            [
+                new PackEvidence
+                {
+                    Type = EvidenceType.Apply,
+                    MinScore = 0.7,
+                    Max = 0.85,
+                    Count = 1,
+                    Format = ItemFormat.MultipleChoice,
+                },
+            ],
             misconceptions: [new PackMisconception { Key = "keyword-match-wins", Statement = "I think the option that repeats the text is right." }]);
 
         Assert.True(PackValidator.Validate(doc).IsSuccess);
     }
 
     private static PackDocument OneConcept(
-        PackEvidence evidence,
+        IReadOnlyList<PackEvidence> evidence,
         List<PackMisconception>? misconceptions = null)
         => new()
         {
@@ -582,7 +598,7 @@ public sealed class PackValidatorTests
                     Minutes = 30,
                     Misconceptions = misconceptions ??
                         [new PackMisconception { Key = "some-belief", Statement = "I think a wrong thing." }],
-                    Proof = new PackContract { Hold = 0.80, Evidence = [evidence] },
+                    Proof = new PackContract { Hold = 0.80, Evidence = [.. evidence] },
                 },
             ],
         };
