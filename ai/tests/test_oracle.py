@@ -316,3 +316,35 @@ async def test_an_index_outside_the_options_is_refused():
 
     with pytest.raises(FormatMismatchError):
         await oracle.check("item-1", "", Attribution("l1", "c1"), selected_option=9)
+
+
+@pytest.mark.asyncio
+async def test_a_distractor_naming_an_undeclared_belief_is_discarded_not_passed_through(
+    caplog: pytest.LogCaptureFixture,
+):
+    """The fixed-key path's own airlock — the same rule the model path uses, re-run here because a
+    store row can desync from its declared misconceptions (a hand edit, or a future generator bug).
+    ``AnswerKey`` has no ``__post_init__`` enforcing that ``option_misconceptions`` values are a
+    subset of ``misconceptions``, so this check is the only thing standing between that and a
+    learner being told they hold a belief nobody ever declared."""
+    desynced = AnswerKey(
+        item_id="item-desynced",
+        concept_id="c1",
+        question="q",
+        answer="a",
+        misconceptions={"declared-belief": "..."},
+        correct_option=1,
+        option_misconceptions={0: "undeclared-belief"},
+    )
+    oracle = Oracle(ExplodingClaude(), InMemoryAnswerKeyStore({"item-desynced": desynced}))
+
+    with caplog.at_level(logging.WARNING):
+        verdict = await oracle.check(
+            "item-desynced", "", Attribution("l1", "c1"), selected_option=0
+        )
+
+    assert verdict.outcome is ClaimOutcome.WRONG
+    assert verdict.misconception is None
+
+    logged = "\n".join(r.getMessage() for r in caplog.records)
+    assert "outside the item's declared set" in logged
