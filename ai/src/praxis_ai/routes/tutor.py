@@ -57,6 +57,13 @@ class TutorTurnRequest(BaseModel):
     learner_id: str = Field(min_length=1)
     concept_id: str = Field(min_length=1)
 
+    #: The passage the learner is reading, when the item has one (M17). Not a secret — it is on
+    #: their screen. There is no ``options`` field beside it, and there must never be: the four
+    #: choices are a closed set containing the answer, and a model that can see them can eliminate
+    #: them, which is the answer delivered politely. Last and defaulted, so every call site written
+    #: before M17 keeps compiling unchanged.
+    passage: str | None = None
+
 
 class TutorTurnResponse(BaseModel):
     text: str
@@ -77,6 +84,7 @@ async def turn(
         rung=request.rung,
         budget_remaining=request.budget_remaining,
         known_misconceptions=tuple(request.known_misconceptions),
+        passage=request.passage,
     )
 
     try:
@@ -124,6 +132,7 @@ async def turn_stream(
         rung=request.rung,
         budget_remaining=request.budget_remaining,
         known_misconceptions=tuple(request.known_misconceptions),
+        passage=request.passage,
     )
 
     attribution = Attribution(learner_id=request.learner_id, concept_id=request.concept_id)

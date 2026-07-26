@@ -93,7 +93,16 @@ public sealed record TutorTurnRequest(
     IReadOnlyList<string> KnownMisconceptions,
 
     string LearnerId,
-    string ConceptId);
+    string ConceptId,
+
+    /// The passage the learner is reading, when the item has one. **They are looking at it**, so a
+    /// hint that points into it ("what does *however* in sentence two reverse?") is teaching, not
+    /// answering.
+    ///
+    /// There is no `Options` beside this, and there must never be. The choices are a closed set
+    /// containing the answer: a model that can see them can eliminate them, and elimination *is*
+    /// the answer, delivered politely. The learner sees the options; the tutor does not.
+    string? Passage = null);
 
 public sealed record TurnSpec(string Who, string Said);
 

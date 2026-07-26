@@ -52,6 +52,8 @@ public sealed class TutorDbContext : DbContext
 
             session.HasIndex(s => new { s.LearnerId, s.ConceptId });
 
+            session.Property(s => s.ItemId);
+
             session.Property(s => s.State).IsRequired();
             session.Property(s => s.Outcome);
             session.Property(s => s.Produced).IsRequired();

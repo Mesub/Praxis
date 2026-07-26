@@ -48,7 +48,8 @@ public sealed class SessionProjection : IProjection
                 started.SessionId,
                 e.LearnerId,
                 e.ConceptId ?? Guid.Empty,
-                started.PlannedMinutes));
+                started.PlannedMinutes,
+                started.ItemId));
 
             await _db.SaveChangesAsync(ct);
 

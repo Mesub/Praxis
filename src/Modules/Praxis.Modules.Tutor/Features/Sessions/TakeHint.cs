@@ -57,6 +57,7 @@ public static class TakeHint
         private readonly ProjectionRunner _projections;
         private readonly IAiPlane _ai;
         private readonly IMisconceptionLibrary _misconceptions;
+        private readonly ITutorContext _context;
         private readonly IUserContext _user;
         private readonly IClock _clock;
 
@@ -66,10 +67,11 @@ public static class TakeHint
             ProjectionRunner projections,
             IAiPlane ai,
             IMisconceptionLibrary misconceptions,
+            ITutorContext context,
             IUserContext user,
             IClock clock)
-            => (_db, _events, _projections, _ai, _misconceptions, _user, _clock)
-                = (db, events, projections, ai, misconceptions, user, clock);
+            => (_db, _events, _projections, _ai, _misconceptions, _context, _user, _clock)
+                = (db, events, projections, ai, misconceptions, context, user, clock);
 
         public async Task<Result<TurnResponse>> HandleAsync(Command command, CancellationToken ct)
         {
@@ -163,11 +165,23 @@ public static class TakeHint
             // right (C-5). Empty when the concept declares none.
             var known = await _misconceptions.KeysForConceptAsync(session.ConceptId, ct);
 
+            // What the tutor may know about what the learner is looking at (M17). The summary falls
+            // back to the raw GUID only if the Graph has genuinely never heard of this concept — a
+            // bug elsewhere, and it should look like one rather than being smoothed over silently.
+            var summary = await _context.SummaryForAsync(session.ConceptId, ct)
+                ?? session.ConceptId.ToString();
+
+            // Null when the session was never bound to an item — a free-standing conversation, not
+            // a bug — in which case the fallback below is honest rather than an evasion.
+            var itemContext = session.ItemId is { } boundItem
+                ? await _context.ForItemAsync(boundItem, ct)
+                : null;
+
             // ── Then ask the tutor, which does not have the answer ───────────
             var reply = await _ai.TutorTurnAsync(
                 new TutorTurnRequest(
-                    ConceptSummary: session.ConceptId.ToString(),
-                    ItemStem: "the current problem",
+                    ConceptSummary: summary,
+                    ItemStem: itemContext?.Stem ?? "the current problem",
                     Transcript: string.IsNullOrWhiteSpace(command.LearnerSaid)
                         ? []
                         : [new TurnSpec("learner", command.LearnerSaid)],
@@ -175,7 +189,8 @@ public static class TakeHint
                     BudgetRemaining: budget.Remaining - grant.Cost,
                     KnownMisconceptions: known,
                     LearnerId: learner.ToString(),
-                    ConceptId: session.ConceptId.ToString()),
+                    ConceptId: session.ConceptId.ToString(),
+                    Passage: itemContext?.Passage),
                 ct);
 
             if (!reply.IsSuccess)

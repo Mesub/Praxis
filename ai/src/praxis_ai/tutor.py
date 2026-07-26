@@ -81,6 +81,11 @@ class TutorContext:
     such a field exists, something populates it, and the guarantee stops being a property of the
     type.
 
+    There is also no ``options`` (M17). A reading item's passage legitimately reaches this type,
+    because the learner is looking at it — but the four choices are a closed set *containing* the
+    answer, and a model that can see them can eliminate them, which is the answer delivered slowly.
+    So there is nowhere for them to arrive.
+
     A learner can say anything they like. It lands in ``transcript``, which is a list of things
     people said — and no amount of saying things conjures a field that does not exist.
     """
@@ -104,6 +109,15 @@ class TutorContext:
     #: Misconception **keys** this learner is known to hold (I-6). Keys, from a closed set the
     #: item's author declared — never free text, and never a description of the right answer.
     known_misconceptions: tuple[str, ...] = field(default=())
+
+    #: The passage the learner is reading, when the item has one (M17). **They are looking at it**,
+    #: so a hint that points into it ("what does *however* in sentence two reverse?") is teaching,
+    #: not answering.
+    #:
+    #: There is no ``options`` field beside this, and there must never be. The choices are a closed
+    #: set containing the answer: a model that can see them can eliminate them, and elimination *is*
+    #: the answer, delivered politely. The learner sees the options; the tutor does not.
+    passage: str | None = None
 
 
 class ClaimChecker(Protocol):
@@ -134,6 +148,7 @@ def build_context(
     rung: HintRung,
     budget_remaining: int,
     known_misconceptions: tuple[str, ...] = (),
+    passage: str | None = None,
 ) -> TutorContext:
     """The **only** way to make a tutor context.
 
@@ -147,6 +162,7 @@ def build_context(
         rung=rung,
         budget_remaining=budget_remaining,
         known_misconceptions=known_misconceptions,
+        passage=passage,
     )
 
 
@@ -266,9 +282,15 @@ def render(context: TutorContext) -> str:
         else ""
     )
 
+    # The passage is legitimately here — the learner is looking at it, so a hint that points into
+    # it is teaching. There is no equivalent block for the four options: `TutorContext` has no field
+    # for them, so there is nothing here to render even if a caller wanted one.
+    passage = f"THE PASSAGE THEY ARE READING:\n{context.passage}\n\n" if context.passage else ""
+
     return (
         f"CONCEPT:\n{context.concept_summary}\n\n"
         f"THE PROBLEM THE LEARNER IS LOOKING AT:\n{context.item_stem}\n\n"
+        f"{passage}"
         f"YOU MAY GO AS DEEP AS THIS RUNG AND NO DEEPER:\n{_RUNG_BRIEF[context.rung]}\n\n"
         f"THEIR ANSWER BUDGET: {context.budget_remaining} remaining."
         f"{misconceptions}\n\n"

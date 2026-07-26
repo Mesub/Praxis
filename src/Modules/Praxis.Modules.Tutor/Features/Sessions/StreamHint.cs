@@ -44,6 +44,7 @@ public static class StreamHint
         private readonly ProjectionRunner _projections;
         private readonly IAiPlane _ai;
         private readonly IMisconceptionLibrary _misconceptions;
+        private readonly ITutorContext _context;
         private readonly IUserContext _user;
         private readonly IClock _clock;
 
@@ -53,10 +54,11 @@ public static class StreamHint
             ProjectionRunner projections,
             IAiPlane ai,
             IMisconceptionLibrary misconceptions,
+            ITutorContext context,
             IUserContext user,
             IClock clock)
-            => (_db, _events, _projections, _ai, _misconceptions, _user, _clock)
-                = (db, events, projections, ai, misconceptions, user, clock);
+            => (_db, _events, _projections, _ai, _misconceptions, _context, _user, _clock)
+                = (db, events, projections, ai, misconceptions, context, user, clock);
 
         /// Returns a **failure** when a gate refuses — and the caller must not have opened a stream
         /// yet. It returns the token source only once everything has said yes.
@@ -147,11 +149,22 @@ public static class StreamHint
             // mid-token. Empty when the concept declares none.
             var known = await _misconceptions.KeysForConceptAsync(session.ConceptId, ct);
 
+            // What the tutor may know about what the learner is looking at (M17), fetched before the
+            // stream opens — same reasoning as `known` above: a Graph hiccup fails cleanly rather
+            // than mid-token. The summary falls back to the raw GUID only if the Graph has genuinely
+            // never heard of this concept.
+            var summary = await _context.SummaryForAsync(session.ConceptId, ct)
+                ?? session.ConceptId.ToString();
+
+            var itemContext = session.ItemId is { } boundItem
+                ? await _context.ForItemAsync(boundItem, ct)
+                : null;
+
             // ── Only now does anything become a stream ───────────────────────
             var tokens = _ai.TutorTurnStreamAsync(
                 new TutorTurnRequest(
-                    ConceptSummary: session.ConceptId.ToString(),
-                    ItemStem: "the current problem",
+                    ConceptSummary: summary,
+                    ItemStem: itemContext?.Stem ?? "the current problem",
                     Transcript: string.IsNullOrWhiteSpace(command.LearnerSaid)
                         ? []
                         : [new TurnSpec("learner", command.LearnerSaid)],
@@ -159,7 +172,8 @@ public static class StreamHint
                     BudgetRemaining: budget.Remaining - grant.Cost,
                     KnownMisconceptions: known,
                     LearnerId: learner.ToString(),
-                    ConceptId: session.ConceptId.ToString()),
+                    ConceptId: session.ConceptId.ToString(),
+                    Passage: itemContext?.Passage),
                 ct);
 
             return Result<IAsyncEnumerable<string>>.Success(tokens);

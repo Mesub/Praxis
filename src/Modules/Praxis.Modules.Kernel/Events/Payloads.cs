@@ -13,7 +13,15 @@ public interface IEventPayload
 
 // ── Session lifecycle ───────────────────────────────────────────────────────
 
-public sealed record SessionStarted(Guid SessionId, int PlannedMinutes)
+public sealed record SessionStarted(
+    Guid SessionId,
+    int PlannedMinutes,
+
+    /// The item this session is working, if any (M17). Defaulted so every writer before M17 keeps
+    /// compiling unchanged. Null means exactly what it says — not "unknown", "TBD", or a Guid.Empty
+    /// standing in for one — and the tutor's fallback to "the current problem" is honest only because
+    /// this is genuinely absent, not because nobody bothered to look it up.
+    Guid? ItemId = null)
     : IEventPayload
 {
     public static LearningEventType EventType => LearningEventType.SessionStarted;

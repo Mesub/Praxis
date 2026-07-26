@@ -12,7 +12,10 @@ namespace Praxis.Modules.Tutor.Features.Sessions;
 /// Starting a session, and the four ways it can end.
 public static class StartSession
 {
-    public sealed record Command(Guid ConceptId, int PlannedMinutes);
+    /// `ItemId` is last and defaulted so every call site written before M17 keeps compiling
+    /// unchanged. When it is null, behaviour is exactly what it was before: the tutor falls back to
+    /// "the current problem", honestly, because there genuinely is no item.
+    public sealed record Command(Guid ConceptId, int PlannedMinutes, Guid? ItemId = null);
 
     public sealed class Validator : AbstractValidator<Command>
     {
@@ -49,7 +52,7 @@ public static class StartSession
 
             var started = await _events.AppendAsync(
                 learner,
-                new SessionStarted(sessionId, command.PlannedMinutes),
+                new SessionStarted(sessionId, command.PlannedMinutes, command.ItemId),
                 _clock.UtcNow,
                 command.ConceptId,
                 ct);

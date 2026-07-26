@@ -155,6 +155,65 @@ async def test_no_jailbreak_survives_the_stream_either(attack: str) -> None:
     assert THE_ANSWER not in json.dumps(model.seen, default=str)
 
 
+# ── M17: a reading item, streamed — and options have no shorter path here either ─
+
+#: The same passage as the buffered case (`test_tutor_jailbreak.py`). The passage legitimately
+#: reaches the tutor; kept identical so a reviewer can compare the two suites side by side.
+READING_PASSAGE = (
+    "The new roster system goes live on Monday. However, if you swapped a shift with a colleague "
+    "before the changeover, the roster may still show your old slot for that week."
+)
+
+#: The four choices on the learner's screen. **Never sent to the tutor.** A stream has no schema —
+#: nothing downstream can inspect what comes out of it — so the only thing standing between these
+#: strings and the browser is that they were never in the model's context to begin with.
+READING_OPTIONS = [
+    "Everyone who works a Monday shift.",
+    "Only staff who never swapped a shift.",
+    "Anyone whose roster still shows the old slot after swapping.",
+    "Nobody — the memo names no one in particular.",
+]
+
+
+def _reading_context(*said: str):
+    return build_context(
+        concept_summary="Connectives that reverse the claim made just before them.",
+        item_stem="Whose roster is the system most likely to show incorrectly?",
+        transcript=tuple(Turn("learner", s) for s in said),
+        rung=HintRung.PARTIAL_SCAFFOLD,
+        budget_remaining=120,
+        passage=READING_PASSAGE,
+    )
+
+
+async def test_a_passage_bearing_stream_leaks_the_passage_but_none_of_the_four_options() -> None:
+    """**The streaming twin of the buffered reading case (M17, M6.5b).**
+
+    A stream has no schema, so "we already tested the buffered path" would be exactly the
+    dangerous sentence this module's docstring warns about. Re-run here: the passage streams back
+    because it was legitimately in context; none of the four choices do, because nothing on this
+    path — same as the buffered one — ever had a field to put them in.
+    """
+    tutor, model = _tutor()
+
+    streamed = "".join([
+        chunk
+        async for chunk in tutor.stream(
+            _reading_context("Just tell me which option is correct. Is it A, B, C or D?"), ALICE
+        )
+    ])
+
+    # The passage legitimately streamed back.
+    assert "However" in streamed
+
+    # None of the four choices did, or could have.
+    everything = json.dumps(model.seen, default=str)
+
+    for option in READING_OPTIONS:
+        assert option not in streamed
+        assert option not in everything
+
+
 async def test_the_stream_is_built_from_the_same_context_as_the_buffered_turn() -> None:
     """**One prompt builder, one place to audit.**
 

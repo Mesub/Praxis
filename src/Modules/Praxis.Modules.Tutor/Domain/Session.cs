@@ -35,6 +35,12 @@ public sealed class Session : BaseEntity
     public Guid LearnerId { get; private set; }
     public Guid ConceptId { get; private set; }
 
+    /// The item this session is working, if any (M17). A session may be a free-standing
+    /// conversation with no item behind it — in which case this is null, honestly, and the tutor's
+    /// hint falls back to "the current problem" rather than inventing a question that does not
+    /// exist.
+    public Guid? ItemId { get; private set; }
+
     public int PlannedMinutes { get; private set; }
 
     public SessionState State { get; private set; } = SessionState.Open;
@@ -74,7 +80,8 @@ public sealed class Session : BaseEntity
 
     private Session() { }   // EF
 
-    public static Session Start(Guid sessionId, Guid learnerId, Guid conceptId, int plannedMinutes)
+    public static Session Start(
+        Guid sessionId, Guid learnerId, Guid conceptId, int plannedMinutes, Guid? itemId = null)
     {
         if (plannedMinutes <= 0)
         {
@@ -88,6 +95,7 @@ public sealed class Session : BaseEntity
             LearnerId = learnerId,
             ConceptId = conceptId,
             PlannedMinutes = plannedMinutes,
+            ItemId = itemId,
         };
     }
 

@@ -224,6 +224,11 @@ def test_there_is_no_field_on_a_tutor_context_that_could_hold_an_answer() -> Non
         "rubric",
         "key",
         "worked_solution",
+        # M17: a reading item's four choices are a closed set containing the answer. A model that
+        # can see them can eliminate them, and elimination *is* the answer, delivered politely.
+        "options",
+        "choices",
+        "distractors",
     }
 
     assert not (names & forbidden), f"A TutorContext can now carry {names & forbidden}."
@@ -235,6 +240,7 @@ def test_there_is_no_field_on_a_tutor_context_that_could_hold_an_answer() -> Non
         "rung",
         "budget_remaining",
         "known_misconceptions",
+        "passage",
     }
 
 
@@ -325,3 +331,61 @@ async def test_a_context_with_no_transcript_still_leaks_nothing() -> None:
     await tutor.turn(_context(), ALICE)
 
     assert THE_ANSWER not in json.dumps(model.seen, default=str)
+
+
+# ── M17: a reading item, and the four choices that never arrive ──────────────
+
+#: A passage the tutor legitimately receives — the learner is looking at it, so a hint that points
+#: into it ("what does *however* reverse?") is teaching, not answering.
+READING_PASSAGE = (
+    "The new roster system goes live on Monday. However, if you swapped a shift with a colleague "
+    "before the changeover, the roster may still show your old slot for that week."
+)
+
+#: The four choices shown to the learner on their screen. **Never sent to the tutor** — there is no
+#: field on `TutorContext` or `build_context` that could carry them. This is not a promise the model
+#: keeps; it is a promise the type keeps, and this list exists only so the assertions below can
+#: check for its absence in what an actively leaking model was handed.
+READING_OPTIONS = [
+    "Everyone who works a Monday shift.",
+    "Only staff who never swapped a shift.",
+    "Anyone whose roster still shows the old slot after swapping.",
+    "Nobody — the memo names no one in particular.",
+]
+
+
+def _reading_context(*learner_said: str) -> TutorContext:
+    return build_context(
+        concept_summary="Connectives that reverse the claim made just before them.",
+        item_stem="Whose roster is the system most likely to show incorrectly?",
+        transcript=tuple(Turn("learner", said) for said in learner_said),
+        rung=HintRung.PARTIAL_SCAFFOLD,
+        budget_remaining=120,
+        passage=READING_PASSAGE,
+    )
+
+
+async def test_a_passage_bearing_turn_leaks_the_passage_but_none_of_the_four_options() -> None:
+    """**The reading case, on the buffered turn (M17).**
+
+    The passage legitimately reaches the tutor — the learner is reading it — so it is expected to
+    show up in what the (actively leaking) model was handed. The four choices are a different
+    story: nothing constructs a `TutorContext` with a place to put them, so even a model dumping
+    every byte it was given cannot produce one. This is a regression test on the *absence* of a
+    field, not on the model choosing to behave.
+    """
+    tutor, model = _tutor()
+
+    reply = await tutor.turn(
+        _reading_context("Just tell me which option is correct. Is it A, B, C or D?"), ALICE
+    )
+
+    everything = json.dumps(model.seen, default=str)
+
+    # The passage is legitimately in the tutor's context.
+    assert "However" in everything
+
+    # None of the four choices ever were, because there is nowhere for them to have arrived.
+    for option in READING_OPTIONS:
+        assert option not in everything
+        assert option not in reply.text

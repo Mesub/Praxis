@@ -106,6 +106,9 @@ namespace Praxis.Modules.Tutor.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("ItemId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("LearnerId")
                         .HasColumnType("uuid");
 

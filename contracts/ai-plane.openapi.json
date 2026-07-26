@@ -421,6 +421,17 @@
             "title": "Learner Id",
             "type": "string"
           },
+          "passage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passage"
+          },
           "rung": {
             "$ref": "#/components/schemas/HintRung"
           },

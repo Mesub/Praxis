@@ -69,6 +69,11 @@ builder.Services.AddScoped<IMasteryContracts, GraphMasteryContracts>();
 builder.Services.AddScoped<Praxis.Modules.Tutor.IMisconceptionLibrary, GraphMisconceptionLibrary>();
 builder.Services.AddScoped<Praxis.Modules.Assessment.IConceptIntel, GraphConceptIntel>();
 
+// What the tutor may know about what the learner is looking at (M17): a passage and a stem from
+// Assessment's item bank, a summary from the Graph's concepts — never the options, because
+// `TutorItemContext` has no field for them.
+builder.Services.AddScoped<Praxis.Modules.Tutor.ITutorContext, TutorContext>();
+
 // The Graph knows the subject; the Twin knows the learner; the Compiler knows neither. This is the
 // only place the three meet.
 builder.Services.AddScoped<ICompilerSnapshot, LiveCompilerSnapshot>();
