@@ -82,6 +82,55 @@ public sealed class EventCatalogueTests
         Assert.Equal(original, rehydrated);
     }
 
+    /// **The test a round trip of the *current* shape can never be.**
+    ///
+    /// `Every_payload_round_trips_through_the_log` above proves the current `AnswerGiven` shape
+    /// survives a round trip — but it constructs the record, serializes it, and deserializes what
+    /// it just wrote. That can never catch a change that breaks replay of a row that is *already on
+    /// the log*, because it never touches a byte the current code did not just produce itself.
+    ///
+    /// The Twin is a projection of the event log and must be rebuildable from zero (CLAUDE.md) — so
+    /// a payload change that quietly breaks deserialization of an old row does not fail loudly, it
+    /// invalidates every learner's history the next time somebody runs a rebuild. The only way to
+    /// catch that is to hand-write the *old* shape and deserialize it through the exact path a
+    /// projection uses, not to trust that today's record still agrees with yesterday's.
+    ///
+    /// `SessionStarted` gained `ItemId` (M17), last and defaulted, specifically so pre-M17 rows
+    /// (`sessionId` and `plannedMinutes` only — no `itemId` key at all) keep deserializing. This is
+    /// that proof. It is deliberately not about `SessionStarted` in particular: it is the *shape* of
+    /// test any future payload change needs, because nothing else in this file — or anywhere else —
+    /// would notice if a payload change broke old rows instead of merely being safe for new ones.
+    [Fact]
+    public void A_pre_M17_SessionStarted_with_no_ItemId_still_replays()
+    {
+        var learner = Guid.CreateVersion7();
+        var occurred = DateTime.UtcNow;
+        var sessionId = Guid.CreateVersion7();
+
+        // The literal pre-M17 shape. Not built by serializing a `SessionStarted` and stripping a
+        // field — that would only prove today's serializer agrees with itself. This is the JSON a
+        // pre-M17 writer actually put in the log.
+        var legacyJson = $$"""{"sessionId":"{{sessionId}}","plannedMinutes":15}""";
+
+        var e = LearningEvent.Create(
+            learner,
+            SessionStarted.EventType,
+            legacyJson,
+            occurred,
+            occurred);
+
+        // The same path a projection reads through — not a hand-rolled JsonSerializerOptions that
+        // might quietly diverge from the one the log is actually read with.
+        var rehydrated = EventCatalogue.Deserialize<SessionStarted>(e);
+
+        Assert.Equal(sessionId, rehydrated.SessionId);
+        Assert.Equal(15, rehydrated.PlannedMinutes);
+
+        // Null, honestly — not Guid.Empty standing in for "we don't know". A row written before
+        // M17 genuinely predates the concept of a bound item.
+        Assert.Null(rehydrated.ItemId);
+    }
+
     [Fact]
     public void A_payload_knows_which_event_it_is()
     {
