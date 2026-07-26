@@ -136,6 +136,27 @@ public static class PackValidator
             return;
         }
 
+        foreach (var clause in concept.Proof.Evidence)
+        {
+            if (clause.Format is not ItemFormat.Prose && clause.Type is not EvidenceType.Apply)
+            {
+                errors.Add(
+                    $"'{slug}' declares format '{clause.Format}' on {clause.Type} evidence. A "
+                    + "format is a claim about how an item is *marked*, and only apply evidence is "
+                    + "marked against a fixed key. Explain and critique are graded by a model "
+                    + "against a rubric; there is nothing for them to choose between.");
+            }
+
+            if (clause.Format is ItemFormat.MultipleChoice && concept.Misconceptions.Count == 0)
+            {
+                errors.Add(
+                    $"'{slug}' declares multiple-choice apply evidence but no misconceptions. A "
+                    + "distractor exists to catch a *named* wrong belief — without one, three of "
+                    + "the four options are noise, a wrong answer diagnoses nothing, and the item "
+                    + "is a coin toss wearing a question mark.");
+            }
+        }
+
         // Build the real contract — that is what enforces the Evidence Ceiling (C-4). We surface
         // its complaint with the concept's name attached, so the author knows which one is
         // dishonest rather than merely that something, somewhere, is.
@@ -145,7 +166,7 @@ public static class PackValidator
                 Guid.CreateVersion7(),
                 concept.Proof.Hold,
                 [.. concept.Proof.Evidence.Select(e =>
-                    AcceptedEvidence.Of(e.Type, e.MinScore, e.Max, e.Count))]);
+                    AcceptedEvidence.Of(e.Type, e.MinScore, e.Max, e.Count, e.Format))]);
         }
         catch (ArgumentException ex)
         {

@@ -506,6 +506,87 @@ public sealed class PackValidatorTests
         Assert.Contains("line", result.Message!, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void A_format_may_only_be_declared_on_apply_evidence()
+    {
+        var doc = OneConcept(evidence: new PackEvidence
+        {
+            Type = EvidenceType.Explain,
+            MinScore = 0.7,
+            Max = 0.20,
+            Count = 1,
+            Format = ItemFormat.MultipleChoice,
+        });
+
+        var result = PackValidator.Validate(doc);
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("apply", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Multiple_choice_without_a_declared_misconception_is_refused()
+    {
+        // Distractors exist to catch a named wrong belief. With none declared there is nothing to
+        // build them out of, and three of the four options would be noise.
+        var doc = OneConcept(
+            evidence: new PackEvidence
+            {
+                Type = EvidenceType.Apply,
+                MinScore = 0.7,
+                Max = 0.85,
+                Count = 1,
+                Format = ItemFormat.MultipleChoice,
+            },
+            misconceptions: []);
+
+        var result = PackValidator.Validate(doc);
+
+        Assert.Equal(ResultStatus.Invalid, result.Status);
+        Assert.Contains(result.Errors, e => e.Contains("misconception", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Multiple_choice_apply_with_a_declared_misconception_is_accepted()
+    {
+        var doc = OneConcept(
+            evidence: new PackEvidence
+            {
+                Type = EvidenceType.Apply,
+                MinScore = 0.7,
+                Max = 0.85,
+                Count = 1,
+                Format = ItemFormat.MultipleChoice,
+            },
+            misconceptions: [new PackMisconception { Key = "keyword-match-wins", Statement = "I think the option that repeats the text is right." }]);
+
+        Assert.True(PackValidator.Validate(doc).IsSuccess);
+    }
+
+    private static PackDocument OneConcept(
+        PackEvidence evidence,
+        List<PackMisconception>? misconceptions = null)
+        => new()
+        {
+            Domain = "test-domain",
+            Version = 1,
+            Note = "a pack for one test",
+            Concepts =
+            [
+                new PackConcept
+                {
+                    Slug = "only-concept",
+                    Title = "Only concept",
+                    Summary = "The only concept in this pack.",
+                    Difficulty = 0.0,
+                    Minutes = 30,
+                    Misconceptions = misconceptions ??
+                        [new PackMisconception { Key = "some-belief", Statement = "I think a wrong thing." }],
+                    Proof = new PackContract { Hold = 0.80, Evidence = [evidence] },
+                },
+            ],
+        };
+
     private static PackDocument Parse(string yaml)
     {
         var parsed = PackLoader.Parse(yaml);

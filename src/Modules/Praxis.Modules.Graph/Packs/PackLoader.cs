@@ -141,7 +141,7 @@ public sealed class PackLoader
             _db.Contracts.Add(PoMContract.Create(
                 from.Id,
                 proof.Hold,
-                [.. proof.Evidence.Select(e => AcceptedEvidence.Of(e.Type, e.MinScore, e.Max, e.Count))]));
+                [.. proof.Evidence.Select(e => AcceptedEvidence.Of(e.Type, e.MinScore, e.Max, e.Count, e.Format))]));
 
             foreach (var m in source.Misconceptions)
             {

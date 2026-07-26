@@ -159,13 +159,17 @@ public sealed class AcceptedEvidence : BaseEntity
     /// proof. One correct RECALL is a coin flip that landed well.
     public int RequiredCount { get; private set; }
 
+    /// The shape items proving this clause take. See <see cref="ItemFormat"/>.
+    public ItemFormat Format { get; private set; }
+
     private AcceptedEvidence() { }   // EF
 
     public static AcceptedEvidence Of(
         EvidenceType type,
         double minScore,
         double maxContribution,
-        int requiredCount = 1)
+        int requiredCount = 1,
+        ItemFormat format = ItemFormat.Prose)
     {
         if (minScore is < 0 or > 1)
         {
@@ -187,6 +191,7 @@ public sealed class AcceptedEvidence : BaseEntity
             MinScore = minScore,
             MaxContribution = maxContribution,
             RequiredCount = requiredCount,
+            Format = format,
         };
     }
 }

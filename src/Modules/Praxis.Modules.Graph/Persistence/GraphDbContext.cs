@@ -105,6 +105,7 @@ public sealed class GraphDbContext : DbContext
             e.Property(x => x.MinScore).IsRequired();
             e.Property(x => x.MaxContribution).IsRequired();
             e.Property(x => x.RequiredCount).IsRequired();
+            e.Property(x => x.Format).IsRequired();
 
             // Each evidence type gets one clause per contract.
             e.HasIndex(x => new { x.PoMContractId, x.Type }).IsUnique();

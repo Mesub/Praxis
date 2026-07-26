@@ -86,4 +86,9 @@ public sealed class PackEvidence
     public double Max { get; set; }
 
     public int Count { get; set; } = 1;
+
+    /// The shape items of this evidence type take. Legal only on `Apply` — a model-graded
+    /// explanation has no options to choose between. Absent means `Prose`, which is every pack
+    /// authored before M17.
+    public ItemFormat Format { get; set; } = ItemFormat.Prose;
 }
