@@ -208,6 +208,62 @@ def test_both_a_claim_and_a_selection_is_a_422() -> None:
     assert response.status_code == 422
 
 
+# ── FormatMismatchError at the HTTP layer (review round 1, Task 6) ──────────
+#
+# Both of these send exactly one of claim/selected_option, so `exactly_one_answer` lets them
+# through and they genuinely reach `Oracle.check` — this is deliberately not the same thing as the
+# two tests above, which never leave the request validator. Without a test here, the only coverage
+# of `FormatMismatchError` -> 422 is Task 5's Oracle-level unit tests, and the two-line `except`
+# clause in the route that turns it into 422 (rather than an unhandled 500) is unguarded.
+
+
+def test_prose_sent_to_a_fixed_key_item_is_a_422() -> None:
+    """A claim arrives for an item that is marked by comparing two integers. `Oracle.check` routes
+    this to `_mark_fixed_key`, which raises `FormatMismatchError` because no option was selected —
+    and the route must turn that into a 422, the same refusal voice as "I could not mark this,"
+    never a fallback and never a 500."""
+    store = InMemoryAnswerKeyStore({FIXED_KEY.item_id: FIXED_KEY})
+
+    try:
+        with _client("unused", store=store) as client:
+            response = client.post(
+                "/oracle/check-claim",
+                json={
+                    "item_id": FIXED_KEY.item_id,
+                    "claim": "I think it's the second one",
+                    "learner_id": "l1",
+                    "concept_id": "c1",
+                },
+            )
+    finally:
+        _reset()
+
+    assert response.status_code == 422
+
+
+def test_a_selection_sent_to_a_prose_item_is_a_422() -> None:
+    """The reverse mismatch: a selection arrives for an item with no fixed key. `Oracle.check`
+    raises `FormatMismatchError` directly (before any model is called), and the route must still
+    turn that into a 422."""
+    store = InMemoryAnswerKeyStore({KEY.item_id: KEY})
+
+    try:
+        with _client("unused", store=store) as client:
+            response = client.post(
+                "/oracle/check-claim",
+                json={
+                    "item_id": KEY.item_id,
+                    "selected_option": 0,
+                    "learner_id": "l1",
+                    "concept_id": "c1",
+                },
+            )
+    finally:
+        _reset()
+
+    assert response.status_code == 422
+
+
 # ── The sweep ────────────────────────────────────────────────────────────────
 
 
