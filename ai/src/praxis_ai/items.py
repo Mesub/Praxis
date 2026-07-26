@@ -466,12 +466,25 @@ def _parse(
             "unmarkable, and a learner would spend real effort on it for nothing."
         )
 
+    raw_catches = parsed.get("option_misconceptions")
+
+    # Absent or null means "no distractor beliefs" — the common case, since 7 of 15 Reading
+    # English concepts declare no misconceptions at all. Present and not a map is a different
+    # problem: we cannot tell which option it was trying to describe, and every other malformed
+    # field in this function costs a retry rather than the process, so this one does too.
+    if raw_catches is not None and not isinstance(raw_catches, dict):
+        raise ItemRejectedError(
+            "Option misconceptions must be a map of option index to a declared belief key. What "
+            "came back cannot be read as one, and guessing at its shape risks attributing a wrong "
+            "belief nobody wrote down."
+        )
+
     # The airlock, again: a distractor may only name a belief the caller declared in advance. A
     # fixed-key item may declare none at all — an empty ``known_keys`` is a supported case, not an
     # error, and every proposed catch is simply discarded rather than raising.
     catches: dict[int, str] = {}
 
-    for raw_index, key in (parsed.get("option_misconceptions") or {}).items():
+    for raw_index, key in (raw_catches or {}).items():
         try:
             index = int(raw_index)
         except (TypeError, ValueError):

@@ -437,12 +437,78 @@ async def test_a_distractor_belief_outside_the_declared_set_is_discarded() -> No
     assert store.get(item.id).option_misconceptions == {0: "keyword-match-wins"}
 
 
+async def test_an_option_misconception_naming_the_correct_index_is_dropped() -> None:
+    """The right answer is not a wrong belief. An entry that names the correct index is not a
+    distractor at all, and storing it would tell the oracle that choosing correctly is itself
+    evidence of a misconception."""
+    generator, store, _model = _generator(
+        _mcq_reply(
+            correct=1,
+            option_misconceptions={"1": "keyword-match-wins", "2": "literal-only"},
+            misconceptions={
+                "keyword-match-wins": "I think the option repeating the text is right.",
+                "literal-only": "...",
+            },
+        )
+    )
+
+    item = await _generate(
+        generator,
+        item_format=ItemFormat.MULTIPLE_CHOICE,
+        known_misconceptions={"keyword-match-wins": "...", "literal-only": "..."},
+    )
+
+    key = store.get(item.id)
+    assert key.correct_option == 1
+    assert key.option_misconceptions == {2: "literal-only"}
+
+
 async def test_a_multiple_choice_item_without_four_options_is_rejected() -> None:
     # Three options, still valid JSON — so this fails the option-count rule, not the parser.
     generator, _store, _model = _generator(_mcq_reply(options=MCQ_OPTIONS[:3]))
 
     with pytest.raises(ItemRejectedError):
         await _generate(generator, item_format=ItemFormat.MULTIPLE_CHOICE)
+
+
+async def test_a_boolean_correct_index_is_rejected() -> None:
+    """Python's ``True`` is an ``int`` — ``True == 1`` — so the ``isinstance(correct, bool)``
+    guard is the only thing stopping a boolean being read as index 1."""
+    generator, _store, _model = _generator(_mcq_reply(correct=True))
+
+    with pytest.raises(ItemRejectedError):
+        await _generate(generator, item_format=ItemFormat.MULTIPLE_CHOICE)
+
+
+async def test_a_negative_correct_index_is_rejected() -> None:
+    generator, _store, _model = _generator(_mcq_reply(correct=-1))
+
+    with pytest.raises(ItemRejectedError):
+        await _generate(generator, item_format=ItemFormat.MULTIPLE_CHOICE)
+
+
+async def test_option_misconceptions_that_is_not_a_map_is_rejected_not_a_crash() -> None:
+    """Every other malformed field in this branch costs a retry, not the process. This one used
+    to reach an unhandled ``.items()`` call on a string instead of raising."""
+    reply = json.loads(_mcq_reply())
+    reply["option_misconceptions"] = "not a map"
+    generator, _store, _model = _generator(json.dumps(reply))
+
+    with pytest.raises(ItemRejectedError):
+        await _generate(generator, item_format=ItemFormat.MULTIPLE_CHOICE)
+
+
+async def test_option_misconceptions_absent_entirely_still_generates() -> None:
+    """Absent (like ``null``) means "no distractor beliefs" — the common case, since 7 of 15
+    Reading English concepts declare no misconceptions at all."""
+    reply = json.loads(_mcq_reply())
+    del reply["option_misconceptions"]
+    generator, store, _model = _generator(json.dumps(reply))
+
+    item = await _generate(generator, item_format=ItemFormat.MULTIPLE_CHOICE)
+
+    assert item.options == MCQ_OPTIONS
+    assert store.get(item.id).option_misconceptions == {}
 
 
 async def test_a_multiple_choice_item_with_no_declared_misconceptions_still_generates() -> None:
