@@ -103,11 +103,13 @@ $webDir = Join-Path $root 'web'
 
 if (-not (Test-Path (Join-Path $webDir 'package.json'))) {
     Add-Result -Stage 'Web   lint' -Status 'SKIP' -Detail 'web/ not built yet (M11.1)'
+    Add-Result -Stage 'Web   typecheck' -Status 'SKIP' -Detail 'web/ not built yet (M11.1)'
     Add-Result -Stage 'Web   test' -Status 'SKIP' -Detail 'web/ not built yet (M11.1)'
     Add-Result -Stage 'Web   build' -Status 'SKIP' -Detail 'web/ not built yet (M11.1)'
 }
 elseif ($Quick) {
     Add-Result -Stage 'Web   lint' -Status 'SKIP' -Detail '-Quick'
+    Add-Result -Stage 'Web   typecheck' -Status 'SKIP' -Detail '-Quick'
     Add-Result -Stage 'Web   test' -Status 'SKIP' -Detail '-Quick'
     Add-Result -Stage 'Web   build' -Status 'SKIP' -Detail '-Quick'
 }
@@ -121,6 +123,11 @@ else {
         }
 
         Invoke-Stage 'Web   lint' { npm run lint } | Out-Null
+        # `npm run build` only type-checks source files, never `*.test.ts(x)` - a type error in a
+        # test (including a guard that exists purely to fail a *type* check, never a runtime one)
+        # passes lint, passes test (vitest transpiles through esbuild and never type-checks), and
+        # passes build without this stage. This is the only stage that runs `tsc` over everything.
+        Invoke-Stage 'Web   typecheck' { npm run typecheck } | Out-Null
         Invoke-Stage 'Web   test' { npm run test } | Out-Null
         Invoke-Stage 'Web   build' { npm run build } | Out-Null
     }

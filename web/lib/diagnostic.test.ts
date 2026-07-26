@@ -71,7 +71,11 @@ function round(
  * always finds a phrasing the list did not guess. This guard is structural instead: it fails the
  * *build* the moment either wire type grows a field that could carry the key, whatever that field
  * ends up being named — `correctOption`, `answerIndex`, `keyText`, anything shaped like it.
- * `npx tsc --noEmit` runs in the verify gate, so this is load-bearing, not decorative.
+ * This only matters if something actually runs it: `npm run test` (vitest, transpiled through
+ * esbuild) never type-checks, and `npm run build` never type-checks `*.test.ts(x)` files, so
+ * neither would ever see this guard fire. The "Web   typecheck" stage in `scripts/verify.ps1`
+ * (`npm run typecheck`, i.e. `tsc --noEmit` over the whole `web/` tree, tests included) is the one
+ * that does — that is what makes this load-bearing rather than decorative.
  */
 type KeyShaped<T> = Extract<
   keyof T,
