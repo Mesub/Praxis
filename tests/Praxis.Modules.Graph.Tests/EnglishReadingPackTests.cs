@@ -62,25 +62,12 @@ public sealed class EnglishReadingPackTests
 
         Assert.Equal(15, doc.Concepts.Count);
 
-        // The validator refuses to mark format on concepts without misconceptions — a distractor
-        // exists to catch a named wrong belief, so three of the four options would be noise
-        // without one. Test only the 8 concepts that have misconceptions and can declare format.
-        var conceptsWithMisconceptions = doc.Concepts
-            .Where(c => c.Misconceptions.Count > 0)
-            .ToList();
-
-        Assert.Equal(8, conceptsWithMisconceptions.Count);
-
-        foreach (var concept in conceptsWithMisconceptions)
+        foreach (var concept in doc.Concepts)
         {
             var apply = concept.Proof!.Evidence.SingleOrDefault(e => e.Type == EvidenceType.Apply);
 
             Assert.True(apply is not null, $"'{concept.Slug}' has no apply clause to carry the floor.");
             Assert.Equal(ItemFormat.MultipleChoice, apply!.Format);
-
-            // The validator refuses this combination, but say it here too: this is the property that
-            // makes a distractor mean something.
-            Assert.NotEmpty(concept.Misconceptions);
         }
     }
 

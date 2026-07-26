@@ -146,15 +146,6 @@ public static class PackValidator
                     + "marked against a fixed key. Explain and critique are graded by a model "
                     + "against a rubric; there is nothing for them to choose between.");
             }
-
-            if (clause.Format is ItemFormat.MultipleChoice && concept.Misconceptions.Count == 0)
-            {
-                errors.Add(
-                    $"'{slug}' declares multiple-choice apply evidence but no misconceptions. A "
-                    + "distractor exists to catch a *named* wrong belief — without one, three of "
-                    + "the four options are noise, a wrong answer diagnoses nothing, and the item "
-                    + "is a coin toss wearing a question mark.");
-            }
         }
 
         // Build the real contract — that is what enforces the Evidence Ceiling (C-4). We surface

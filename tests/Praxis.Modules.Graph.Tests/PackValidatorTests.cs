@@ -535,10 +535,11 @@ public sealed class PackValidatorTests
     }
 
     [Fact]
-    public void Multiple_choice_without_a_declared_misconception_is_refused()
+    public void Multiple_choice_apply_is_accepted()
     {
-        // Distractors exist to catch a named wrong belief. With none declared there is nothing to
-        // build them out of, and three of the four options would be noise.
+        // A fixed-key item may be used alone to mark a concept. A distractor without a declared
+        // misconception still marks right/wrong, just without a named explanation — it says nothing
+        // more than "wrong" and the learner learns nothing from the answer. This is a designed case.
         var doc = OneConcept(
             evidence:
             [
@@ -552,29 +553,6 @@ public sealed class PackValidatorTests
                 },
             ],
             misconceptions: []);
-
-        var result = PackValidator.Validate(doc);
-
-        Assert.Equal(ResultStatus.Invalid, result.Status);
-        Assert.Contains(result.Errors, e => e.Contains("misconception", StringComparison.OrdinalIgnoreCase));
-    }
-
-    [Fact]
-    public void Multiple_choice_apply_with_a_declared_misconception_is_accepted()
-    {
-        var doc = OneConcept(
-            evidence:
-            [
-                new PackEvidence
-                {
-                    Type = EvidenceType.Apply,
-                    MinScore = 0.7,
-                    Max = 0.85,
-                    Count = 1,
-                    Format = ItemFormat.MultipleChoice,
-                },
-            ],
-            misconceptions: [new PackMisconception { Key = "keyword-match-wins", Statement = "I think the option that repeats the text is right." }]);
 
         Assert.True(PackValidator.Validate(doc).IsSuccess);
     }

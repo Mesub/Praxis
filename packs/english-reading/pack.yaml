@@ -80,7 +80,7 @@ concepts:
       hold: 0.75
       evidence:
         - { type: Explain, min-score: 0.7, max: 0.20 }
-        - { type: Apply, min-score: 0.8, max: 0.75 }
+        - { type: Apply, min-score: 0.8, max: 0.75, format: MultipleChoice }
 
   - slug: reference-tracking
     title: "Reference: what it, they, this point back to"
@@ -139,7 +139,7 @@ concepts:
       hold: 0.75
       evidence:
         - { type: Explain, min-score: 0.7, max: 0.20 }
-        - { type: Apply, min-score: 0.8, max: 0.75 }
+        - { type: Apply, min-score: 0.8, max: 0.75, format: MultipleChoice }
 
   - slug: what-the-article-signals
     title: "What a and the tell a reader"
@@ -156,7 +156,7 @@ concepts:
       hold: 0.75
       evidence:
         - { type: Explain, min-score: 0.7, max: 0.20 }
-        - { type: Apply, min-score: 0.8, max: 0.75 }
+        - { type: Apply, min-score: 0.8, max: 0.75, format: MultipleChoice }
 
   # ── Region B · Getting the meaning: the strategies over the whole text ──────
 
@@ -284,7 +284,7 @@ concepts:
       hold: 0.78
       evidence:
         - { type: Explain, min-score: 0.7, max: 0.20 }
-        - { type: Apply, min-score: 0.8, max: 0.78 }
+        - { type: Apply, min-score: 0.8, max: 0.78, format: MultipleChoice }
 
   # ── Region C · Real-world receiving: where it pays off ─────────────────────
 
@@ -301,7 +301,7 @@ concepts:
       hold: 0.78
       evidence:
         - { type: Explain, min-score: 0.7, max: 0.20 }
-        - { type: Apply, min-score: 0.8, max: 0.78 }
+        - { type: Apply, min-score: 0.8, max: 0.78, format: MultipleChoice }
 
   - slug: following-instructions
     title: "Following instructions: steps, conditions, order"
@@ -317,7 +317,7 @@ concepts:
       hold: 0.78
       evidence:
         - { type: Explain, min-score: 0.7, max: 0.20 }
-        - { type: Apply, min-score: 0.8, max: 0.78 }
+        - { type: Apply, min-score: 0.8, max: 0.78, format: MultipleChoice }
 
   - slug: news-vs-opinion
     title: "News vs opinion: reported fact vs argued claim"
@@ -333,4 +333,4 @@ concepts:
       hold: 0.80
       evidence:
         - { type: Explain, min-score: 0.7, max: 0.20 }
-        - { type: Apply, min-score: 0.8, max: 0.80 }
+        - { type: Apply, min-score: 0.8, max: 0.80, format: MultipleChoice }
