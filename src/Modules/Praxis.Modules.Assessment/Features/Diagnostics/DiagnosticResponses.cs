@@ -13,6 +13,18 @@ public sealed record NextItemResponse(
     string? Stem,
     string? EvidenceType,
 
+    /// The text under study, for a reading item — null for everything else.
+    string? Passage,
+
+    /// The choices, in the order they must be shown. Null for a prose item.
+    ///
+    /// There is no index here, no `correct`, and no `answer`. The handler that built this record
+    /// never had one and could not have obtained one.
+    IReadOnlyList<string>? Options,
+
+    /// "Prose" or "MultipleChoice" — how the client should ask for an answer.
+    string? Format,
+
     /// What PRAXIS currently believes, **and how sure it is** — always together. θ on its own is a
     /// number, and a number on its own always looks like knowledge.
     double Theta,
@@ -30,6 +42,9 @@ public sealed record NextItemResponse(
             ItemId: item.Id.ToString(),
             Stem: item.Stem,
             EvidenceType: item.EvidenceType.ToString(),
+            Passage: item.Passage,
+            Options: item.Options,
+            Format: item.Format.ToString(),
             Theta: ability.Theta,
             StandardError: ability.StandardError,
             ConfidentEnoughToStop: ability.IsConfident,
@@ -53,6 +68,9 @@ public sealed record NextItemResponse(
             ItemId: null,
             Stem: null,
             EvidenceType: null,
+            Passage: null,
+            Options: null,
+            Format: null,
             Theta: ability.Theta,
             StandardError: ability.StandardError,
             ConfidentEnoughToStop: ability.IsConfident,
